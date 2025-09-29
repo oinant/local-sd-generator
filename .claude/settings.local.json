@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npx @playwright/mcp@latest:*)",
+      "Bash(claude mcp:*)",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:vuetifyjs.com)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_snapshot"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
