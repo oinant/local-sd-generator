@@ -1,0 +1,188 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sd-image-generator-backend"
+dynamic = ["version"]
+description = "Modern web backend for Stable Diffusion image generation"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = ["stable-diffusion", "image-generation", "api", "fastapi"]
+authors = [
+    { name = "SD Generator Team" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+    "celery>=5.3.0",
+    "redis>=5.0.0",
+    "pillow>=10.0.0",
+    "python-multipart>=0.0.6",
+    "jinja2>=3.1.0",
+    "aiofiles>=23.0.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.6.0",
+    "httpx>=0.25.0",
+]
+
+[tool.hatch.version]
+path = "app/__about__.py"
+
+[tool.hatch.envs.default]
+dependencies = [
+    "coverage[toml]>=6.5",
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+    "- coverage combine",
+    "coverage report",
+]
+cov = [
+    "test-cov",
+    "cov-report",
+]
+
+[tool.hatch.envs.lint]
+detached = true
+dependencies = [
+    "black>=23.1.0",
+    "mypy>=1.0.0",
+    "ruff>=0.0.243",
+]
+
+[tool.hatch.envs.lint.scripts]
+typing = "mypy --install-types --non-interactive {args:app tests}"
+style = [
+    "ruff {args:.}",
+    "black --check --diff {args:.}",
+]
+fmt = [
+    "black {args:.}",
+    "ruff --fix {args:.}",
+    "style",
+]
+all = [
+    "style",
+    "typing",
+]
+
+[tool.hatch.envs.api]
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "celery",
+    "redis",
+]
+
+[tool.hatch.envs.api.scripts]
+serve = "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+serve-prod = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+worker = "celery -A app.services.worker worker --loglevel=info"
+flower = "celery -A app.services.worker flower"
+
+[tool.black]
+target-version = ["py39"]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+select = [
+    "A",
+    "ARG",
+    "B",
+    "C",
+    "DTZ",
+    "E",
+    "EM",
+    "F",
+    "FBT",
+    "I",
+    "ICN",
+    "ISC",
+    "N",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "Q",
+    "RUF",
+    "S",
+    "T",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+]
+ignore = [
+    "B027",
+    "FBT003",
+    "S105", "S106", "S107",
+    "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+]
+unfixable = [
+    "F401",
+]
+
+[tool.ruff.isort]
+known-first-party = ["app"]
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.per-file-ignores]
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.coverage.run]
+source_pkgs = ["app", "tests"]
+branch = true
+parallel = true
+omit = [
+    "app/__about__.py",
+]
+
+[tool.coverage.paths]
+app = ["app", "*/sd-image-generator-backend/app"]
+tests = ["tests", "*/sd-image-generator-backend/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "no cov",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+pretty = true
+show_column_numbers = true
+show_error_codes = true
+show_error_context = true

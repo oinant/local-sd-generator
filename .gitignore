@@ -205,3 +205,13 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+CLI/private-generators/*
+
+# Backend specifics
+backend/.env
+
+# Frontend specifics
+backend/frontend/node_modules/
+backend/frontend/dist/
+backend/frontend/.env
+backend/frontend/.env.local
