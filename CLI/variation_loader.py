@@ -17,31 +17,79 @@ Exemple d'utilisation:
 import os
 import re
 import random
+import time
 from typing import Dict, Optional, Set, Tuple, List
 
 
-def extract_placeholders_with_limits(text: str) -> Dict[str, Optional[int]]:
+def extract_placeholders_with_limits(text: str) -> Dict[str, dict]:
     """
-    Extrait tous les placeholders avec leurs limites optionnelles d'un texte.
+    Extrait tous les placeholders avec leurs options d'un texte.
 
     Formats supportés:
     - {PlaceholderName} : Pas de limite
-    - {PlaceholderName:15} : Limite à 15 variations
+    - {PlaceholderName:15} : Limite à 15 variations aléatoires
+    - {PlaceholderName:0} : Supprime le placeholder (valeur vide)
+    - {PlaceholderName:#|1|5|22} : Sélectionne les index 1, 5 et 22 spécifiquement
+    - {PlaceholderName:#|6|4|2$8} : Indices 6,4,2 avec poids de priorité 8
+    - {PlaceholderName:15$8} : Limite 15 variations avec poids 8
+    - {PlaceholderName:$8} : Toutes variations avec poids 8
+
+    Le poids détermine l'ordre des boucles en mode combinatorial :
+    - Plus grand poids = boucle plus imbriquée (intérieure)
+    - Plus petit poids = boucle extérieure
 
     Args:
         text: Le texte contenant les placeholders
 
     Returns:
-        Dict {placeholder_name: limit} où limit peut être None
+        Dict {placeholder_name: {"type": "limit"|"zero"|"indices"|"none", "value": ..., "priority": int}}
     """
-    # Pattern pour trouver {PlaceholderName} ou {PlaceholderName:N}
-    pattern = r'\{([^}:]+)(?::(\d+))?\}'
+    # Pattern pour trouver {PlaceholderName} avec options optionnelles
+    pattern = r'\{([^}:]+)(?::([^}]+))?\}'
     matches = re.findall(pattern, text)
 
     placeholders = {}
-    for placeholder, limit_str in matches:
-        limit = int(limit_str) if limit_str else None
-        placeholders[placeholder] = limit
+    for placeholder, option_str in matches:
+        priority = 0  # Poids par défaut
+
+        if not option_str:
+            # Pas d'option : toutes les variations
+            placeholders[placeholder] = {"type": "none", "value": None, "priority": priority}
+        elif option_str == "0":
+            # :0 = suppression du placeholder
+            placeholders[placeholder] = {"type": "zero", "value": 0, "priority": priority}
+        else:
+            # Extrait le poids si présent (format: ....$N)
+            if "$" in option_str:
+                main_part, priority_str = option_str.rsplit("$", 1)
+                try:
+                    priority = int(priority_str.strip())
+                except ValueError:
+                    priority = 0
+            else:
+                main_part = option_str
+
+            # Parse la partie principale
+            if not main_part:
+                # Juste un poids: {PlaceholderName:$8}
+                placeholders[placeholder] = {"type": "none", "value": None, "priority": priority}
+            elif main_part.startswith("#|"):
+                # #|1|5|22 = sélection d'index spécifiques
+                indices_str = main_part[2:]  # Enlève "#|"
+                try:
+                    indices = [int(idx.strip()) for idx in indices_str.split("|") if idx.strip()]
+                    placeholders[placeholder] = {"type": "indices", "value": indices, "priority": priority}
+                except ValueError:
+                    # Si parsing échoue, traiter comme limite normale
+                    placeholders[placeholder] = {"type": "none", "value": None, "priority": priority}
+            else:
+                # N = limite à N variations aléatoires
+                try:
+                    limit = int(main_part)
+                    placeholders[placeholder] = {"type": "limit", "value": limit, "priority": priority}
+                except ValueError:
+                    # Si parsing échoue, pas de limite
+                    placeholders[placeholder] = {"type": "none", "value": None, "priority": priority}
 
     return placeholders
 
@@ -102,6 +150,51 @@ def limit_variations(variations: Dict[str, str], limit: int) -> Dict[str, str]:
     return {key: variations[key] for key in selected_keys}
 
 
+def select_variations_by_indices(variations: Dict[str, str], indices: List[int]) -> Dict[str, str]:
+    """
+    Sélectionne des variations spécifiques par leurs index.
+
+    Args:
+        variations: Dictionnaire des variations
+        indices: Liste des index à sélectionner (0-based)
+
+    Returns:
+        Dictionnaire avec uniquement les variations aux index spécifiés
+    """
+    variations_list = list(variations.items())
+    selected = {}
+
+    for idx in indices:
+        if 0 <= idx < len(variations_list):
+            key, value = variations_list[idx]
+            selected[key] = value
+
+    return selected
+
+
+def sort_placeholders_by_priority(placeholders_dict: Dict[str, dict]) -> List[str]:
+    """
+    Trie les placeholders par leur poids de priorité pour l'ordre des boucles.
+
+    Plus grand poids = boucle plus imbriquée (intérieure)
+    Plus petit poids = boucle extérieure
+
+    Args:
+        placeholders_dict: Dict {placeholder: {"type": ..., "value": ..., "priority": int}}
+
+    Returns:
+        Liste des noms de placeholders triés par priorité décroissante
+    """
+    # Trie par priorité décroissante (plus grand poids en dernier = plus imbriqué)
+    sorted_items = sorted(
+        placeholders_dict.items(),
+        key=lambda item: item[1].get("priority", 0),
+        reverse=False  # Ordre croissant: petit poids d'abord (boucle extérieure)
+    )
+
+    return [placeholder for placeholder, _ in sorted_items]
+
+
 def create_random_combinations(variations_dict: Dict[str, Dict[str, str]],
                              count: int,
                              seed: int = None) -> List[Dict[str, str]]:
@@ -116,8 +209,9 @@ def create_random_combinations(variations_dict: Dict[str, Dict[str, str]],
     Returns:
         Liste de dictionnaires {placeholder: valeur_choisie}
     """
-    if seed is not None:
-        random.seed(seed)
+    #if seed is not None:
+    #    random.seed(seed)
+    random.seed(time.time())
 
     if not variations_dict:
         return []
@@ -234,7 +328,12 @@ def load_variations_for_placeholders(prompt: str,
                                    verbose: bool = True) -> Dict[str, Dict[str, str]]:
     """
     Charge uniquement les variations nécessaires selon les placeholders du prompt.
-    Supporte les limites définies dans le prompt {Placeholder:N}.
+
+    Supporte plusieurs formats :
+    - {Placeholder} : Toutes les variations
+    - {Placeholder:N} : N variations aléatoires
+    - {Placeholder:0} : Supprime le placeholder (retourne dict vide)
+    - {Placeholder:#|1|5|22} : Sélectionne les index 1, 5 et 22
 
     Args:
         prompt: Le prompt contenant les placeholders
@@ -245,44 +344,82 @@ def load_variations_for_placeholders(prompt: str,
     Returns:
         Dictionnaire {placeholder: {clé: valeur}} pour les placeholders trouvés
     """
-    # Extrait les placeholders avec leurs limites du prompt
-    placeholders_with_limits = extract_placeholders_with_limits(prompt)
+    # Extrait les placeholders avec leurs options du prompt
+    placeholders_with_options = extract_placeholders_with_limits(prompt)
 
     if verbose:
         print(f"🔍 Placeholders trouvés dans le prompt:")
-        for placeholder, limit in placeholders_with_limits.items():
-            if limit:
-                print(f"  {placeholder} (limité à {limit})")
+        for placeholder, options in placeholders_with_options.items():
+            option_type = options["type"]
+            option_value = options["value"]
+
+            if option_type == "zero":
+                print(f"  {placeholder} (supprimé :0)")
+            elif option_type == "limit":
+                print(f"  {placeholder} (limité à {option_value} variations)")
+            elif option_type == "indices":
+                print(f"  {placeholder} (index spécifiques: {option_value})")
             else:
                 print(f"  {placeholder} (toutes variations)")
 
-    # Filtre le mapping pour ne garder que ceux nécessaires
+    # Filtre le mapping pour ne garder que ceux nécessaires (sauf :0)
     filtered_mapping = {
         placeholder: filepath
         for placeholder, filepath in file_mapping.items()
-        if placeholder in placeholders_with_limits
+        if placeholder in placeholders_with_options
+        and placeholders_with_options[placeholder]["type"] != "zero"
     }
 
     if verbose and len(filtered_mapping) < len(file_mapping):
-        ignored = set(file_mapping.keys()) - set(placeholders_with_limits.keys())
-        print(f"⏭️  Placeholders ignorés (non présents dans le prompt): {ignored}")
+        ignored = set(file_mapping.keys()) - set(placeholders_with_options.keys())
+        if ignored:
+            print(f"⏭️  Placeholders ignorés (non présents dans le prompt): {ignored}")
 
     # Charge les variations filtrées
     all_variations = load_variations_from_files(filtered_mapping, encoding, verbose)
 
-    # Applique les limites spécifiées dans le prompt
-    limited_variations = {}
+    # Applique les options spécifiées dans le prompt
+    processed_variations = {}
     for placeholder, variations in all_variations.items():
-        limit = placeholders_with_limits.get(placeholder)
+        options = placeholders_with_options.get(placeholder)
+        if not options:
+            processed_variations[placeholder] = variations
+            continue
 
-        if limit and limit < len(variations):
+        option_type = options["type"]
+        option_value = options["value"]
+
+        if option_type == "zero":
+            # Placeholder à supprimer : retourne dict vide
+            processed_variations[placeholder] = {"": ""}
             if verbose:
-                print(f"🎲 Limitation de {placeholder}: {len(variations)} → {limit} (sélection aléatoire)")
-            limited_variations[placeholder] = limit_variations(variations, limit)
-        else:
-            limited_variations[placeholder] = variations
+                print(f"🚫 {placeholder} sera supprimé du prompt")
 
-    return limited_variations
+        elif option_type == "limit" and option_value < len(variations):
+            # Limitation aléatoire
+            if verbose:
+                print(f"🎲 Limitation de {placeholder}: {len(variations)} → {option_value} (sélection aléatoire)")
+            processed_variations[placeholder] = limit_variations(variations, option_value)
+
+        elif option_type == "indices":
+            # Sélection par index
+            selected = select_variations_by_indices(variations, option_value)
+            if verbose:
+                print(f"🎯 Sélection de {placeholder}: {len(selected)} variations aux index {option_value}")
+            processed_variations[placeholder] = selected if selected else variations
+
+        else:
+            # Pas de modification
+            processed_variations[placeholder] = variations
+
+    # Ajoute les placeholders :0 qui ne sont pas dans file_mapping
+    for placeholder, options in placeholders_with_options.items():
+        if options["type"] == "zero" and placeholder not in processed_variations:
+            processed_variations[placeholder] = {"": ""}
+            if verbose:
+                print(f"🚫 {placeholder} sera supprimé du prompt")
+
+    return processed_variations
 
 
 def load_variations_from_files(file_mapping: Dict[str, str],

@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 
 from app.config import API_HOST, API_PORT
-from app.api import images, generation, auth
+from app.api import images, generation, auth, files
 from app.__about__ import __version__
 
 
@@ -15,9 +15,16 @@ async def lifespan(app: FastAPI):
     """Gestionnaire de cycle de vie de l'application."""
     # Startup
     print("🚀 Démarrage du backend SD Image Generator")
+
+    # Démarre le scheduler de jobs (génération de miniatures, etc.)
+    from app.jobs.scheduler import scheduler
+    await scheduler.start()
+
     yield
+
     # Shutdown
     print("🔄 Arrêt du backend SD Image Generator")
+    await scheduler.stop()
 
 
 # Créer l'application FastAPI
@@ -44,6 +51,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(auth.router)
 app.include_router(images.router)
 app.include_router(generation.router)
+app.include_router(files.router)
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -16,8 +16,8 @@ Exemple d'utilisation:
     generator.run()
 """
 
-from sdapi_client import StableDiffusionAPIClient, GenerationConfig, create_prompt_configs_from_combinations, PromptConfig
-from variation_loader import load_variations_for_placeholders, create_random_combinations
+from sdapi_client import StableDiffusionAPIClient, GenerationConfig, generate_all_combinations, PromptConfig
+from variation_loader import load_variations_for_placeholders, create_random_combinations, extract_placeholders_with_limits, sort_placeholders_by_priority
 import re
 from typing import Dict, Optional, List
 
@@ -189,8 +189,8 @@ class ImageVariationGenerator:
         print(f"🎲 Mode génération: {mode}")
         print(f"🌱 Mode seed: {seed_mode}")
 
-        # Nettoie le prompt template
-        clean_prompt = re.sub(r'\{([^}:]+):\d+\}', r'{\1}', self.prompt_template)
+        # Nettoie le prompt template (enlève les options pour garder juste {Placeholder})
+        clean_prompt = re.sub(r'\{([^}:]+):[^}]+\}', r'{\1}', self.prompt_template)
 
         if mode == "random":
             return self._create_random_variations(variations_dict, clean_prompt, actual_images, seed_mode)
@@ -204,12 +204,8 @@ class ImageVariationGenerator:
 
         prompt_configs = []
         for i, combination in enumerate(random_combinations):
-            # Remplace les placeholders
-            prompt = clean_prompt
-            keys = []
-            for placeholder, value in combination.items():
-                prompt = prompt.replace(f"{{{placeholder}}}", value)
-                keys.append(f"{placeholder}_{self._clean_filename(value)}")
+            # Applique les variations au prompt
+            prompt, keys = self._apply_variations_to_prompt(clean_prompt, combination)
 
             # Calcule la seed
             image_seed = self._calculate_seed(seed_mode, self.seed, i)
@@ -218,7 +214,7 @@ class ImageVariationGenerator:
                 prompt=prompt,
                 negative_prompt=self.negative_prompt,
                 seed=image_seed,
-                filename=f"random_{i+1:03d}_{'_'.join(keys[:2])}.png"
+                filename=f"random_{i+1:03d}_{'_'.join(keys[:2]) if keys else 'default'}.png"
             )
             prompt_configs.append(config)
 
@@ -227,19 +223,51 @@ class ImageVariationGenerator:
     def _create_combinatorial_variations(self, variations_dict: Dict[str, Dict[str, str]],
                                        clean_prompt: str, actual_images: int, seed_mode: str) -> List[PromptConfig]:
         """Crée des variations combinatoires."""
-        prompt_configs = create_prompt_configs_from_combinations(
-            base_prompt=clean_prompt,
-            negative_prompt=self.negative_prompt,
-            seed=self.seed,
-            variations=variations_dict,
-            filename_pattern=f"{self.session_name}_{{counter:03d}}_{{keys}}.png"
+        # Extrait les priorités depuis le prompt template
+        placeholders_with_options = extract_placeholders_with_limits(self.prompt_template)
+
+        # Trie les placeholders par priorité pour déterminer l'ordre des boucles
+        placeholder_order = sort_placeholders_by_priority(placeholders_with_options)
+
+        # Filtre pour ne garder que ceux présents dans variations_dict
+        placeholder_order = [p for p in placeholder_order if p in variations_dict]
+
+        # Affiche l'ordre des boucles si des poids sont définis
+        priorities_defined = any(
+            placeholders_with_options.get(p, {}).get("priority", 0) != 0
+            for p in placeholder_order
         )
 
-        # Applique le mode de seed
-        for i, config in enumerate(prompt_configs[:actual_images]):
-            config.seed = self._calculate_seed(seed_mode, self.seed, i)
+        if priorities_defined:
+            print("\n🔄 Ordre des boucles (extérieur → intérieur):")
+            for p in placeholder_order:
+                priority = placeholders_with_options.get(p, {}).get("priority", 0)
+                print(f"  {p} (poids: {priority})")
 
-        return prompt_configs[:actual_images]
+        # Génère toutes les combinaisons possibles avec l'ordre spécifié
+        all_combinations = generate_all_combinations(variations_dict, placeholder_order)
+
+        prompt_configs = []
+        for i, combination in enumerate(all_combinations[:actual_images]):
+            # Applique les variations au prompt
+            prompt, keys = self._apply_variations_to_prompt(clean_prompt, combination)
+
+            # Calcule la seed
+            image_seed = self._calculate_seed(seed_mode, self.seed, i)
+
+            # Crée le nom de fichier
+            keys_str = "_".join(keys[:2]) if keys else "default"
+            filename = f"{self.session_name}_{i+1:03d}_{keys_str}.png"
+
+            config = PromptConfig(
+                prompt=prompt,
+                negative_prompt=self.negative_prompt,
+                seed=image_seed,
+                filename=filename
+            )
+            prompt_configs.append(config)
+
+        return prompt_configs
 
     def _choose_generation_mode(self) -> str:
         """Choisit le mode de génération."""
@@ -325,6 +353,53 @@ class ImageVariationGenerator:
     def _clean_filename(self, text: str) -> str:
         """Nettoie le texte pour les noms de fichiers."""
         return text.replace(' ', '_').replace(',', '_').replace('/', '_').replace('\\', '_')
+
+    def _clean_prompt_with_empty_placeholders(self, prompt: str) -> str:
+        """
+        Nettoie un prompt en supprimant les placeholders vides et virgules en trop.
+
+        Args:
+            prompt: Le prompt à nettoyer
+
+        Returns:
+            Prompt nettoyé
+        """
+        # Supprime les placeholders qui restent (pas remplacés)
+        prompt = re.sub(r'\{[^}]+\}', '', prompt)
+
+        # Nettoie les virgules et espaces multiples
+        prompt = re.sub(r',\s*,+', ',', prompt)  # Virgules doubles ou plus
+        prompt = re.sub(r'\s*,\s*', ', ', prompt)  # Espaces autour des virgules
+        prompt = re.sub(r'\s+', ' ', prompt)  # Espaces multiples
+
+        # Supprime virgules en début/fin
+        prompt = prompt.strip(', ')
+
+        return prompt
+
+    def _apply_variations_to_prompt(self, prompt_template: str, variations: Dict[str, str]) -> tuple[str, List[str]]:
+        """
+        Applique des variations à un prompt template en remplaçant les placeholders.
+
+        Args:
+            prompt_template: Template avec placeholders {Name}
+            variations: Dict {placeholder_name: value}
+
+        Returns:
+            Tuple (prompt_final, keys_for_filename)
+        """
+        prompt = prompt_template
+        keys = []
+
+        for placeholder, value in variations.items():
+            if value:  # Ne remplace que si valeur non vide
+                prompt = prompt.replace(f"{{{placeholder}}}", value)
+                keys.append(f"{placeholder}_{self._clean_filename(value)}")
+
+        # Nettoie le prompt final
+        prompt = self._clean_prompt_with_empty_placeholders(prompt)
+
+        return prompt, keys
 
 
 # Fonction utilitaire pour créer rapidement un générateur

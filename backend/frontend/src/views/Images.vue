@@ -12,38 +12,30 @@
             <v-progress-linear v-if="loading" indeterminate class="mb-2" />
             <v-treeview
               :items="[fileTree]"
-              v-model:activated="activeNodes"
               v-model:opened="openNodes"
-              activatable
               item-key="id"
               item-title="name"
               item-children="children"
               density="compact"
               :load-children="loadTreeChildren"
-              @update:activated="onNodeActivated"
-              @click:open="onNodeExpand"
             >
               <template v-slot:prepend="{ item }">
                 <v-icon v-if="item.type === 'folder'">
                   {{ openNodes.includes(item.id) ? 'mdi-folder-open' : 'mdi-folder' }}
                 </v-icon>
-                <v-icon v-else-if="item.type === 'session'">
-                  mdi-camera-burst
-                </v-icon>
-                <v-icon v-else-if="item.type === 'image'">
-                  mdi-file-image
+                <v-icon v-else-if="item.type === 'root'">
+                  mdi-folder-multiple
                 </v-icon>
               </template>
               <template v-slot:label="{ item }">
                 <span
                   @click.stop="onLabelClick(item)"
                   style="cursor: pointer"
-                  :class="{ 'font-weight-bold': item.type === 'session' }"
                 >
                   {{ item.name }}
                 </span>
                 <v-chip
-                  v-if="item.type === 'session' && item.imageCount"
+                  v-if="item.imageCount"
                   x-small
                   class="ml-2"
                   color="primary"
@@ -51,20 +43,12 @@
                   {{ item.imageCount }}
                 </v-chip>
                 <v-chip
-                  v-if="item.type === 'sessions' && item.sessionCount"
+                  v-if="item.sessionCount"
                   x-small
                   class="ml-2"
                   color="info"
                 >
                   {{ item.sessionCount }} sessions
-                </v-chip>
-                <v-chip
-                  v-if="item.type === 'folder' && item.imageCount"
-                  x-small
-                  class="ml-2"
-                  color="secondary"
-                >
-                  {{ item.imageCount }}
                 </v-chip>
               </template>
             </v-treeview>
@@ -155,7 +139,6 @@ export default {
 
   data() {
     return {
-      activeNodes: [],
       openNodes: ['root'],
       selectedPath: null,
       imageDialog: false,
@@ -200,21 +183,17 @@ export default {
     },
 
     async loadTreeChildren(item) {
+      // Ne charge que si le nœud a des enfants potentiels
+      if (!item.hasChildren) {
+        return
+      }
+
+      // Si déjà chargé, on ignore
+      if (item.children && item.children.length > 0) {
+        return
+      }
+
       try {
-        console.log('Loading children for:', item.name, 'hasChildren:', item.hasChildren)
-
-        // Ne charge que si le nœud a des enfants potentiels
-        if (!item.hasChildren) {
-          console.log('No children to load for', item.name)
-          return
-        }
-
-        // Si déjà chargé, on ignore
-        if (item.children && item.children.length > 0) {
-          console.log('Children already loaded for', item.name)
-          return
-        }
-
         console.log('Fetching children from API for path:', item.path)
         // Charge les enfants du dossier
         const children = await ApiService.getFileTree(item.path)
@@ -225,8 +204,8 @@ export default {
         const childrenArray = Array.isArray(children) ? children : (children.children || [])
         console.log('Setting children array:', childrenArray)
 
-        // Important: modifier directement l'objet item pour Vuetify
-        item.children = childrenArray
+        // Important: retourner les enfants pour que Vuetify les gère
+        return childrenArray
 
       } catch (error) {
         console.error('Erreur lors du chargement des sous-dossiers:', error)
@@ -234,6 +213,7 @@ export default {
           message: `Erreur lors du chargement du dossier ${item.name}`,
           color: 'error'
         })
+        return []
       }
     },
 
@@ -259,37 +239,14 @@ export default {
       }
     },
 
-    async onNodeActivated(activeNodes) {
-      console.log('Node activated (internal vuetify event):', activeNodes)
-
-      // Si un nœud est activé, on doit trouver son item pour charger les images
-      if (activeNodes && activeNodes.length > 0) {
-        const nodeId = activeNodes[0]
-        const node = this.findNodeById(nodeId)
-
-        if (node) {
-          console.log('Node activated:', node.name, 'type:', node.type, 'hasChildren:', node.hasChildren)
-
-          // Charge les images pour les sessions ou les dossiers sans enfants
-          if (node.type === 'session' || (node.type === 'folder' && !node.hasChildren)) {
-            console.log('Loading images for activated node:', node.path)
-            this.selectedPath = node.path
-            await this.loadImages(node.path)
-          }
-        }
-      }
-    },
-
     async onLabelClick(item) {
-      console.log('Label clicked:', item.name, 'type:', item.type, 'hasChildren:', item.hasChildren)
+      console.log('Label clicked:', item.name, 'path:', item.path)
 
-      // Charge les images pour les sessions ou les dossiers sans enfants
-      if (item.type === 'session' || (item.type === 'folder' && !item.hasChildren)) {
-        console.log('Loading images for:', item.path)
+      // Charge les images pour ce dossier
+      if (item.path) {
+        console.log('Loading images for path:', item.path)
         this.selectedPath = item.path
         await this.loadImages(item.path)
-      } else {
-        console.log('Node has children, not loading images')
       }
     },
 

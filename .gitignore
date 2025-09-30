@@ -215,3 +215,4 @@ backend/frontend/node_modules/
 backend/frontend/dist/
 backend/frontend/.env
 backend/frontend/.env.local
+/CLI/private_generators/prompts/

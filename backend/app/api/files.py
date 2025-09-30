@@ -3,10 +3,15 @@
 import os
 from pathlib import Path
 from typing import List, Dict, Any, Union
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 
 from app.auth import AuthService
 from app.config import IMAGE_FOLDERS
+from app.jobs.thumbnail_generator import (
+    get_thumbnail_path,
+    thumbnail_exists,
+    run_thumbnail_generation_job
+)
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
@@ -79,29 +84,33 @@ def _get_directory_children(directory_path: str) -> List[Dict[str, Any]]:
     # Parcourt tous les éléments du dossier
     for item in path.iterdir():
         if item.is_dir():
-            has_subdirs = _has_subdirectories(item)
+            # Ignore le dossier de miniatures
+            if item.name == ".thumbnails":
+                continue
 
-            # Comptage rapide d'images pour déterminer le type
+            has_subdirs = _has_subdirectories(item)
             has_images = _has_images_quick_check(item)
-            item_type = "session" if has_images else "folder"
+
+            # Tous les dossiers sont de type "folder" maintenant
+            # On ne fait plus la distinction session/folder dans le tree
+            item_type = "folder"
 
             # Génère un ID safe en remplaçant les caractères problématiques
             safe_path = str(item).replace('/', '_').replace('\\', '_').replace(':', '_')
             child_item = {
                 "id": f"dir-{safe_path}",
-                "name": item.name,  # Nom du dossier dans le filesystem
+                "name": item.name,
                 "type": item_type,
                 "path": str(item),
                 "hasChildren": has_subdirs
             }
 
-            # Initialise children comme tableau vide si le nœud a des enfants
-            # Cela permet à Vuetify d'afficher le bouton d'expansion
+            # Initialise children comme tableau vide si le nœud a des sous-dossiers
             if has_subdirs:
                 child_item["children"] = []
 
-            # Compte les images seulement pour les sessions (pas les dossiers génériques)
-            if item_type == "session":
+            # Compte les images dans ce dossier (pour afficher dans un chip)
+            if has_images:
                 child_item["imageCount"] = _count_images_in_directory(item)
 
             children.append(child_item)
@@ -312,6 +321,17 @@ def _scan_images_in_directory(directory: Path) -> List[Dict[str, Any]]:
             except Exception:
                 relative_path = file_path.name
 
+            # Cherche le dossier racine pour cette image
+            root_folder = None
+            for folder_config in IMAGE_FOLDERS:
+                folder_root = Path(folder_config["path"]).resolve()
+                try:
+                    file_path.resolve().relative_to(folder_root)
+                    root_folder = folder_root
+                    break
+                except ValueError:
+                    continue
+
             image_info = {
                 "id": str(hash(str(file_path))),  # ID unique basé sur le chemin
                 "name": file_path.name,
@@ -322,6 +342,16 @@ def _scan_images_in_directory(directory: Path) -> List[Dict[str, Any]]:
                 "created": stat.st_ctime,
                 "modified": stat.st_mtime
             }
+
+            # Ajoute l'URL de la miniature si elle existe
+            if root_folder:
+                thumbnail_path = get_thumbnail_path(file_path, root_folder)
+                if thumbnail_path.exists():
+                    try:
+                        thumbnail_relative = thumbnail_path.resolve().relative_to(root_folder.resolve())
+                        image_info["thumbnail"] = f"/api/files/serve/{thumbnail_relative}"
+                    except Exception:
+                        pass
 
             images.append(image_info)
 

@@ -31,6 +31,9 @@ SD_WEBUI_URL = os.getenv("SD_WEBUI_URL", "http://127.0.0.1:7860")
 VALID_GUIDS: List[str] = json.loads(os.getenv("VALID_GUIDS"))
 READ_ONLY_GUIDS: List[str] = json.loads(os.getenv("READ_ONLY_GUIDS"))
 
+# Image folders configuration
+IMAGE_FOLDERS: List[dict] = json.loads(os.getenv("IMAGE_FOLDERS"))
+
 # Image Processing
 MAX_IMAGES_PER_GENERATION = 10
 THUMBNAIL_SIZE = (256, 256)

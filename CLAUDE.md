@@ -32,9 +32,18 @@ Même fonctionnalité que l'original mais avec une configuration plus claire et 
 #### Fonctionnalités principales :
 
 1. **Système de placeholders dynamiques**
-   - Format : `{PlaceholderName}` dans le prompt
+   - Format de base : `{PlaceholderName}` dans le prompt
    - Limitation : `{PlaceholderName:N}` pour limiter à N variations aléatoires
-   - Exemple : `{FacialExpression:15}` utilise seulement 15 expressions sur 100 disponibles
+   - Sélection d'index : `{PlaceholderName:#|1|5|22}` sélectionne les index 1, 5 et 22
+   - Poids de priorité : `{PlaceholderName:$N}` définit le poids N pour l'ordre des boucles
+   - Combinaison : `{PlaceholderName:#|6|4|2$8}` sélectionne index 6,4,2 avec poids 8
+   - Exemple : `{FacialExpression:15$5}` utilise 15 expressions avec poids 5
+
+   **Système de poids pour l'ordre des boucles** :
+   - Le poids détermine l'ordre d'imbrication des boucles en mode combinatorial
+   - Plus petit poids = boucle extérieure (change moins souvent)
+   - Plus grand poids = boucle intérieure (change plus souvent)
+   - Exemple : `{Outfit:$2}` et `{Angle:$10}` → boucle sur Outfit d'abord, puis Angle pour chaque Outfit
 
 2. **Chargement intelligent des variations**
    - Analyse automatique du prompt pour détecter les placeholders
@@ -175,6 +184,14 @@ seed_mode="random"
 ```python
 prompt_template="masterpiece, {FacialExpression:5}, {Angle:3}, beautiful girl"
 # Teste 5 expressions × 3 angles = 15 combinaisons maximum
+```
+
+### Génération avec ordre des boucles contrôlé
+```python
+prompt_template="1girl, {Outfit:$2}, {Angle:$10}, beautiful"
+# Boucle extérieure : Outfit (poids 2)
+# Boucle intérieure : Angle (poids 10)
+# Résultat : Pour chaque Outfit, génère toutes les variations d'Angle
 ```
 
 ## Commands

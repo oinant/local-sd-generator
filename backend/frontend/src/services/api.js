@@ -90,6 +90,26 @@ class ApiService {
     const response = await this.client.get('/api/generation/')
     return response.data
   }
+
+  // Files endpoints
+  async getFileTree(path = null) {
+    console.log('[ApiService] getFileTree called with path:', path)
+    const params = path ? { path } : {}
+    console.log('[ApiService] Request params:', params)
+    const response = await this.client.get('/api/files/tree', { params })
+    console.log('[ApiService] Response:', response.data)
+    return response.data
+  }
+
+  async getFileImages(path = null) {
+    const params = path ? { path } : {}
+    const response = await this.client.get('/api/files/images', { params })
+    return response.data
+  }
+
+  getFileImageUrl(filePath) {
+    return `${this.baseURL}/api/files/serve/${filePath}`
+  }
 }
 
 export default new ApiService()

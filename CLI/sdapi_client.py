@@ -219,6 +219,55 @@ class StableDiffusionAPIClient:
         return success_count, total_images
 
 
+def generate_all_combinations(variations: Dict[str, Dict[str, str]],
+                            placeholder_order: List[str] = None) -> List[Dict[str, str]]:
+    """
+    Génère toutes les combinaisons possibles de variations.
+
+    Args:
+        variations: Dict de variations {"placeholder": {"key": "value", ...}, ...}
+        placeholder_order: Ordre des placeholders (optionnel). Si fourni, les boucles
+                          seront imbriquées dans cet ordre (premier = extérieur, dernier = intérieur)
+
+    Returns:
+        Liste de dicts {placeholder: value} pour chaque combinaison
+    """
+    combinations = []
+
+    # Si ordre fourni, utilise-le; sinon utilise l'ordre naturel du dict
+    if placeholder_order:
+        # Filtre pour ne garder que les placeholders présents dans variations
+        ordered_keys = [p for p in placeholder_order if p in variations]
+        # Ajoute les clés manquantes à la fin
+        for key in variations:
+            if key not in ordered_keys:
+                ordered_keys.append(key)
+    else:
+        ordered_keys = list(variations.keys())
+
+    def generate(remaining_keys, current_combination=None):
+        if current_combination is None:
+            current_combination = {}
+
+        if not remaining_keys:
+            # Toutes les catégories traitées, ajouter la combinaison
+            combinations.append(current_combination.copy())
+            return
+
+        # Traiter le premier placeholder de l'ordre
+        category_name = remaining_keys[0]
+        category_variations = variations[category_name]
+        remaining = remaining_keys[1:]
+
+        for key, value in category_variations.items():
+            current_combination[category_name] = value
+            generate(remaining, current_combination)
+            del current_combination[category_name]
+
+    generate(ordered_keys)
+    return combinations
+
+
 def create_prompt_configs_from_combinations(base_prompt: str,
                                           negative_prompt: str,
                                           seed: Optional[int],
@@ -249,8 +298,16 @@ def create_prompt_configs_from_combinations(base_prompt: str,
 
         if not categories:
             # Toutes les catégories ont été traitées, créer le prompt
-            full_prompt = f"{base_prompt}, {', '.join(current_combination)}"
-            keys_str = "_".join(current_keys)
+            # Filtre les descriptions vides
+            non_empty_combinations = [desc for desc in current_combination if desc]
+            if non_empty_combinations:
+                full_prompt = f"{base_prompt}, {', '.join(non_empty_combinations)}"
+            else:
+                full_prompt = base_prompt
+
+            # Filtre les clés vides pour le filename
+            non_empty_keys = [key for key in current_keys if key]
+            keys_str = "_".join(non_empty_keys) if non_empty_keys else "default"
             filename = filename_pattern.format(counter=counter, keys=keys_str)
 
             prompt_configs.append(PromptConfig(
