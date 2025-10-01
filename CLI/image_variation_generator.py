@@ -18,7 +18,10 @@ Exemple d'utilisation:
 
 from sdapi_client import StableDiffusionAPIClient, GenerationConfig, generate_all_combinations, PromptConfig
 from variation_loader import load_variations_for_placeholders, create_random_combinations, extract_placeholders_with_limits, sort_placeholders_by_priority
+from output.output_namer import generate_image_filename, format_timestamp_iso
+from output.metadata_generator import generate_metadata_dict, save_metadata_json, create_legacy_config_text
 import re
+from datetime import datetime
 from typing import Dict, Optional, List
 
 
@@ -39,7 +42,8 @@ class ImageVariationGenerator:
                  max_images: int = 50,
                  generation_mode: str = "ask",  # "combinatorial", "random", "ask"
                  seed_mode: str = "ask",  # "fixed", "progressive", "random", "ask"
-                 session_name: str = "variations"):
+                 session_name: str = "variations",
+                 filename_keys: Optional[List[str]] = None):
         """
         Initialise le générateur.
 
@@ -53,6 +57,7 @@ class ImageVariationGenerator:
             generation_mode: Mode de génération ("combinatorial", "random", "ask")
             seed_mode: Mode de seed ("fixed", "progressive", "random", "ask")
             session_name: Nom de la session pour les fichiers de sortie
+            filename_keys: Liste des keys à inclure dans les noms de fichiers (optionnel)
         """
         self.prompt_template = prompt_template
         self.negative_prompt = negative_prompt
@@ -63,6 +68,7 @@ class ImageVariationGenerator:
         self.generation_mode = generation_mode
         self.seed_mode = seed_mode
         self.session_name = session_name
+        self.filename_keys = filename_keys or []
 
         # Configuration de génération par défaut
         self.generation_config = GenerationConfig(
@@ -75,6 +81,11 @@ class ImageVariationGenerator:
             n_iter=1
         )
 
+        # Tracking pour metadata
+        self.start_time = None
+        self.end_time = None
+        self.variations_loaded = None
+
     def set_generation_config(self, config: GenerationConfig):
         """Configure les paramètres de génération."""
         self.generation_config = config
@@ -86,6 +97,8 @@ class ImageVariationGenerator:
         Returns:
             Tuple (success_count, total_count)
         """
+        self.start_time = datetime.now()
+
         print("🚀 Début de la génération avec variations")
         print(f"🎯 Limite d'images: {self.max_images}")
         print(f"🌱 Seed: {self.seed}")
@@ -115,6 +128,8 @@ class ImageVariationGenerator:
 
         # Prépare les informations additionnelles
         all_variations = load_variations_for_placeholders(self.prompt_template, self.variation_files, verbose=False)
+        self.variations_loaded = all_variations  # Store for metadata
+
         total_variations = 1
         variation_counts = {}
         for placeholder, variations in all_variations.items():
@@ -140,6 +155,11 @@ class ImageVariationGenerator:
             negative_prompt=self.negative_prompt,
             additional_info=additional_info
         )
+
+        self.end_time = datetime.now()
+
+        # Génère le metadata.json (SF-5)
+        self._save_metadata(client.output_dir, total_variations, len(prompt_configs))
 
         return success_count, total_count
 
@@ -400,6 +420,71 @@ class ImageVariationGenerator:
         prompt = self._clean_prompt_with_empty_placeholders(prompt)
 
         return prompt, keys
+
+    def _save_metadata(self, output_dir: str, total_combinations: int, images_generated: int):
+        """
+        Sauvegarde les métadonnées de la session en JSON (SF-5).
+
+        Args:
+            output_dir: Dossier de sortie de la session
+            total_combinations: Nombre total de combinaisons possibles
+            images_generated: Nombre d'images générées
+        """
+        if not self.start_time or not self.variations_loaded:
+            print("⚠️  Impossible de générer les métadonnées (données manquantes)")
+            return
+
+        generation_time = (self.end_time - self.start_time).total_seconds()
+
+        # Détermine les modes utilisés
+        actual_mode = self.generation_mode if self.generation_mode in ["combinatorial", "random"] else "combinatorial"
+        actual_seed_mode = self.seed_mode if self.seed_mode in ["fixed", "progressive", "random"] else "progressive"
+
+        metadata = generate_metadata_dict(
+            prompt_template=self.prompt_template,
+            negative_prompt=self.negative_prompt,
+            variations_loaded=self.variations_loaded,
+            generation_info={
+                "date": format_timestamp_iso(self.start_time),
+                "timestamp": self.start_time.strftime("%Y%m%d_%H%M%S"),
+                "session_name": self.session_name,
+                "total_images": images_generated,
+                "generation_time_seconds": round(generation_time, 2),
+                "generation_mode": actual_mode,
+                "seed_mode": actual_seed_mode,
+                "seed": self.seed,
+                "total_combinations": total_combinations
+            },
+            parameters={
+                "width": self.generation_config.width,
+                "height": self.generation_config.height,
+                "steps": self.generation_config.steps,
+                "cfg_scale": self.generation_config.cfg_scale,
+                "sampler": self.generation_config.sampler_name,
+                "batch_size": self.generation_config.batch_size,
+                "batch_count": self.generation_config.n_iter
+            },
+            output_info={
+                "folder": output_dir,
+                "filename_keys": self.filename_keys
+            }
+        )
+
+        # Sauvegarde le metadata.json
+        try:
+            metadata_path = save_metadata_json(metadata, output_dir)
+            print(f"✅ Métadonnées sauvegardées: {metadata_path}")
+        except Exception as e:
+            print(f"❌ Erreur lors de la sauvegarde des métadonnées: {e}")
+
+        # Garde aussi le .txt pour backward compatibility
+        try:
+            legacy_text = create_legacy_config_text(metadata)
+            legacy_path = f"{output_dir}/session_config_legacy.txt"
+            with open(legacy_path, 'w', encoding='utf-8') as f:
+                f.write(legacy_text)
+        except Exception as e:
+            print(f"⚠️  Erreur lors de la sauvegarde du fichier legacy: {e}")
 
 
 # Fonction utilitaire pour créer rapidement un générateur

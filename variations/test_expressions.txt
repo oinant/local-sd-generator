@@ -1,0 +1,6 @@
+# Test facial expressions
+happy→smiling, happy expression
+sad→sad, melancholic
+angry→angry, frowning
+neutral→neutral expression
+surprised→surprised, eyes wide open

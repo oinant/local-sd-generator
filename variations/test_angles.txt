@@ -1,0 +1,5 @@
+# Test camera angles
+front→front view, facing camera
+side→side view, profile
+three_quarter→three-quarter view
+back→back view, from behind
