@@ -119,16 +119,22 @@ def validate_field_types(config: GenerationSessionConfig, result: ValidationResu
         result.add_error("parameters.batch_count", "Batch count must be positive or -1 (ask user)")
 
 
-def validate_variation_files(config: GenerationSessionConfig, result: ValidationResult) -> None:
+def validate_variation_files(config: GenerationSessionConfig, result: ValidationResult,
+                              config_dir: Optional[Path] = None) -> None:
     """
     Validate variation file paths exist.
 
     Args:
         config: Configuration to validate
         result: ValidationResult to add errors to
+        config_dir: Directory containing config (for resolving relative paths)
     """
     for placeholder_name, file_path in config.variations.items():
         path = Path(file_path)
+
+        # Resolve relative paths relative to config directory
+        if config_dir and not path.is_absolute():
+            path = (config_dir / path).resolve()
 
         if not path.exists():
             result.add_error(
@@ -232,13 +238,15 @@ def validate_sampler(config: GenerationSessionConfig, result: ValidationResult,
 
 
 def validate_config(config: GenerationSessionConfig,
-                    available_samplers: Optional[List[str]] = None) -> ValidationResult:
+                    available_samplers: Optional[List[str]] = None,
+                    config_dir: Optional[Path] = None) -> ValidationResult:
     """
     Perform comprehensive validation of configuration.
 
     Args:
         config: Configuration to validate
         available_samplers: List of available samplers from SD API (optional)
+        config_dir: Directory containing config (for resolving relative paths)
 
     Returns:
         ValidationResult with errors and warnings
@@ -248,7 +256,7 @@ def validate_config(config: GenerationSessionConfig,
     # Run all validation checks
     validate_required_fields(config, result)
     validate_field_types(config, result)
-    validate_variation_files(config, result)
+    validate_variation_files(config, result, config_dir)
     validate_placeholders_match(config, result)
     validate_filename_keys(config, result)
     validate_sampler(config, result, available_samplers)

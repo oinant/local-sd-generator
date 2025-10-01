@@ -38,6 +38,7 @@ class ImageVariationGenerator:
                  negative_prompt: str = "",
                  variation_files: Dict[str, str] = None,
                  api_url: str = "http://127.0.0.1:7860",
+                 base_output_dir: str = "apioutput",
                  seed: int = 42,
                  max_images: int = 50,
                  generation_mode: str = "ask",  # "combinatorial", "random", "ask"
@@ -52,6 +53,7 @@ class ImageVariationGenerator:
             negative_prompt: Prompt négatif
             variation_files: Dict {placeholder: chemin_fichier}
             api_url: URL de l'API Stable Diffusion
+            base_output_dir: Dossier de base pour les sorties (défaut: "apioutput")
             seed: Seed de base
             max_images: Nombre maximum d'images par défaut
             generation_mode: Mode de génération ("combinatorial", "random", "ask")
@@ -63,6 +65,7 @@ class ImageVariationGenerator:
         self.negative_prompt = negative_prompt
         self.variation_files = variation_files or {}
         self.api_url = api_url
+        self.base_output_dir = base_output_dir
         self.seed = seed
         self.max_images = max_images
         self.generation_mode = generation_mode
@@ -121,7 +124,7 @@ class ImageVariationGenerator:
         # Initialise le client API
         client = StableDiffusionAPIClient(
             api_url=self.api_url,
-            base_output_dir="apioutput",
+            base_output_dir=self.base_output_dir,
             session_name=self.session_name
         )
         client.set_generation_config(self.generation_config)

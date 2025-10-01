@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config.config_schema import GenerationSessionConfig, ParametersConfig
 from config.config_loader import load_config_from_file, validate_config
+from config.global_config import load_global_config
 from image_variation_generator import ImageVariationGenerator
 from sdapi_client import GenerationConfig
 
@@ -319,23 +320,42 @@ def resolve_interactive_params(config: GenerationSessionConfig,
 
 
 def create_generator_from_config(config: GenerationSessionConfig,
-                                   api_url: str = "http://127.0.0.1:7860") -> ImageVariationGenerator:
+                                   api_url: str = "http://127.0.0.1:7860",
+                                   base_output_dir: str = "apioutput",
+                                   config_dir: Optional[Path] = None) -> ImageVariationGenerator:
     """
     Create ImageVariationGenerator from resolved config.
 
     Args:
         config: Fully resolved configuration
         api_url: Stable Diffusion API URL
+        base_output_dir: Base output directory for images
+        config_dir: Directory containing the config file (for resolving relative paths)
 
     Returns:
         Configured ImageVariationGenerator instance
     """
+    # Resolve variation file paths relative to config directory
+    variation_files = config.variations
+    if config_dir:
+        resolved_variations = {}
+        for placeholder, path in variation_files.items():
+            path_obj = Path(path)
+            # If relative path, resolve relative to config directory
+            if not path_obj.is_absolute():
+                resolved_path = (config_dir / path).resolve()
+                resolved_variations[placeholder] = str(resolved_path)
+            else:
+                resolved_variations[placeholder] = path
+        variation_files = resolved_variations
+
     # Create generator
     generator = ImageVariationGenerator(
         prompt_template=config.prompt.template,
         negative_prompt=config.prompt.negative,
-        variation_files=config.variations,
+        variation_files=variation_files,
         api_url=api_url,
+        base_output_dir=base_output_dir,
         seed=config.generation.seed,
         max_images=config.generation.max_images,
         generation_mode=config.generation.mode,
@@ -361,14 +381,16 @@ def create_generator_from_config(config: GenerationSessionConfig,
 
 
 def run_generation_from_config(config_path: Path,
-                                 api_url: str = "http://127.0.0.1:7860",
+                                 api_url: str = None,
+                                 base_output_dir: str = None,
                                  available_samplers: Optional[List[str]] = None) -> Dict[str, Any]:
     """
     Complete execution flow: load, validate, resolve, generate.
 
     Args:
         config_path: Path to JSON config file
-        api_url: Stable Diffusion API URL
+        api_url: Stable Diffusion API URL (uses .sdgen_config.json if None)
+        base_output_dir: Base output directory (uses .sdgen_config.json if None)
         available_samplers: List of available samplers (optional)
 
     Returns:
@@ -386,6 +408,13 @@ def run_generation_from_config(config_path: Path,
     """
     print(f"\n=== SD Image Generator - JSON Config Mode ===\n")
 
+    # 0. Load global config for api_url and output_dir defaults
+    global_config = load_global_config()
+    if api_url is None:
+        api_url = global_config.api_url
+    if base_output_dir is None:
+        base_output_dir = global_config.output_dir
+
     # 1. Load config
     print(f"Loading config: {config_path.name}...")
     try:
@@ -397,7 +426,7 @@ def run_generation_from_config(config_path: Path,
 
     # 2. Validate config
     print("Validating config...")
-    validation = validate_config(config, available_samplers)
+    validation = validate_config(config, available_samplers, config_dir=config_path.parent)
 
     if not validation.is_valid:
         print("✗ Config validation failed:\n")
@@ -438,7 +467,12 @@ def run_generation_from_config(config_path: Path,
 
     # 5. Create generator
     print("Creating generator...")
-    generator = create_generator_from_config(resolved_config, api_url)
+    generator = create_generator_from_config(
+        resolved_config,
+        api_url,
+        base_output_dir,
+        config_dir=config_path.parent  # Pass config directory for relative path resolution
+    )
     print("✓ Generator created\n")
 
     # 6. Run generation
