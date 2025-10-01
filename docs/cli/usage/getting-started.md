@@ -35,7 +35,21 @@ Ensure Stable Diffusion WebUI is running and accessible at `http://127.0.0.1:786
 
 ## Your First Generation
 
-### Step 1: Create a variation file
+There are two ways to use the generator:
+1. **JSON Config Mode** (Recommended) - Use JSON files to configure generation
+2. **Python Script Mode** - Write custom Python scripts
+
+### Option 1: JSON Config Mode (Recommended)
+
+#### Step 1: Initialize global config
+
+```bash
+python3 CLI/generator_cli.py --init-config
+```
+
+This creates `.sdgen_config.json` with default settings.
+
+#### Step 2: Create a variation file
 
 Create `variations/expressions.txt`:
 
@@ -47,7 +61,75 @@ surprised
 neutral
 ```
 
-### Step 2: Create a simple generator script
+#### Step 3: Create a JSON config
+
+Create `configs/my_first_config.json`:
+
+```json
+{
+  "version": "1.0",
+  "name": "My First Generation",
+  "description": "Test generation with different expressions",
+
+  "prompt": {
+    "template": "portrait of a person, {Expression}, detailed face",
+    "negative": "low quality, blurry, bad anatomy"
+  },
+
+  "variations": {
+    "Expression": "./variations/expressions.txt"
+  },
+
+  "generation": {
+    "mode": "combinatorial",
+    "seed_mode": "progressive",
+    "seed": 42,
+    "max_images": 5
+  },
+
+  "parameters": {
+    "width": 512,
+    "height": 768,
+    "steps": 30,
+    "cfg_scale": 7.0,
+    "sampler": "DPM++ 2M Karras"
+  },
+
+  "output": {
+    "session_name": "my_first_generation",
+    "filename_keys": ["Expression"]
+  }
+}
+```
+
+#### Step 4: Run the generation
+
+```bash
+# Interactive mode (select from list)
+python3 CLI/generator_cli.py
+
+# Direct config path
+python3 CLI/generator_cli.py --config configs/my_first_config.json
+
+# List available configs
+python3 CLI/generator_cli.py --list
+```
+
+### Option 2: Python Script Mode
+
+#### Step 1: Create a variation file
+
+Create `variations/expressions.txt`:
+
+```
+smiling
+sad
+angry
+surprised
+neutral
+```
+
+#### Step 2: Create a simple generator script
 
 Create `my_first_generator.py`:
 
