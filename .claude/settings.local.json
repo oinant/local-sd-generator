@@ -15,7 +15,17 @@
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_evaluate",
-      "mcp__playwright__browser_snapshot"
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_press_key",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python3:*)",
+      "Read(//mnt/d/StableDiffusion/apioutput/**)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Read(//mnt/d/StableDiffusion/private/configs/**)",
+      "Bash(curl -s http://127.0.0.1:7860/sdapi/v1/samplers)"
     ],
     "deny": [],
     "ask": []

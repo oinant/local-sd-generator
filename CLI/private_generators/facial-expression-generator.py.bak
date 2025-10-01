@@ -1,0 +1,314 @@
+from sdapi_client import StableDiffusionAPIClient, GenerationConfig, create_prompt_configs_from_combinations
+from variation_loader import load_variations_for_placeholders, create_random_combinations
+import re
+
+# Configuration
+API_URL = "http://127.0.0.1:7860"
+SEED = 42  # Seed de base - à modifier selon vos besoins
+MAX_IMAGES = 50  # Nombre maximum d'images à générer
+GENERATION_MODE = "combinatorial"  # "combinatorial" ou "random"
+SEED_MODE = "progressive"  # "fixed", "progressive", "random"
+
+# Prompt de base avec placeholder pour les expressions faciales
+BASE_PROMPT = """s1_dram, masterpiece, ultra-HD, impressionism, high detail, (depth of field:1.1), (blurred background), Punk ambiance, warm ambiance, masterpiece, best quality, very aesthetic,8k,light particles, nsfw, glow, semi-realistic, (black outline:1.6)
+
+1girl, from back, very wide shot, full body, 
+1girl, supermodel, slim build, ginger hair, messy bun,
+chocker collar, Oversized Glasses, Earrings, Nose Ring, snap-on barrettes, Cuff Bracelet, Pearl Bracelet, Nose Ring, average breasts, naked,
+oversize white shirt, transparent shirt, off shoulder, breast visible through clothes,
+big nipples, erect nipples, puffy nipples, Big breasts, Round breasts,
+{SoloPose}, ass focus, showing ass, {SoloAction}, {SoloAction2},   
+looking at viewer, evil grin, bright eyes, very sweaty, pussy juice on finger
+
+<lora:Illustrious_V2:0.9> <lora:puffytits_ILXL_v1:1.0>  <lora:StS_PonyXL_Detail_Slider_v1.4_iteration_3:1>"""
+
+# Negative prompt vide - à remplir selon vos besoins
+BASE_NEGATIVE = "3d, worst quality, low quality, displeasing, text, , watermark, bad anatomy, text, artist name, signature, hearts, deformed hands, missing finger, shiny skin,child,children"
+
+# Configuration des fichiers de variations
+# Chaque clé correspond à un placeholder dans le prompt, chaque valeur au chemin du fichier
+# Seuls les placeholders présents dans BASE_PROMPT seront chargés automatiquement
+VARIATION_FILES = {
+    "FacialExpression": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Pony_FactialExpression.txt",
+    "Angle": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/General_Angle.txt",
+    "Framing": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/General_Framing.txt",
+    "Shoes": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Attires_NSFW_Shoes.txt",
+    "Waist": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Attires_Accessory_Waist.txt",
+    "Style": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/General_Styles.txt",
+    "BreastFeature" : "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Pony_BreastFeature.txt",
+    "BreastShape" : "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Pony_BreastShape.txt",
+    "BreastSize" : "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Pony_BreastSize.txt",
+    "Outfits" : "stable-diffusion-webui/prompts/my_prompts/outfits.txt",
+    "Tits": "stable-diffusion-webui/prompts/my_prompts/tits.txt",
+    "HairCut" : "stable-diffusion-webui/prompts/my_prompts/haircuts.txt",
+    "SoloAction" : "stable-diffusion-webui/prompts/my_prompts/soloaction.txt",
+    "SoloAction2" : "stable-diffusion-webui/prompts/my_prompts/soloaction2.txt",
+    "SoloPose" : "stable-diffusion-webui/prompts/my_prompts/solopose.txt",
+    # "Lighting": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Lighting.txt",
+    # "Clothing": "stable-diffusion-webui/prompts/generalAndBasicPrompt_v19/Clothing.txt",
+    # etc.
+}
+
+
+def create_variations():
+    """Crée les variations selon le mode choisi (combinatorial ou random)"""
+    # Charge seulement les variations nécessaires selon le prompt
+    variations_dict = load_variations_for_placeholders(BASE_PROMPT, VARIATION_FILES)
+
+    if not variations_dict:
+        print("❌ Aucune variation chargée depuis les fichiers!")
+        return []
+
+    # Calcule le nombre total de combinaisons possibles
+    total_combinations = 1
+    for placeholder, variations in variations_dict.items():
+        total_combinations *= len(variations)
+
+    print(f"📊 Combinaisons possibles: {total_combinations}")
+    print(f"⚙️  Limite par défaut: {MAX_IMAGES}")
+    print(f"🎲 Mode de génération: {GENERATION_MODE}")
+    print(f"🌱 Mode de seed: {SEED_MODE}")
+
+    # Demande le mode de génération si pas défini
+    mode = choose_generation_mode()
+    seed_mode = choose_seed_mode()
+
+    # Demande interactive pour le nombre d'images
+    if mode == "random":
+        max_images = total_combinations  # En mode random, on peut demander autant qu'on veut
+        default_images = min(MAX_IMAGES, total_combinations)
+    else:
+        max_images = total_combinations
+        default_images = min(MAX_IMAGES, total_combinations)
+
+    actual_images = ask_number_of_images(max_images, default_images, mode)
+
+    print(f"✅ {actual_images} images seront générées")
+    print(f"🎲 Mode génération: {mode}")
+    print(f"🌱 Mode seed: {seed_mode}")
+
+    # Nettoie le prompt de base en retirant les limites (:N) des placeholders
+    clean_prompt = re.sub(r'\{([^}:]+):\d+\}', r'{\1}', BASE_PROMPT)
+
+    if mode == "random":
+        # Mode aléatoire : crée des combinaisons aléatoires uniques
+        random_combinations = create_random_combinations(variations_dict, actual_images, SEED)
+
+        # Convertit en format compatible
+        prompt_configs = []
+        for i, combination in enumerate(random_combinations):
+            # Crée un prompt en remplaçant les placeholders
+            prompt = clean_prompt
+            keys = []
+            for placeholder, value in combination.items():
+                prompt = prompt.replace(f"{{{placeholder}}}", value)
+                keys.append(f"{placeholder}_{value.replace(' ', '_').replace(',', '_')}")
+
+            # Calcule la seed selon le mode
+            image_seed = calculate_seed(seed_mode, SEED, i)
+
+            config = {
+                "prompt": prompt,
+                "negative_prompt": BASE_NEGATIVE,
+                "seed": image_seed,
+                "filename": f"random_{i+1:03d}_{'_'.join(keys[:2])}.png"
+            }
+            prompt_configs.append(config)
+
+        return prompt_configs
+
+    else:
+        # Mode combinatoire classique
+        prompt_configs = create_prompt_configs_from_combinations(
+            base_prompt=clean_prompt,
+            negative_prompt=BASE_NEGATIVE,
+            seed=SEED,
+            variations=variations_dict,
+            filename_pattern="variation_{counter:03d}_{keys}.png"
+        )
+
+        # Applique le mode de seed aux configurations
+        for i, config in enumerate(prompt_configs[:actual_images]):
+            config["seed"] = calculate_seed(seed_mode, SEED, i)
+
+        return prompt_configs[:actual_images]
+
+
+def choose_generation_mode():
+    """Demande à l'utilisateur de choisir le mode de génération"""
+    if GENERATION_MODE in ["combinatorial", "random"]:
+        return GENERATION_MODE
+
+    while True:
+        print("\n🎲 Modes de génération disponibles:")
+        print("1. combinatorial - Génère toutes les combinaisons possibles")
+        print("2. random - Génère des combinaisons aléatoires uniques")
+
+        choice = input("\nChoisissez le mode (1/2 ou 'c'/'r') : ").strip().lower()
+
+        if choice in ['1', 'c', 'combinatorial']:
+            return "combinatorial"
+        elif choice in ['2', 'r', 'random']:
+            return "random"
+        else:
+            print("❌ Choix invalide")
+
+
+def choose_seed_mode():
+    """Demande à l'utilisateur de choisir le mode de seed"""
+    if SEED_MODE in ["fixed", "progressive", "random"]:
+        return SEED_MODE
+
+    while True:
+        print("\n🌱 Modes de seed disponibles:")
+        print("1. fixed - Même seed pour toutes les images")
+        print("2. progressive - Seeds incrémentées (SEED, SEED+1, SEED+2...)")
+        print("3. random - Seed aléatoire (-1) pour chaque image")
+
+        choice = input("\nChoisissez le mode de seed (1/2/3 ou 'f'/'p'/'r') : ").strip().lower()
+
+        if choice in ['1', 'f', 'fixed']:
+            return "fixed"
+        elif choice in ['2', 'p', 'progressive']:
+            return "progressive"
+        elif choice in ['3', 'r', 'random']:
+            return "random"
+        else:
+            print("❌ Choix invalide")
+
+
+def calculate_seed(seed_mode, base_seed, index):
+    """
+    Calcule la seed pour une image selon le mode choisi.
+
+    Args:
+        seed_mode: "fixed", "progressive", "random"
+        base_seed: Seed de base configurée
+        index: Index de l'image (0, 1, 2...)
+
+    Returns:
+        La seed à utiliser pour cette image
+    """
+    if seed_mode == "fixed":
+        return base_seed
+    elif seed_mode == "progressive":
+        return base_seed + index
+    elif seed_mode == "random":
+        return -1  # L'API génèrera une seed aléatoire
+    else:
+        return base_seed  # Fallback
+
+
+def ask_number_of_images(max_images, default_images, mode):
+    """Demande le nombre d'images à générer"""
+    if mode == "random":
+        prompt_text = f"\n🎯 Combien d'images aléatoires voulez-vous générer ? (défaut: {default_images}) : "
+    else:
+        prompt_text = f"\n🎯 Combien d'images voulez-vous générer ? (max: {max_images}, défaut: {default_images}) : "
+
+    while True:
+        try:
+            user_input = input(prompt_text).strip()
+
+            if not user_input:  # Entrée vide = utilise la valeur par défaut
+                return default_images
+
+            requested_images = int(user_input)
+
+            if requested_images <= 0:
+                print("❌ Le nombre doit être positif")
+                continue
+            elif mode != "random" and requested_images > max_images:
+                print(f"⚠️  Impossible de générer plus de {max_images} images (nombre de combinaisons)")
+                continue
+            else:
+                return requested_images
+
+        except ValueError:
+            print("❌ Veuillez entrer un nombre valide")
+            continue
+
+
+def main():
+    """Fonction principale"""
+    print("🚀 Début de la génération avec variations depuis fichiers")
+    print(f"🎯 Limite d'images: {MAX_IMAGES}")
+    print(f"🌱 Seed: {SEED}")
+    print(f"📁 Fichiers configurés: {list(VARIATION_FILES.keys())}")
+
+    print("\n📋 Configuration des fichiers:")
+    for placeholder, filepath in VARIATION_FILES.items():
+        print(f"  {placeholder} → {filepath}")
+
+    print("\n⚠️  ATTENTION:")
+    print("- Modifiez VARIATION_FILES pour ajouter d'autres placeholders")
+    print("- Ajoutez les placeholders correspondants dans BASE_PROMPT")
+    print("- Format des fichiers: une option par ligne avec format 'clé→valeur'")
+
+    # Initialisation du client API avec timestamp
+    client = StableDiffusionAPIClient(
+        api_url=API_URL,
+        base_output_dir="apioutput",
+        session_name="facial_expressions"
+    )
+
+    # Configuration de génération
+    config = GenerationConfig(
+        steps=30,
+        cfg_scale=7,
+        width=512,
+        height=768,
+        sampler_name="DPM++ 2M Karras",
+        batch_size=1,
+        n_iter=1
+    )
+    client.set_generation_config(config)
+
+    # Génération des variations
+    prompt_configs = create_variations()
+
+    print(f"📋 {len(prompt_configs)} variations préparées")
+
+    # Informations additionnelles pour la config
+    # Utilise le module pour charger et compter les variations nécessaires
+    all_variations = load_variations_for_placeholders(BASE_PROMPT, VARIATION_FILES, verbose=False)
+    total_variations = 1
+    variation_counts = {}
+    for placeholder, variations in all_variations.items():
+        variation_counts[placeholder] = len(variations)
+        total_variations *= len(variations)
+
+    additional_info = {
+        "seed_principal": SEED,
+        "limite_max_images": MAX_IMAGES,
+        "images_generees": len(prompt_configs),
+        "fichiers_variations": VARIATION_FILES,
+        "nombre_par_type": variation_counts,
+        "combinaisons_totales_possibles": total_variations,
+        "prompt_template": BASE_PROMPT,
+        "negative_prompt": BASE_NEGATIVE
+    }
+
+    # Génération du batch avec le client
+    success_count, total_count = client.generate_batch(
+        prompt_configs=prompt_configs,
+        delay_between_images=2.0,
+        base_prompt=BASE_PROMPT,
+        negative_prompt=BASE_NEGATIVE,
+        additional_info=additional_info
+    )
+
+
+if __name__ == "__main__":
+    # Configuration à modifier
+    print("🔧 CONFIGURATION REQUISE:")
+    print("1. Modifiez SEED avec votre seed préférée")
+    print("2. Configurez VARIATION_FILES avec vos fichiers de variations")
+    print("3. Ajoutez les placeholders correspondants dans BASE_PROMPT")
+    print("4. Modifiez BASE_NEGATIVE selon vos besoins")
+    print("5. Démarrez WebUI avec --api")
+    print("6. Les images seront sauvées dans apioutput/")
+    print("\nAppuyez sur Entrée pour continuer...")
+    input()
+
+    main()

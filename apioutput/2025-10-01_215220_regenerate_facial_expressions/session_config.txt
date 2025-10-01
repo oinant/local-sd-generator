@@ -1,0 +1,67 @@
+============================================================
+SESSION CONFIGURATION
+============================================================
+
+Date de génération: 2025-10-01 21:52:20
+Nom de session: regenerate_facial_expressions
+URL API: http://127.0.0.1:7860
+Dossier de sortie: apioutput\2025-10-01_215220_regenerate_facial_expressions
+
+----------------------------------------
+PROMPTS
+----------------------------------------
+Prompt de base:
+NSFW, score_9, score_8_up, score_7_up, score_6_up, detailed skin texture, finely detailed hair, ultra-detailed photo, best_quality, details in Ultra HD quality, best quality, amazing quality, highest score, absurdres, high details, highres,
+
+very aesthetic,( light particles:1.4), bokeh, nsfw, light background,
+dirty street, concrete floor, brick walls, desert street, night, neon lights, 
+1girl, {Angle}, {Framing},
+supermodel, slim build, {HairColor}, {HairCut},
+chocker collar, Oversized Glasses, Earrings, Nose Ring, Cuff Bracelet, Pearl Bracelet, Nose Ring, 
+black pleated miniskirt, revealing miniskirt, stockings and garter belt,
+office white shirt, cleavage,  
+{Tits}, no bra,
+{SoloPose2},{SoloPoseHands},{SoloPoseLegs}, fucking stranger, anal sex, ({cum}:1.5),
+looking at viewer, {FacialExpression}, bright eyes, very sweaty, pussy juice on finger
+
+<lora:Real_Beauty:0.7> <lora:Dramatic Lighting Slider:0.4> <lora:Smooth Pony Booster:0.4> <lora:Perfect_Booty_XL_V1:1> <lora:zy_Realism_Enhancer_v1:0.3>
+
+Prompt négatif:
+score_4, score_5, score_6, shiny face,  furniture, bed, plump lips, plump cheeks, man's face visible, worst quality, low quality, old, deformed, malformed, bad hands, bad fingers, long body, blurry, duplicated, cloned, duplicate body parts, extra limbs, fused fingers, extra fingers, twisted, distorted, malformed hands, malformed fingers, mutated hands and fingers, conjoined, missing limbs, bad anatomy, bad proportions, logo, watermark, text, lowres, mutated, mutilated, blend, artifacts, gross,
+
+----------------------------------------
+PARAMÈTRES DE GÉNÉRATION
+----------------------------------------
+steps: 30
+cfg_scale: 7.0
+width: 832
+height: 1216
+sampler_name: DPM++ 2M Karras
+batch_size: 1
+n_iter: 1
+
+----------------------------------------
+INFORMATIONS ADDITIONNELLES
+----------------------------------------
+seed_principal: 42
+limite_max_images: 100
+images_generees: 100
+fichiers_variations: {'Angle': 'D:\\StableDiffusion\\private\\configs\\variations\\generalAndBasicPrompt_v19\\General_Angle.txt', 'Framing': 'D:\\StableDiffusion\\private\\configs\\variations\\generalAndBasicPrompt_v19\\General_Framing.txt', 'HairColor': 'D:\\StableDiffusion\\private\\configs\\variations\\my_prompts\\haircolors.txt', 'HairCut': 'D:\\StableDiffusion\\private\\configs\\variations\\my_prompts\\haircuts.txt', 'Tits': 'D:\\StableDiffusion\\private\\configs\\variations\\my_prompts\\tits.txt', 'SoloPose2': 'D:\\StableDiffusion\\private\\configs\\variations\\my_prompts\\solopose2.txt', 'SoloPoseHands': 'D:\\StableDiffusion\\private\\configs\\variations\\my_prompts\\soloposehands.txt', 'SoloPoseLegs': 'D:\\StableDiffusion\\private\\configs\\variations\\my_prompts\\soloposelegs.txt', 'cum': 'D:\\StableDiffusion\\private\\configs\\variations\\generalAndBasicPrompt_v19\\Pony_Cum.txt', 'FacialExpression': 'D:\\StableDiffusion\\private\\configs\\variations\\generalAndBasicPrompt_v19\\Pony_FactialExpression.txt'}
+nombre_par_type: {'Angle': 8, 'Framing': 20, 'HairColor': 22, 'HairCut': 22, 'Tits': 18, 'SoloPose2': 23, 'SoloPoseHands': 25, 'SoloPoseLegs': 21, 'cum': 48, 'FacialExpression': 75}
+combinaisons_totales_possibles: 60593702400000
+prompt_template: NSFW, score_9, score_8_up, score_7_up, score_6_up, detailed skin texture, finely detailed hair, ultra-detailed photo, best_quality, details in Ultra HD quality, best quality, amazing quality, highest score, absurdres, high details, highres,
+
+very aesthetic,( light particles:1.4), bokeh, nsfw, light background,
+dirty street, concrete floor, brick walls, desert street, night, neon lights, 
+1girl, {Angle}, {Framing},
+supermodel, slim build, {HairColor}, {HairCut},
+chocker collar, Oversized Glasses, Earrings, Nose Ring, Cuff Bracelet, Pearl Bracelet, Nose Ring, 
+black pleated miniskirt, revealing miniskirt, stockings and garter belt,
+office white shirt, cleavage,  
+{Tits}, no bra,
+{SoloPose2},{SoloPoseHands},{SoloPoseLegs}, fucking stranger, anal sex, ({cum}:1.5),
+looking at viewer, {FacialExpression}, bright eyes, very sweaty, pussy juice on finger
+
+<lora:Real_Beauty:0.7> <lora:Dramatic Lighting Slider:0.4> <lora:Smooth Pony Booster:0.4> <lora:Perfect_Booty_XL_V1:1> <lora:zy_Realism_Enhancer_v1:0.3>
+negative_prompt: score_4, score_5, score_6, shiny face,  furniture, bed, plump lips, plump cheeks, man's face visible, worst quality, low quality, old, deformed, malformed, bad hands, bad fingers, long body, blurry, duplicated, cloned, duplicate body parts, extra limbs, fused fingers, extra fingers, twisted, distorted, malformed hands, malformed fingers, mutated hands and fingers, conjoined, missing limbs, bad anatomy, bad proportions, logo, watermark, text, lowres, mutated, mutilated, blend, artifacts, gross,
+nombre_images_demandees: 100

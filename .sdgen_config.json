@@ -1,0 +1,5 @@
+{
+  "configs_dir": "D:/StableDiffusion/private/configs",
+  "output_dir": "D:/StableDiffusion/private/results",
+  "api_url": "http://127.0.0.1:7860"
+}

@@ -130,30 +130,34 @@ def validate_variation_files(config: GenerationSessionConfig, result: Validation
         config_dir: Directory containing config (for resolving relative paths)
     """
     for placeholder_name, file_path in config.variations.items():
-        path = Path(file_path)
+        # Support both single file path (string) and multiple files (list)
+        file_paths = [file_path] if isinstance(file_path, str) else file_path
 
-        # Resolve relative paths relative to config directory
-        if config_dir and not path.is_absolute():
-            path = (config_dir / path).resolve()
+        for fp in file_paths:
+            path = Path(fp)
 
-        if not path.exists():
-            result.add_error(
-                f"variations.{placeholder_name}",
-                f"Variation file not found: {file_path}",
-                "Check that the path is correct and the file exists"
-            )
-        elif not path.is_file():
-            result.add_error(
-                f"variations.{placeholder_name}",
-                f"Path is not a file: {file_path}",
-                "Provide a path to a text file containing variations"
-            )
-        elif not os.access(path, os.R_OK):
-            result.add_error(
-                f"variations.{placeholder_name}",
-                f"File is not readable: {file_path}",
-                "Check file permissions"
-            )
+            # Resolve relative paths relative to config directory
+            if config_dir and not path.is_absolute():
+                path = (config_dir / path).resolve()
+
+            if not path.exists():
+                result.add_error(
+                    f"variations.{placeholder_name}",
+                    f"Variation file not found: {fp}",
+                    "Check that the path is correct and the file exists"
+                )
+            elif not path.is_file():
+                result.add_error(
+                    f"variations.{placeholder_name}",
+                    f"Path is not a file: {fp}",
+                    "Provide a path to a text file containing variations"
+                )
+            elif not os.access(path, os.R_OK):
+                result.add_error(
+                    f"variations.{placeholder_name}",
+                    f"File is not readable: {fp}",
+                    "Check file permissions"
+                )
 
 
 def validate_placeholders_match(config: GenerationSessionConfig, result: ValidationResult) -> None:

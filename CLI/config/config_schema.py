@@ -5,7 +5,7 @@ Defines dataclasses for configuration structure with validation.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 
 @dataclass
@@ -57,7 +57,7 @@ class GenerationSessionConfig:
     description: str = ""
     model: ModelConfig = field(default_factory=ModelConfig)
     prompt: PromptConfig = field(default_factory=PromptConfig)
-    variations: Dict[str, str] = field(default_factory=dict)
+    variations: Dict[str, Union[str, List[str]]] = field(default_factory=dict)
     generation: GenerationConfig = field(default_factory=GenerationConfig)
     parameters: ParametersConfig = field(default_factory=ParametersConfig)
     output: OutputConfig = field(default_factory=OutputConfig)

@@ -1,0 +1,38 @@
+================================================================================
+DEPRECATION NOTICE:
+This text file is deprecated. Please use metadata.json instead.
+================================================================================
+
+Session: regenerate_facial_expressions
+Date: 2025-10-01T21:52:19
+Total Images: 100
+
+Prompt Template: NSFW, score_9, score_8_up, score_7_up, score_6_up, detailed skin texture, finely detailed hair, ultra-detailed photo, best_quality, details in Ultra HD quality, best quality, amazing quality, highest score, absurdres, high details, highres,
+
+very aesthetic,( light particles:1.4), bokeh, nsfw, light background,
+dirty street, concrete floor, brick walls, desert street, night, neon lights, 
+1girl, {Angle}, {Framing},
+supermodel, slim build, {HairColor}, {HairCut},
+chocker collar, Oversized Glasses, Earrings, Nose Ring, Cuff Bracelet, Pearl Bracelet, Nose Ring, 
+black pleated miniskirt, revealing miniskirt, stockings and garter belt,
+office white shirt, cleavage,  
+{Tits}, no bra,
+{SoloPose2},{SoloPoseHands},{SoloPoseLegs}, fucking stranger, anal sex, ({cum}:1.5),
+looking at viewer, {FacialExpression}, bright eyes, very sweaty, pussy juice on finger
+
+<lora:Real_Beauty:0.7> <lora:Dramatic Lighting Slider:0.4> <lora:Smooth Pony Booster:0.4> <lora:Perfect_Booty_XL_V1:1> <lora:zy_Realism_Enhancer_v1:0.3>
+Negative Prompt: score_4, score_5, score_6, shiny face,  furniture, bed, plump lips, plump cheeks, man's face visible, worst quality, low quality, old, deformed, malformed, bad hands, bad fingers, long body, blurry, duplicated, cloned, duplicate body parts, extra limbs, fused fingers, extra fingers, twisted, distorted, malformed hands, malformed fingers, mutated hands and fingers, conjoined, missing limbs, bad anatomy, bad proportions, logo, watermark, text, lowres, mutated, mutilated, blend, artifacts, gross,
+
+Variations:
+  Angle: 8 variations
+  Framing: 20 variations
+  HairColor: 22 variations
+  HairCut: 22 variations
+  Tits: 18 variations
+  SoloPose2: 23 variations
+  SoloPoseHands: 25 variations
+  SoloPoseLegs: 21 variations
+  cum: 48 variations
+  FacialExpression: 75 variations
+
+For complete information, see metadata.json

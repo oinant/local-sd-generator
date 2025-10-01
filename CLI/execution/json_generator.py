@@ -340,13 +340,24 @@ def create_generator_from_config(config: GenerationSessionConfig,
     if config_dir:
         resolved_variations = {}
         for placeholder, path in variation_files.items():
-            path_obj = Path(path)
-            # If relative path, resolve relative to config directory
-            if not path_obj.is_absolute():
-                resolved_path = (config_dir / path).resolve()
-                resolved_variations[placeholder] = str(resolved_path)
+            # Support both single path (string) and multiple paths (list)
+            if isinstance(path, list):
+                resolved_paths = []
+                for p in path:
+                    path_obj = Path(p)
+                    if not path_obj.is_absolute():
+                        resolved_paths.append(str((config_dir / p).resolve()))
+                    else:
+                        resolved_paths.append(p)
+                resolved_variations[placeholder] = resolved_paths
             else:
-                resolved_variations[placeholder] = path
+                path_obj = Path(path)
+                # If relative path, resolve relative to config directory
+                if not path_obj.is_absolute():
+                    resolved_path = (config_dir / path).resolve()
+                    resolved_variations[placeholder] = str(resolved_path)
+                else:
+                    resolved_variations[placeholder] = path
         variation_files = resolved_variations
 
     # Create generator
