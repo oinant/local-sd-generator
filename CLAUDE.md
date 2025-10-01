@@ -1,9 +1,112 @@
 # Claude Code Configuration
 
 ## A Savoir :
-- le MCP Palywright est installé, sers t-en!
-- lis la doc dans /docs !
-- pour linstant, c'est un peux le bazar, il faut qu'on nettoie la structure du projet
+- le MCP Playwright est installé, sers-t'en!
+- **Lis la doc dans `/docs`** - Structure organisée par composant (CLI, WebApp, Tooling)
+- **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
+- Les tests (unitaire et intégration) doivent utiliser pytest et être placés dans le dossier `/tests`
+
+## Documentation Guidelines
+
+### 📁 Structure de la documentation
+
+```
+docs/
+├── cli/          # Documentation CLI
+│   ├── usage/    # Guides utilisateur
+│   └── technical/ # Documentation technique
+├── webapp/       # Documentation Web App
+├── tooling/      # Documentation outils dev
+└── roadmap/      # Planning des features
+    ├── done/     # Features terminées
+    ├── wip/      # En cours
+    ├── next/     # Prochaines tâches
+    └── future/   # Backlog futur
+```
+
+### 📝 Quand travailler sur une feature
+
+#### 1. **Avant de commencer**
+- Créer ou déplacer la spec dans `docs/roadmap/wip/`
+- La spec doit contenir :
+  - **Status** : wip
+  - **Priority** : 1-10
+  - **Description** : Quoi et pourquoi
+  - **Implementation** : Approche technique
+  - **Tasks** : Liste détaillée des tâches
+  - **Success Criteria** : Critères de complétion
+  - **Tests** : Plan de tests
+
+#### 2. **Pendant le développement**
+- Maintenir la doc technique à jour dans `docs/{cli|webapp|tooling}/technical/`
+- Documenter les décisions importantes :
+  - Pourquoi tel choix plutôt qu'un autre ?
+  - Quels trade-offs ont été faits ?
+  - Quelles alternatives ont été considérées ?
+- Ajouter des exemples d'usage dans `docs/{cli|webapp|tooling}/usage/` au fur et à mesure
+
+#### 3. **Quand c'est terminé**
+- Déplacer la spec de `wip/` vers `done/`
+- Ajouter dans la spec :
+  - Date de complétion
+  - Nombre de tests et leur statut
+  - Hash des commits principaux
+  - Liens vers la doc technique/usage
+- Mettre à jour la doc utilisateur si nécessaire
+- Vérifier que l'architecture est documentée dans `technical/`
+- Mettre à jour le `README.md` du composant si nouveaux concepts
+
+### 🎯 Contenu des specs roadmap
+
+Chaque fichier dans `roadmap/{done|wip|next|future}/` doit suivre ce template :
+
+```markdown
+# Feature Name
+
+**Status:** done|wip|next|future
+**Priority:** 1-10
+**Component:** cli|webapp|tooling
+**Created:** YYYY-MM-DD
+**Completed:** YYYY-MM-DD (si done)
+
+## Description
+Quoi et pourquoi...
+
+## Implementation
+Approche technique...
+
+## Tasks
+- [ ] Task 1
+- [ ] Task 2
+
+## Success Criteria
+- Critère 1
+- Critère 2
+
+## Tests
+- X tests unitaires
+- Y tests d'intégration
+
+## Documentation
+- Usage: docs/cli/usage/xxx.md
+- Technical: docs/cli/technical/xxx.md
+
+## Commits (si done)
+- abc1234: commit message
+```
+
+### 🔄 Lifecycle des features
+
+```
+future/ → next/ → wip/ → done/
+```
+
+### 📊 Priorities
+
+- **1-3** : Critique (sprint actuel)
+- **4-6** : Important (prochain sprint)
+- **7-8** : Nice-to-have (futur)
+- **9-10** : Recherche/expérimental
 
 ## Workspace Analysis Guidelines
 
