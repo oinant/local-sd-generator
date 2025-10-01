@@ -8,19 +8,19 @@ Liste des fonctionnalités à venir, organisées par priorité et cible.
 
 ### CLI: Format JSON pour session_config
 Transformer le fichier session_config.txt en JSON structuré pour améliorer la lisibilité et le parsing.
-📄 [Spécification détaillée](roadmap/json-session-config.md)
+📄 [Spécification détaillée](wip/json-session-config.md)
 
 ### CLI: Métadonnées des choix interactifs
 Sauvegarder les choix du menu interactif (mode génération, seed mode, etc.) dans session_config.
-📄 [Spécification détaillée](roadmap/interactive-metadata.md)
+📄 [Spécification détaillée](next/interactive-metadata.md)
 
 ### WebApp: Architecture simplifiée
 Source unique de vérité avec CLI/apioutput, suppression de la duplication de dossiers.
-📄 [Spécification détaillée](roadmap/webapp-architecture.md)
+📄 [Spécification détaillée](future/webapp-architecture.md)
 
 ### All: Génération automatique de thumbnails WebP
 Créer automatiquement des thumbnails WebP optimisés lors de la génération d'images.
-📄 [Spécification détaillée](roadmap/webp-thumbnails.md)
+📄 [Spécification détaillée](future/webp-thumbnails.md)
 
 ---
 
@@ -28,15 +28,15 @@ Créer automatiquement des thumbnails WebP optimisés lors de la génération d'
 
 ### CLI: Lancement depuis fichier de configuration
 Permettre de lancer une génération directement avec un fichier config JSON.
-📄 [Spécification détaillée](roadmap/config-file-launch.md)
+📄 [Spécification détaillée](wip/config-file-launch.md)
 
 ### WebApp: Base de données SQLite centralisée
 Centraliser les métadonnées de sessions et images dans une base SQLite.
-📄 [Spécification détaillée](roadmap/sqlite-database.md)
+📄 [Spécification détaillée](future/sqlite-database.md)
 
 ### CLI: Variations inline dans les configs JSON
 Définir des variations simples directement dans le JSON au lieu de fichiers externes.
-📄 [Spécification détaillée](roadmap/inline-variations.md)
+📄 [Spécification détaillée](next/inline-variations.md)
 
 ### CLI: Exclusion d'index de variations
 Syntaxe pour exclure certains index : `{Hair:!|4|8}` au lieu de tout lister.
@@ -47,7 +47,7 @@ Syntaxe pour exclure certains index : `{Hair:!|4|8}` au lieu de tout lister.
 
 ### CLI: Placeholders aléatoires non-combinatoires
 Placeholders qui tirent au sort une valeur par combinaison sans impacter la combinatoire globale.
-📄 [Spécification détaillée](roadmap/random-non-combinatorial.md)
+📄 [Spécification détaillée](next/random-non-combinatorial.md)
 
 ### Tool: Prévisualisation des variations
 Interface CLI/webapp pour voir toutes les variations avant génération.
