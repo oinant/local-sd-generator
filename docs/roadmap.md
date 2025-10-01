@@ -34,12 +34,20 @@ Permettre de lancer une génération directement avec un fichier config JSON.
 Centraliser les métadonnées de sessions et images dans une base SQLite.
 📄 [Spécification détaillée](roadmap/sqlite-database.md)
 
+### CLI: Variations inline dans les configs JSON
+Définir des variations simples directement dans le JSON au lieu de fichiers externes.
+📄 [Spécification détaillée](roadmap/inline-variations.md)
+
 ### CLI: Exclusion d'index de variations
 Syntaxe pour exclure certains index : `{Hair:!|4|8}` au lieu de tout lister.
 
 ---
 
 ## Basse priorité (P3)
+
+### CLI: Placeholders aléatoires non-combinatoires
+Placeholders qui tirent au sort une valeur par combinaison sans impacter la combinatoire globale.
+📄 [Spécification détaillée](roadmap/random-non-combinatorial.md)
 
 ### Tool: Prévisualisation des variations
 Interface CLI/webapp pour voir toutes les variations avant génération.
