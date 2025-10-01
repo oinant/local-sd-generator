@@ -224,6 +224,9 @@ def generate_all_combinations(variations: Dict[str, Dict[str, str]],
     """
     Génère toutes les combinaisons possibles de variations.
 
+    DEPRECATED: Cette fonction peut causer des problèmes de mémoire avec de grandes combinaisons.
+    Utilisez generate_combinations_lazy() à la place.
+
     Args:
         variations: Dict de variations {"placeholder": {"key": "value", ...}, ...}
         placeholder_order: Ordre des placeholders (optionnel). Si fourni, les boucles
@@ -232,8 +235,26 @@ def generate_all_combinations(variations: Dict[str, Dict[str, str]],
     Returns:
         Liste de dicts {placeholder: value} pour chaque combinaison
     """
-    combinations = []
+    # Convertit le générateur lazy en liste pour compatibilité avec ancien code
+    return list(generate_combinations_lazy(variations, placeholder_order))
 
+
+def generate_combinations_lazy(variations: Dict[str, Dict[str, str]],
+                                placeholder_order: List[str] = None):
+    """
+    Génère les combinaisons de variations de manière paresseuse (lazy).
+
+    Cette version ne crée pas toutes les combinaisons en mémoire, mais les génère
+    une par une à la demande. Utile pour de très grandes combinaisons.
+
+    Args:
+        variations: Dict de variations {"placeholder": {"key": "value", ...}, ...}
+        placeholder_order: Ordre des placeholders (optionnel). Si fourni, les boucles
+                          seront imbriquées dans cet ordre (premier = extérieur, dernier = intérieur)
+
+    Yields:
+        Dict {placeholder: value} pour chaque combinaison
+    """
     # Si ordre fourni, utilise-le; sinon utilise l'ordre naturel du dict
     if placeholder_order:
         # Filtre pour ne garder que les placeholders présents dans variations
@@ -250,8 +271,8 @@ def generate_all_combinations(variations: Dict[str, Dict[str, str]],
             current_combination = {}
 
         if not remaining_keys:
-            # Toutes les catégories traitées, ajouter la combinaison
-            combinations.append(current_combination.copy())
+            # Toutes les catégories traitées, yield la combinaison
+            yield current_combination.copy()
             return
 
         # Traiter le premier placeholder de l'ordre
@@ -261,11 +282,10 @@ def generate_all_combinations(variations: Dict[str, Dict[str, str]],
 
         for key, value in category_variations.items():
             current_combination[category_name] = value
-            generate(remaining, current_combination)
+            yield from generate(remaining, current_combination)
             del current_combination[category_name]
 
-    generate(ordered_keys)
-    return combinations
+    yield from generate(ordered_keys)
 
 
 def create_prompt_configs_from_combinations(base_prompt: str,

@@ -203,7 +203,12 @@ class ImageVariationGenerator:
             max_images = total_combinations
             default_images = min(self.max_images, total_combinations)
 
-        actual_images = self._ask_number_of_images(max_images, default_images, mode)
+        # Si les modes sont déjà configurés (pas "ask"), utilise max_images directement
+        # Sinon demande interactivement
+        if self.generation_mode != "ask" and self.seed_mode != "ask":
+            actual_images = default_images
+        else:
+            actual_images = self._ask_number_of_images(max_images, default_images, mode)
 
         print(f"✅ {actual_images} images seront générées")
         print(f"🎲 Mode génération: {mode}")
@@ -264,11 +269,15 @@ class ImageVariationGenerator:
                 priority = placeholders_with_options.get(p, {}).get("priority", 0)
                 print(f"  {p} (poids: {priority})")
 
-        # Génère toutes les combinaisons possibles avec l'ordre spécifié
-        all_combinations = generate_all_combinations(variations_dict, placeholder_order)
+        # Génère les combinaisons de manière paresseuse (lazy) pour éviter les problèmes de mémoire
+        # Utilise itertools.islice pour ne prendre que les N premières combinaisons nécessaires
+        from itertools import islice
+        from sdapi_client import generate_combinations_lazy
+
+        combinations_generator = generate_combinations_lazy(variations_dict, placeholder_order)
 
         prompt_configs = []
-        for i, combination in enumerate(all_combinations[:actual_images]):
+        for i, combination in enumerate(islice(combinations_generator, actual_images)):
             # Applique les variations au prompt
             prompt, keys = self._apply_variations_to_prompt(clean_prompt, combination)
 
