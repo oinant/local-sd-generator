@@ -107,6 +107,15 @@ class ApiService {
     return response.data
   }
 
+  // Warm cache: fire-and-forget request to preload file tree
+  warmFileTreeCache() {
+    console.log('[ApiService] Warming file tree cache...')
+    // Fire-and-forget: on ne attend pas la réponse
+    this.client.get('/api/files/tree').catch(() => {
+      // Ignore les erreurs, c'est juste pour warmer le cache
+    })
+  }
+
   getFileImageUrl(filePath) {
     return `${this.baseURL}/api/files/serve/${filePath}`
   }

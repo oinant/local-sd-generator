@@ -7,11 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 
 from app.auth import AuthService
 from app.config import IMAGE_FOLDERS
-from app.jobs.thumbnail_generator import (
-    get_thumbnail_path,
-    thumbnail_exists,
-    run_thumbnail_generation_job
-)
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
@@ -109,9 +104,8 @@ def _get_directory_children(directory_path: str) -> List[Dict[str, Any]]:
             if has_subdirs:
                 child_item["children"] = []
 
-            # Compte les images dans ce dossier (pour afficher dans un chip)
-            if has_images:
-                child_item["imageCount"] = _count_images_in_directory(item)
+            # Ne compte pas les images pour éviter les ralentissements
+            # Le comptage sera fait à la demande quand l'utilisateur ouvre le dossier
 
             children.append(child_item)
 
@@ -340,18 +334,10 @@ def _scan_images_in_directory(directory: Path) -> List[Dict[str, Any]]:
                 "session": session_name,
                 "size": stat.st_size,
                 "created": stat.st_ctime,
-                "modified": stat.st_mtime
+                "modified": stat.st_mtime,
+                # Les images dans .thumbnails sont déjà des miniatures
+                "thumbnail": f"/api/files/serve/{relative_path}"
             }
-
-            # Ajoute l'URL de la miniature si elle existe
-            if root_folder:
-                thumbnail_path = get_thumbnail_path(file_path, root_folder)
-                if thumbnail_path.exists():
-                    try:
-                        thumbnail_relative = thumbnail_path.resolve().relative_to(root_folder.resolve())
-                        image_info["thumbnail"] = f"/api/files/serve/{thumbnail_relative}"
-                    except Exception:
-                        pass
 
             images.append(image_info)
 

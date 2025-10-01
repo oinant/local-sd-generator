@@ -1,5 +1,10 @@
 # Claude Code Configuration
 
+## A Savoir :
+- le MCP Palywright est installé, sers t-en!
+- lis la doc dans /docs !
+- pour linstant, c'est un peux le bazar, il faut qu'on nettoie la structure du projet
+
 ## Workspace Analysis Guidelines
 
 ### Excluded Directories

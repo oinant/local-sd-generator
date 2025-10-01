@@ -7,7 +7,7 @@ Ce document décrit toutes les fonctionnalités disponibles dans le système de 
 ## Table des matières
 
 1. [CLI - Génération d'images](#cli---génération-dimages)
-2. [Système de Placeholders](#système-de-placeholders)
+2. [Système de Placeholders](#système-de-placeholders) 📖 [**Guide complet des placeholders**](placeholders.md)
 3. [Modes de Génération](#modes-de-génération)
 4. [Modes de Seed](#modes-de-seed)
 5. [Webapp](#webapp)
@@ -77,99 +77,9 @@ generator.set_generation_config(config)
 
 ## Système de Placeholders
 
-Les placeholders permettent de créer des variations dynamiques dans vos prompts.
+> 📖 **[Guide complet du système de placeholders](placeholders.md)**
 
-### Format de base
-
-```
-{PlaceholderName}
-```
-
-**Exemple :**
-```
-"masterpiece, {Expression}, {Pose}, beautiful girl"
-```
-
-### Options avancées
-
-#### 1. Toutes les variations (défaut)
-
-```
-{Hair}
-```
-Utilise toutes les variations disponibles dans le fichier.
-
-#### 2. Limitation aléatoire
-
-```
-{Hair:5}
-```
-Sélectionne aléatoirement 5 variations parmi toutes celles disponibles.
-
-**Cas d'usage :** Tester rapidement un sous-ensemble de variations.
-
-#### 3. Suppression du placeholder
-
-```
-{Hair:0}
-```
-Supprime complètement ce placeholder du prompt final.
-
-**Cas d'usage :**
-- Tests A/B pour mesurer l'impact d'un élément
-- Générer des versions avec et sans un attribut
-- Prompts conditionnels
-
-**Exemple :**
-```python
-# Avec cheveux
-prompt = "portrait, {Hair}, {Expression}, beautiful"
-# → "portrait, long blonde hair, smiling, beautiful"
-
-# Sans cheveux (personnage chauve, avec casque, etc.)
-prompt = "portrait, {Hair:0}, {Expression}, beautiful"
-# → "portrait, smiling, beautiful"
-```
-
-#### 4. Sélection d'index spécifiques
-
-```
-{Hair:#|1|5|22}
-```
-Sélectionne uniquement les variations aux index 1, 5 et 22.
-
-**Note :** Les index commencent à 0.
-
-**Cas d'usage :**
-- Tester des combinaisons spécifiques qui fonctionnent bien ensemble
-- Reproduire des résultats avec des variations exactes
-- Affiner progressivement les variations utilisées
-- Créer des sets cohérents
-
-**Exemple :**
-```python
-# Fichier hair.txt :
-# 0: short blonde
-# 1: long black
-# 2: curly red
-# 3: straight brown
-# 4: wavy silver
-# 5: pixie cut
-
-prompt = "portrait, {Hair:#|1|4|5}, beautiful"
-# Utilisera uniquement : long black, wavy silver, pixie cut
-```
-
-### Mix d'options
-
-Vous pouvez combiner différentes options dans le même prompt :
-
-```python
-prompt = "anime girl, {Hair:#|1|5|22}, {Expression:10}, {Background:0}, detailed"
-```
-- `Hair` : Index spécifiques 1, 5, 22
-- `Expression` : 10 variations aléatoires
-- `Background` : Supprimé du prompt
+Les placeholders permettent de créer des variations dynamiques dans vos prompts. Le système est optionnel : le générateur fonctionne aussi avec des prompts statiques.
 
 ---
 
@@ -756,6 +666,9 @@ Pour rapporter des bugs ou suggérer des fonctionnalités, consultez le fichier 
 - ✅ Limitation de variations (`{Placeholder:N}`)
 - ✅ Suppression de placeholders (`{Placeholder:0}`)
 - ✅ Sélection d'index spécifiques (`{Placeholder:#|1|5|22}`)
+- ✅ Système de priorité des boucles (`{Placeholder:$N}`)
+- ✅ Variations imbriquées dans les fichiers (`{|option1|option2}`)
+- ✅ Fichiers multiples par placeholder
 - ✅ Webapp de visualisation
 - ✅ Export des métadonnées de session
 

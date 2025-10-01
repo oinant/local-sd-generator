@@ -16,15 +16,10 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Démarrage du backend SD Image Generator")
 
-    # Démarre le scheduler de jobs (génération de miniatures, etc.)
-    from app.jobs.scheduler import scheduler
-    await scheduler.start()
-
     yield
 
     # Shutdown
     print("🔄 Arrêt du backend SD Image Generator")
-    await scheduler.stop()
 
 
 # Créer l'application FastAPI

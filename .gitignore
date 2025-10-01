@@ -209,6 +209,7 @@ CLI/private-generators/*
 
 # Backend specifics
 backend/.env
+backend/static/thumbnails/*
 
 # Frontend specifics
 backend/frontend/node_modules/
@@ -216,3 +217,4 @@ backend/frontend/dist/
 backend/frontend/.env
 backend/frontend/.env.local
 /CLI/private_generators/prompts/
+/CLI/apioutput/

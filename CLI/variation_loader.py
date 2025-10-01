@@ -18,7 +18,82 @@ import os
 import re
 import random
 import time
-from typing import Dict, Optional, Set, Tuple, List
+import itertools
+from typing import Dict, Optional, Set, Tuple, List, Union
+
+
+def expand_nested_variations(text: str) -> List[str]:
+    """
+    Expanse les variations imbriquées dans le format {|option1|option2}.
+
+    Format supporté:
+    - "{|option1|option2}" génère ["option1", "option2", ""]
+    - "prefix,{|suffix1|suffix2}" génère ["prefix", "prefix,suffix1", "prefix,suffix2"]
+    - Peut avoir plusieurs placeholders : "a,{|b},{|c|d}" génère toutes les combinaisons
+
+    Le pattern {|} seul génère une option vide (permet d'avoir "avec" ou "sans").
+
+    Args:
+        text: Le texte contenant des variations imbriquées
+
+    Returns:
+        Liste de toutes les variations possibles
+
+    Examples:
+        >>> expand_nested_variations("breast slip,{|leaning forward},{|lactation|lactation,projectile_lactation}")
+        [
+            "breast slip",
+            "breast slip,leaning forward",
+            "breast slip,lactation",
+            "breast slip,leaning forward,lactation",
+            "breast slip,lactation,projectile_lactation",
+            "breast slip,leaning forward,lactation,projectile_lactation"
+        ]
+    """
+    # Pattern pour trouver {|option1|option2|...}
+    pattern = r'\{\|([^}]*)\}'
+
+    # Trouve tous les placeholders de variations
+    matches = list(re.finditer(pattern, text))
+
+    if not matches:
+        # Pas de variations imbriquées, retourne le texte tel quel
+        return [text]
+
+    # Extrait les options pour chaque placeholder
+    all_options = []
+    for match in matches:
+        options_str = match.group(1)
+        # Split par | et ajoute toujours l'option vide (pour "sans")
+        options = [""] + [opt.strip() for opt in options_str.split("|") if opt.strip()]
+        all_options.append(options)
+
+    # Génère toutes les combinaisons
+    results = []
+    for combination in itertools.product(*all_options):
+        # Reconstruit le texte avec cette combinaison
+        result = text
+        for i, match in enumerate(reversed(matches)):  # Reverse pour ne pas décaler les index
+            replacement = combination[len(matches) - 1 - i]
+            result = result[:match.start()] + replacement + result[match.end():]
+
+        # Nettoie les virgules multiples et en début/fin
+        result = re.sub(r',+', ',', result)  # Virgules multiples
+        result = re.sub(r'^,|,$', '', result)  # Virgules début/fin
+        result = result.strip()
+
+        if result:  # Ne garde que les résultats non vides
+            results.append(result)
+
+    # Déduplique tout en préservant l'ordre
+    seen = set()
+    unique_results = []
+    for r in results:
+        if r not in seen:
+            seen.add(r)
+            unique_results.append(r)
+
+    return unique_results
 
 
 def extract_placeholders_with_limits(text: str) -> Dict[str, dict]:
@@ -263,13 +338,14 @@ def load_variations_from_file(filepath: str, encoding: str = 'utf-8') -> Dict[st
     - "numéro→valeur" : Génère une clé depuis la valeur
     - "valeur" : Génère une clé depuis la valeur
     - Lignes vides et commençant par # ignorées
+    - Variations imbriquées : "valeur,{|option1|option2}" expanse toutes les combinaisons
 
     Args:
         filepath: Chemin vers le fichier à lire
         encoding: Encodage du fichier (défaut: utf-8)
 
     Returns:
-        Dictionnaire {clé: valeur} des variations
+        Dictionnaire {clé: valeur} des variations (expansées si variations imbriquées)
 
     Raises:
         FileNotFoundError: Si le fichier n'existe pas
@@ -297,19 +373,32 @@ def load_variations_from_file(filepath: str, encoding: str = 'utf-8') -> Dict[st
 
                     key, value = parts[0].strip(), parts[1].strip()
 
-                    # Si la clé est vide ou numérique, génère une clé depuis la valeur
-                    if not key or key.isdigit():
-                        key = normalize_key(value)
-                    else:
-                        key = normalize_key(key)
+                    # Expanse les variations imbriquées si présentes
+                    expanded_values = expand_nested_variations(value)
 
-                    variations[key] = value
+                    for expanded_value in expanded_values:
+                        # Si la clé est vide ou numérique, génère une clé depuis la valeur
+                        if not key or key.isdigit():
+                            expanded_key = normalize_key(expanded_value)
+                        else:
+                            # Pour les clés explicites avec variations, ajoute un suffixe
+                            if len(expanded_values) > 1:
+                                expanded_key = normalize_key(key + "_" + expanded_value)
+                            else:
+                                expanded_key = normalize_key(key)
+
+                        variations[expanded_key] = expanded_value
 
                 else:
                     # Format: juste "valeur"
                     value = line.strip()
-                    key = normalize_key(value)
-                    variations[key] = value
+
+                    # Expanse les variations imbriquées si présentes
+                    expanded_values = expand_nested_variations(value)
+
+                    for expanded_value in expanded_values:
+                        key = normalize_key(expanded_value)
+                        variations[key] = expanded_value
 
     except UnicodeDecodeError as e:
         raise UnicodeDecodeError(
@@ -323,7 +412,7 @@ def load_variations_from_file(filepath: str, encoding: str = 'utf-8') -> Dict[st
 
 
 def load_variations_for_placeholders(prompt: str,
-                                   file_mapping: Dict[str, str],
+                                   file_mapping: Dict[str, Union[str, List[str]]],
                                    encoding: str = 'utf-8',
                                    verbose: bool = True) -> Dict[str, Dict[str, str]]:
     """
@@ -335,9 +424,13 @@ def load_variations_for_placeholders(prompt: str,
     - {Placeholder:0} : Supprime le placeholder (retourne dict vide)
     - {Placeholder:#|1|5|22} : Sélectionne les index 1, 5 et 22
 
+    Supporte plusieurs fichiers par placeholder :
+    - {placeholder: "file.txt"} : Un seul fichier
+    - {placeholder: ["file1.txt", "file2.txt"]} : Plusieurs fichiers fusionnés
+
     Args:
         prompt: Le prompt contenant les placeholders
-        file_mapping: Dictionnaire {placeholder: chemin_fichier}
+        file_mapping: Dictionnaire {placeholder: chemin_fichier ou [chemins_fichiers]}
         encoding: Encodage des fichiers
         verbose: Affiche les informations de chargement
 
@@ -422,14 +515,18 @@ def load_variations_for_placeholders(prompt: str,
     return processed_variations
 
 
-def load_variations_from_files(file_mapping: Dict[str, str],
+def load_variations_from_files(file_mapping: Dict[str, Union[str, List[str]]],
                              encoding: str = 'utf-8',
                              verbose: bool = True) -> Dict[str, Dict[str, str]]:
     """
     Charge les variations depuis plusieurs fichiers.
 
+    Supporte maintenant plusieurs fichiers par placeholder :
+    - {placeholder: "file.txt"} : Un seul fichier
+    - {placeholder: ["file1.txt", "file2.txt"]} : Plusieurs fichiers fusionnés
+
     Args:
-        file_mapping: Dictionnaire {placeholder: chemin_fichier}
+        file_mapping: Dictionnaire {placeholder: chemin_fichier ou [chemins_fichiers]}
         encoding: Encodage des fichiers
         verbose: Affiche les informations de chargement
 
@@ -438,24 +535,40 @@ def load_variations_from_files(file_mapping: Dict[str, str],
     """
     all_variations = {}
 
-    for placeholder, filepath in file_mapping.items():
-        if verbose:
-            print(f"📁 Chargement de {placeholder} depuis {filepath}")
+    for placeholder, filepaths in file_mapping.items():
+        # Normalise en liste si c'est une string
+        if isinstance(filepaths, str):
+            filepaths = [filepaths]
 
-        try:
-            variations = load_variations_from_file(filepath, encoding)
+        merged_variations = {}
 
-            if variations:
-                all_variations[placeholder] = variations
-                if verbose:
-                    print(f"✅ {len(variations)} variations chargées pour {placeholder}")
-            else:
-                if verbose:
-                    print(f"⚠️  Aucune variation trouvée dans {filepath}")
-
-        except Exception as e:
+        for filepath in filepaths:
             if verbose:
-                print(f"❌ Erreur pour {placeholder}: {e}")
+                if len(filepaths) > 1:
+                    print(f"📁 Chargement de {placeholder} depuis {filepath} ({filepaths.index(filepath) + 1}/{len(filepaths)})")
+                else:
+                    print(f"📁 Chargement de {placeholder} depuis {filepath}")
+
+            try:
+                variations = load_variations_from_file(filepath, encoding)
+
+                if variations:
+                    # Fusionne avec les variations précédentes
+                    merged_variations.update(variations)
+                    if verbose:
+                        print(f"✅ {len(variations)} variations chargées")
+                else:
+                    if verbose:
+                        print(f"⚠️  Aucune variation trouvée dans {filepath}")
+
+            except Exception as e:
+                if verbose:
+                    print(f"❌ Erreur pour {filepath}: {e}")
+
+        if merged_variations:
+            all_variations[placeholder] = merged_variations
+            if verbose and len(filepaths) > 1:
+                print(f"✨ Total pour {placeholder}: {len(merged_variations)} variations (depuis {len(filepaths)} fichiers)")
 
     return all_variations
 
