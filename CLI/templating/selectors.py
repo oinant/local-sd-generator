@@ -206,3 +206,47 @@ def extract_placeholders(prompt_template: str) -> Dict[str, Optional[str]]:
         placeholders[name] = selector if selector else None
 
     return placeholders
+
+
+def parse_chunk_with_syntax(placeholder_content: str) -> tuple:
+    """
+    Parse chunk placeholder with "with" syntax.
+
+    Syntax: CHUNK with field1=SOURCE1[selector1], field2=SOURCE2[selector2]
+
+    Args:
+        placeholder_content: Content inside {} like "CHARACTER with ethnicity=ETHNICITIES[african,asian]"
+
+    Returns:
+        Tuple of (chunk_name, overrides_dict) where overrides_dict is:
+        {"ethnicity": ("ETHNICITIES", "[african,asian]")}
+
+    Returns:
+        (None, None) if not a "with" syntax
+
+    Example:
+        >>> parse_chunk_with_syntax("CHARACTER with ethnicity=ETHNICITIES[african,asian]")
+        ("CHARACTER", {"ethnicity": ("ETHNICITIES", "[african,asian]")})
+    """
+    # Pattern: CHUNK_NAME with field=SOURCE[selector], field2=SOURCE2[selector2]
+    match = re.match(r'([A-Z_]+)\s+with\s+(.+)', placeholder_content)
+    if not match:
+        return None, None
+
+    chunk_name = match.group(1)
+    overrides_str = match.group(2)
+
+    # Parse overrides: field=SOURCE[selector], field2=SOURCE2
+    overrides = {}
+    # Split by comma, but be careful of commas inside []
+    override_pattern = r'([a-zA-Z_]+)=([A-Z_]+)(?:\[([^\]]+)\])?'
+
+    for match in re.finditer(override_pattern, overrides_str):
+        field_name = match.group(1)
+        source_name = match.group(2)
+        selector = match.group(3)  # Can be None
+
+        selector_str = f"[{selector}]" if selector else None
+        overrides[field_name] = (source_name, selector_str)
+
+    return chunk_name, overrides

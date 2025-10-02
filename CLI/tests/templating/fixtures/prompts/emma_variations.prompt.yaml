@@ -1,0 +1,15 @@
+name: "Emma - Ethnic Variations Test"
+
+imports:
+  CHARACTER: characters/emma.char.yaml
+  ETHNICITIES: variations/ethnic_features.yaml
+  POSES: variations/poses.yaml
+
+prompt: |
+  {CHARACTER with ethnicity=ETHNICITIES[african,asian]}
+  {POSES[standing,sitting]}
+
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 100

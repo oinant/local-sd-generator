@@ -1,0 +1,26 @@
+version: "1.0"
+type: multi_field
+
+metadata:
+  name: "Ethnic Variations"
+  description: "Complete ethnic characteristics with coherent features"
+  fields_affected: [appearance.skin, appearance.hair, appearance.eyes]
+
+variations:
+  - key: african
+    fields:
+      appearance.skin: "dark skin, ebony complexion"
+      appearance.hair: "coily black hair"
+      appearance.eyes: "dark brown eyes"
+
+  - key: asian
+    fields:
+      appearance.skin: "light skin, porcelain complexion"
+      appearance.hair: "straight black hair"
+      appearance.eyes: "almond-shaped dark eyes"
+
+  - key: caucasian
+    fields:
+      appearance.skin: "fair skin, pale complexion"
+      appearance.hair: "wavy blonde hair"
+      appearance.eyes: "blue eyes"

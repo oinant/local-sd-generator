@@ -52,3 +52,50 @@ class ResolvedVariation:
     placeholders: Dict[str, str]  # {EXPRESSIONS: "happy", POSES: "standing"}
     final_prompt: str
     negative_prompt: str = ""
+
+
+@dataclass
+class FieldDefinition:
+    """Definition of a field in a text chunk template."""
+    type: str  # "text"
+    description: str
+    required: bool = False
+    default: Optional[str] = None
+    example: Optional[str] = None
+
+
+@dataclass
+class ChunkTemplate:
+    """A reusable text chunk template with parameterizable fields."""
+    name: str
+    type: str  # "chunk_template"
+    version: str
+    description: str
+    output: str  # Template string with {field} placeholders
+    fields: Dict[str, Dict[str, FieldDefinition]]  # Nested: {appearance: {age: FieldDef}}
+    metadata: Dict = field(default_factory=dict)
+
+
+@dataclass
+class Chunk:
+    """A configured text chunk instance implementing a template."""
+    name: str
+    type: str  # "chunk"
+    version: str
+    implements: Optional[str] = None  # Path to template
+    fields: Dict[str, Dict[str, str]] = field(default_factory=dict)  # {appearance: {age: "23"}}
+    metadata: Dict = field(default_factory=dict)
+
+
+@dataclass
+class MultiFieldVariation(Variation):
+    """Variation that expands multiple fields simultaneously."""
+    fields: Dict[str, str] = field(default_factory=dict)  # {appearance.skin: "dark", ...}
+
+
+@dataclass
+class ChunkOverride:
+    """Represents an override in CHUNK with syntax."""
+    field_path: str  # e.g., "ethnicity"
+    source: str  # e.g., "ETHNICITIES"
+    selector: str  # e.g., "[african,asian]"

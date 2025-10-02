@@ -1,0 +1,63 @@
+version: "1.0"
+type: character_template
+name: "Portrait Subject Template"
+description: "Base template for portrait subject definition"
+
+# Définit comment assembler les champs en prompt
+output: |
+  {identity.name}, {appearance.age}, {appearance.body_type}
+  {appearance.skin}, {appearance.hair}, {appearance.eyes}
+  {technical.quality}
+
+# Définit les champs disponibles
+fields:
+  identity:
+    name:
+      type: text
+      description: "Character name"
+      required: false
+      example: "Emma"
+
+  appearance:
+    age:
+      type: text
+      description: "Age descriptor"
+      required: true
+      example: "23 years old"
+
+    body_type:
+      type: text
+      description: "Body type"
+      required: false
+      default: "athletic build"
+      example: "athletic build, muscular"
+
+    skin:
+      type: text
+      description: "Skin color and tone"
+      required: false
+      example: "fair skin"
+
+    hair:
+      type: text
+      description: "Hair characteristics"
+      required: false
+      example: "long brown hair"
+
+    eyes:
+      type: text
+      description: "Eye characteristics"
+      required: false
+      example: "green eyes"
+
+  technical:
+    quality:
+      type: text
+      description: "Quality tags"
+      default: "masterpiece, best quality"
+      example: "masterpiece, best quality, highly detailed"
+
+metadata:
+  compatible_models: [SDXL, Pony, SD1.5]
+  tags: [portrait, character, realistic]
+  version: "1.0"

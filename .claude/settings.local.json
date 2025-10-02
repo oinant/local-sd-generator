@@ -25,7 +25,20 @@
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Read(//mnt/d/StableDiffusion/private/configs/**)",
-      "Bash(curl -s http://127.0.0.1:7860/sdapi/v1/samplers)"
+      "Bash(curl -s http://127.0.0.1:7860/sdapi/v1/samplers)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(venv/bin/pytest CLI/tests/templating/ --cov=CLI/templating --cov-report=term-missing)",
+      "Bash(../venv/bin/python -m pytest tests/templating/ --cov=templating --cov-report=term-missing -v)",
+      "Bash(../venv/bin/pip install -e .)",
+      "Bash(../venv/bin/pip install --upgrade setuptools)",
+      "Bash(PYTHONPATH=/mnt/d/StableDiffusion/local-sd-generator/CLI ../venv/bin/python -m pytest tests/templating/ --cov=templating --cov-report=term-missing -v)",
+      "Bash(../venv/bin/python -m pytest tests/templating/ --cov=templating --cov-report=term-missing)",
+      "Bash(../venv/bin/python3 -m pytest tests/templating/test_chunk.py -v)",
+      "Bash(../venv/bin/python3 -m pytest tests/templating/test_multi_field.py -v)",
+      "Bash(../venv/bin/python3 -m pytest tests/templating/test_selectors_chunk.py -v)",
+      "Bash(../venv/bin/python3 -m pytest tests/templating/ --cov=templating --cov-report=term-missing -v)",
+      "Bash(../venv/bin/python3 -m pytest tests/templating/test_chunk.py tests/templating/test_multi_field.py tests/templating/test_selectors_chunk.py -v)"
     ],
     "deny": [],
     "ask": []

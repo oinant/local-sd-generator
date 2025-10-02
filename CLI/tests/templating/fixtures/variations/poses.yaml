@@ -1,0 +1,8 @@
+version: "1.0"
+
+variations:
+  - key: standing
+    value: "standing, upright posture"
+
+  - key: sitting
+    value: "sitting, relaxed pose"

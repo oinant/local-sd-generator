@@ -1,0 +1,20 @@
+version: "1.0"
+type: character
+name: "Emma - Athletic Portrait"
+implements: base/portrait_subject.char.template.yaml
+
+# Valeurs pour ce personnage
+fields:
+  identity:
+    name: "Emma"
+
+  appearance:
+    age: "23 years old"
+    body_type: "athletic build"
+    hair: "long brown hair"
+    eyes: "green eyes"
+    # skin non défini, sera fourni par multi-field expansion
+
+metadata:
+  description: "Athletic portrait character for testing Phase 2"
+  tags: [athlete, portrait]
