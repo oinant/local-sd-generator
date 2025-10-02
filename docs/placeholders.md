@@ -11,10 +11,11 @@ Le système de placeholders est au cœur du générateur d'images avec variation
 3. [Fichiers de variations](#fichiers-de-variations)
 4. [Options avancées](#options-avancées)
 5. [Système de priorité des boucles](#système-de-priorité-des-boucles)
-6. [Variations imbriquées](#variations-imbriquées)
-7. [Fichiers multiples](#fichiers-multiples)
-8. [Exemples pratiques](#exemples-pratiques)
-9. [Bonnes pratiques](#bonnes-pratiques)
+6. [Negative Prompt Placeholders](#negative-prompt-placeholders)
+7. [Variations imbriquées](#variations-imbriquées)
+8. [Fichiers multiples](#fichiers-multiples)
+9. [Exemples pratiques](#exemples-pratiques)
+10. [Bonnes pratiques](#bonnes-pratiques)
 
 ---
 
@@ -305,6 +306,88 @@ variations = load_variations_from_file("file.txt", encoding='latin1')
 # ou
 variations = load_variations_from_file("file.txt", encoding='cp1252')
 ```
+
+---
+
+## Negative Prompt Placeholders
+
+### Concept
+
+Vous pouvez maintenant utiliser des **placeholders dans le negative prompt** pour varier facilement les negative prompts selon les modèles (SDXL, Illustrious, Pony, etc.).
+
+### Utilisation de base
+
+```python
+generator = ImageVariationGenerator(
+    prompt_template="masterpiece, {Subject}, highly detailed",
+    negative_prompt="{NegStyle}",
+    variation_files={
+        "Subject": "subjects.txt",
+        "NegStyle": "negative_styles.txt"
+    }
+)
+```
+
+**Fichier `negative_styles.txt` :**
+```
+sdxl→low quality, bad anatomy, blurry, watermark
+illustrious→worst quality, low quality, displeasing, very displeasing
+pony→3d, worst quality, low quality, bad anatomy, text
+none→
+```
+
+**Résultat :** Chaque sujet sera généré avec chaque style de negative prompt.
+
+### Placeholders partagés
+
+Vous pouvez utiliser le **même placeholder** dans le prompt et le negative :
+
+```python
+prompt_template = "{Style} artwork, beautiful landscape"
+negative_prompt = "bad {Style}, low quality"
+```
+
+**Exemple :**
+- Quand `Style = "anime"` → Prompt: `"anime artwork..."`, Negative: `"bad anime, low quality"`
+- Quand `Style = "realistic"` → Prompt: `"realistic artwork..."`, Negative: `"bad realistic, low quality"`
+
+### Tous les sélecteurs fonctionnent
+
+```python
+# Limite à 2 negative styles
+negative_prompt = "{NegStyle:2}"
+
+# Sélection d'index spécifiques
+negative_prompt = "{NegStyle:#|0|2}"
+
+# Avec priorité
+negative_prompt = "{NegStyle:$5}"
+```
+
+### Cas d'usage
+
+**1. Comparaison de modèles :**
+```python
+# Teste le même prompt avec différents negatives spécifiques aux modèles
+negative_prompt = "{ModelNegative}"
+```
+
+**2. Tests de filtres de qualité :**
+```python
+negative_prompt = "{QualityFilter}"
+# Fichier: "low quality", "worst quality, low quality", "worst quality, bad anatomy", etc.
+```
+
+**3. Combinaison prompt + negative :**
+```python
+prompt_template = "{Character}, {Pose}"
+negative_prompt = "{NegStyle}, {Defect}"
+# Génère toutes les combinaisons : character × pose × negstyle × defect
+```
+
+### Documentation complète
+
+Pour plus de détails et d'exemples, consultez : `docs/cli/usage/negative-prompt-variations.md`
 
 ---
 

@@ -414,9 +414,10 @@ def load_variations_from_file(filepath: str, encoding: str = 'utf-8') -> Dict[st
 def load_variations_for_placeholders(prompt: str,
                                    file_mapping: Dict[str, Union[str, List[str]]],
                                    encoding: str = 'utf-8',
-                                   verbose: bool = True) -> Dict[str, Dict[str, str]]:
+                                   verbose: bool = True,
+                                   negative_prompt: str = "") -> Dict[str, Dict[str, str]]:
     """
-    Charge uniquement les variations nécessaires selon les placeholders du prompt.
+    Charge uniquement les variations nécessaires selon les placeholders du prompt et negative prompt.
 
     Supporte plusieurs formats :
     - {Placeholder} : Toutes les variations
@@ -433,12 +434,21 @@ def load_variations_for_placeholders(prompt: str,
         file_mapping: Dictionnaire {placeholder: chemin_fichier ou [chemins_fichiers]}
         encoding: Encodage des fichiers
         verbose: Affiche les informations de chargement
+        negative_prompt: Le negative prompt contenant les placeholders (optionnel)
 
     Returns:
         Dictionnaire {placeholder: {clé: valeur}} pour les placeholders trouvés
     """
-    # Extrait les placeholders avec leurs options du prompt
+    # Extrait les placeholders avec leurs options du prompt ET du negative prompt
     placeholders_with_options = extract_placeholders_with_limits(prompt)
+
+    # Ajoute aussi les placeholders du negative prompt
+    if negative_prompt:
+        negative_placeholders = extract_placeholders_with_limits(negative_prompt)
+        # Fusionne les deux dicts (le prompt principal a priorité en cas de conflit)
+        for placeholder, options in negative_placeholders.items():
+            if placeholder not in placeholders_with_options:
+                placeholders_with_options[placeholder] = options
 
     if verbose:
         print(f"🔍 Placeholders trouvés dans le prompt:")

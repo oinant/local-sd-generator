@@ -465,7 +465,8 @@ def run_generation_from_config(config_path: Path,
     variations = load_variations_for_placeholders(
         resolved_config.prompt.template,
         resolved_config.variations,
-        verbose=False
+        verbose=False,
+        negative_prompt=resolved_config.prompt.negative
     )
 
     total_combinations = 1

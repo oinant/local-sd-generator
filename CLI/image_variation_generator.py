@@ -130,7 +130,12 @@ class ImageVariationGenerator:
         client.set_generation_config(self.generation_config)
 
         # Prépare les informations additionnelles
-        all_variations = load_variations_for_placeholders(self.prompt_template, self.variation_files, verbose=False)
+        all_variations = load_variations_for_placeholders(
+            self.prompt_template,
+            self.variation_files,
+            verbose=False,
+            negative_prompt=self.negative_prompt
+        )
         self.variations_loaded = all_variations  # Store for metadata
 
         total_variations = 1
@@ -177,8 +182,12 @@ class ImageVariationGenerator:
                 filename=f"{self.session_name}_001.png"
             )]
 
-        # Charge les variations nécessaires
-        variations_dict = load_variations_for_placeholders(self.prompt_template, self.variation_files)
+        # Charge les variations nécessaires (pour prompt ET negative prompt)
+        variations_dict = load_variations_for_placeholders(
+            self.prompt_template,
+            self.variation_files,
+            negative_prompt=self.negative_prompt
+        )
 
         if not variations_dict:
             print("❌ Aucune variation chargée depuis les fichiers!")
@@ -230,17 +239,22 @@ class ImageVariationGenerator:
         """Crée des variations aléatoires."""
         random_combinations = create_random_combinations(variations_dict, actual_images, self.seed)
 
+        # Nettoie aussi le negative prompt template
+        clean_negative = re.sub(r'\{([^}:]+):[^}]+\}', r'{\1}', self.negative_prompt)
+
         prompt_configs = []
         for i, combination in enumerate(random_combinations):
-            # Applique les variations au prompt
-            prompt, keys = self._apply_variations_to_prompt(clean_prompt, combination)
+            # Applique les variations au prompt ET negative
+            prompt, negative, keys = self._apply_variations_to_prompt(
+                clean_prompt, combination, clean_negative
+            )
 
             # Calcule la seed
             image_seed = self._calculate_seed(seed_mode, self.seed, i)
 
             config = PromptConfig(
                 prompt=prompt,
-                negative_prompt=self.negative_prompt,
+                negative_prompt=negative,
                 seed=image_seed,
                 filename=f"random_{i+1:03d}_{'_'.join(keys[:2]) if keys else 'default'}.png"
             )
@@ -277,12 +291,17 @@ class ImageVariationGenerator:
         from itertools import islice
         from sdapi_client import generate_combinations_lazy
 
+        # Nettoie aussi le negative prompt template
+        clean_negative = re.sub(r'\{([^}:]+):[^}]+\}', r'{\1}', self.negative_prompt)
+
         combinations_generator = generate_combinations_lazy(variations_dict, placeholder_order)
 
         prompt_configs = []
         for i, combination in enumerate(islice(combinations_generator, actual_images)):
-            # Applique les variations au prompt
-            prompt, keys = self._apply_variations_to_prompt(clean_prompt, combination)
+            # Applique les variations au prompt ET negative
+            prompt, negative, keys = self._apply_variations_to_prompt(
+                clean_prompt, combination, clean_negative
+            )
 
             # Calcule la seed
             image_seed = self._calculate_seed(seed_mode, self.seed, i)
@@ -293,7 +312,7 @@ class ImageVariationGenerator:
 
             config = PromptConfig(
                 prompt=prompt,
-                negative_prompt=self.negative_prompt,
+                negative_prompt=negative,
                 seed=image_seed,
                 filename=filename
             )
@@ -409,29 +428,34 @@ class ImageVariationGenerator:
 
         return prompt
 
-    def _apply_variations_to_prompt(self, prompt_template: str, variations: Dict[str, str]) -> tuple[str, List[str]]:
+    def _apply_variations_to_prompt(self, prompt_template: str, variations: Dict[str, str],
+                                   negative_template: str = "") -> tuple[str, str, List[str]]:
         """
-        Applique des variations à un prompt template en remplaçant les placeholders.
+        Applique des variations à un prompt template et negative prompt en remplaçant les placeholders.
 
         Args:
             prompt_template: Template avec placeholders {Name}
             variations: Dict {placeholder_name: value}
+            negative_template: Negative prompt template avec placeholders {Name} (optionnel)
 
         Returns:
-            Tuple (prompt_final, keys_for_filename)
+            Tuple (prompt_final, negative_final, keys_for_filename)
         """
         prompt = prompt_template
+        negative = negative_template
         keys = []
 
         for placeholder, value in variations.items():
             if value:  # Ne remplace que si valeur non vide
                 prompt = prompt.replace(f"{{{placeholder}}}", value)
+                negative = negative.replace(f"{{{placeholder}}}", value)
                 keys.append(f"{placeholder}_{self._clean_filename(value)}")
 
-        # Nettoie le prompt final
+        # Nettoie le prompt et negative finaux
         prompt = self._clean_prompt_with_empty_placeholders(prompt)
+        negative = self._clean_prompt_with_empty_placeholders(negative)
 
-        return prompt, keys
+        return prompt, negative, keys
 
     def _save_metadata(self, output_dir: str, total_combinations: int, images_generated: int):
         """
