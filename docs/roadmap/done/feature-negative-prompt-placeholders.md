@@ -1,9 +1,10 @@
 # Feature: Negative Prompt Placeholders
 
-**Status:** next
+**Status:** done
 **Priority:** 3
 **Component:** cli
 **Created:** 2025-10-01
+**Completed:** 2025-10-02
 
 ## Description
 
@@ -105,15 +106,15 @@ def _apply_variations_to_prompt(self, prompt, negative, combination):
 
 ## Tasks
 
-- [ ] Modifier `extract_placeholders()` pour accepter multiple strings
-- [ ] Modifier `load_variations_for_placeholders()` pour negative prompt
-- [ ] Modifier `_apply_variations_to_prompt()` pour retourner negative aussi
-- [ ] Mettre à jour tous les appels de cette fonction
-- [ ] Mettre à jour PromptConfig création avec nouveau negative
-- [ ] Tests: negative avec placeholders
-- [ ] Tests: negative avec sélecteurs (#|, :N, $X)
-- [ ] Tests: combinaisons prompt + negative
-- [ ] Documentation: exemples d'usage
+- [x] Modifier `extract_placeholders()` pour accepter multiple strings
+- [x] Modifier `load_variations_for_placeholders()` pour negative prompt
+- [x] Modifier `_apply_variations_to_prompt()` pour retourner negative aussi
+- [x] Mettre à jour tous les appels de cette fonction
+- [x] Mettre à jour PromptConfig création avec nouveau negative
+- [x] Tests: negative avec placeholders
+- [x] Tests: negative avec sélecteurs (#|, :N, $X)
+- [x] Tests: combinaisons prompt + negative
+- [x] Documentation: exemples d'usage
 
 ## Success Criteria
 
@@ -124,13 +125,30 @@ def _apply_variations_to_prompt(self, prompt, negative, combination):
 - ✓ Métadonnées sauvent le negative utilisé
 - ✓ Tests passent
 
+## Tests
+
+- **14 tests** créés dans `tests/test_negative_prompt_placeholders.py`
+- Tous les tests passent ✅
+- Tests couvrent :
+  - Extraction de placeholders du negative prompt
+  - Chargement de variations pour negative
+  - Application des variations au negative
+  - Placeholders partagés
+  - Sélecteurs (#|, :N, $X)
+  - Intégration end-to-end
+
 ## Documentation
 
-- Usage: `docs/cli/usage/negative-prompt-variations.md` (à créer)
-- Technical: `docs/cli/technical/placeholder-system.md` (à mettre à jour)
+- Usage: `docs/cli/usage/negative-prompt-variations.md` ✅
+- Technical: `docs/placeholders.md` (section ajoutée) ✅
+
+## Commits
+
+- `0a31b1d`: feat(placeholders): Add support for placeholders in negative prompt
 
 ## Notes
 
 - Cette feature est orthogonale aux autres (sliders, etc.)
 - Peut réutiliser le même fichier de variations pour prompt et negative
 - Exemple: `{Style}` dans prompt et `{Style}` dans negative → même valeur
+- Backward compatible : tous les anciens tests passent toujours
