@@ -1,0 +1,16 @@
+name: "Simple Test"
+
+imports:
+  EXPRESSIONS: fixtures/expressions.yaml
+  POSES: fixtures/poses.yaml
+
+prompt: |
+  masterpiece, {EXPRESSIONS[happy,sad]}, {POSES[random:3]}
+
+negative_prompt: |
+  low quality, blurry
+
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 42

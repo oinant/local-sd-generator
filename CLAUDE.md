@@ -4,7 +4,53 @@
 - le MCP Playwright est installé, sers-t'en!
 - **Lis la doc dans `/docs`** - Structure organisée par composant (CLI, WebApp, Tooling)
 - **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
-- Les tests (unitaire et intégration) doivent utiliser pytest et être placés dans le dossier `/tests`
+- Les tests sont dans `/CLI/tests` et utilisent pytest
+
+## 🐍 Python Environment Setup
+
+### Virtual Environment
+Le projet utilise un venv Linux (`venv/`) à la racine du projet :
+
+```bash
+# Créer le venv (déjà fait)
+python3 -m venv venv
+
+# Activer le venv
+source venv/bin/activate
+
+# Installer les dépendances
+pip install pyyaml requests pytest pytest-cov
+
+# Désactiver
+deactivate
+```
+
+**Note:** Ne PAS utiliser `.venv/` (venv Windows verrouillé sous WSL).
+
+### Running Tests
+
+**IMPORTANT:** Toujours utiliser `python -m pytest` au lieu de `pytest` directement.
+
+Cela ajoute automatiquement le répertoire courant au `sys.path` et résout les problèmes d'imports.
+
+```bash
+# Depuis la racine du projet
+cd /mnt/d/StableDiffusion/local-sd-generator/CLI
+
+# Lancer les tests templating
+../venv/bin/python -m pytest tests/templating/ -v
+
+# Avec coverage
+../venv/bin/python -m pytest tests/templating/ --cov=templating --cov-report=term-missing
+
+# Tous les tests
+../venv/bin/python -m pytest tests/ -v
+```
+
+**Pourquoi `python -m pytest` ?**
+- `pytest` seul ne détecte pas toujours le bon PYTHONPATH
+- `python -m pytest` ajoute le répertoire courant automatiquement
+- Résout les `ModuleNotFoundError` dans les imports
 
 ## Documentation Guidelines
 

@@ -1,0 +1,12 @@
+version: "1.0"
+variations:
+  - key: happy
+    value: "smiling, cheerful"
+  - key: sad
+    value: "crying, tears"
+  - key: angry
+    value: "frowning, intense"
+  - key: surprised
+    value: "eyes wide, mouth open"
+  - key: neutral
+    value: "calm, composed"
