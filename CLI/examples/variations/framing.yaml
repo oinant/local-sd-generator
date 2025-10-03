@@ -1,0 +1,67 @@
+type: variations
+name: "Camera Framing and Angles"
+version: "1.0"
+description: "Different camera framings and angles for portrait photography"
+
+variations:
+  - key: headshot_front
+    value: "headshot, front view, face focus, direct gaze"
+    weight: 1.0
+
+  - key: headshot_three_quarter
+    value: "headshot, 3/4 view, slight angle, three-quarter portrait"
+    weight: 1.0
+
+  - key: headshot_profile
+    value: "headshot, profile view, side view, profile portrait"
+    weight: 1.0
+
+  - key: shoulders_up_front
+    value: "shoulders up, front view, upper body visible"
+    weight: 1.0
+
+  - key: shoulders_up_angle
+    value: "shoulders up, angled view, dynamic pose"
+    weight: 1.0
+
+  - key: bust_portrait
+    value: "bust portrait, chest up, medium close-up"
+    weight: 1.0
+
+  - key: waist_up
+    value: "waist up, half body portrait, torso visible"
+    weight: 1.0
+
+  - key: full_body
+    value: "full body portrait, entire figure visible, full length"
+    weight: 1.0
+
+  - key: close_up_face
+    value: "extreme close-up, face detail, intimate framing"
+    weight: 1.0
+
+  - key: close_up_eyes
+    value: "close-up on eyes, eye focus, detailed eyes"
+    weight: 1.0
+
+  - key: over_shoulder
+    value: "over the shoulder shot, looking back, rear angle"
+    weight: 1.0
+
+  - key: from_above
+    value: "shot from above, high angle, looking down"
+    weight: 1.0
+
+  - key: from_below
+    value: "shot from below, low angle, looking up"
+    weight: 1.0
+
+  - key: dutch_angle
+    value: "dutch angle, tilted camera, dynamic angle"
+    weight: 1.0
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  category: "technical"
+  tags: ["framing", "angle", "composition", "photography"]

@@ -1,0 +1,59 @@
+type: variations
+name: "Facial Expressions"
+version: "1.0"
+description: "Various facial expressions for portraits"
+
+variations:
+  - key: neutral
+    value: "neutral expression, calm face"
+    weight: 1.0
+
+  - key: slight_smile
+    value: "slight smile, subtle smile, gentle expression"
+    weight: 1.0
+
+  - key: smiling
+    value: "smiling, happy expression, cheerful"
+    weight: 1.0
+
+  - key: laughing
+    value: "laughing, joyful expression, big smile"
+    weight: 1.0
+
+  - key: seductive
+    value: "seductive expression, sultry look, alluring gaze"
+    weight: 1.0
+
+  - key: confident
+    value: "confident expression, self-assured look, strong gaze"
+    weight: 1.0
+
+  - key: mysterious
+    value: "mysterious expression, enigmatic look, intriguing gaze"
+    weight: 1.0
+
+  - key: serious
+    value: "serious expression, focused look, intense gaze"
+    weight: 1.0
+
+  - key: contemplative
+    value: "contemplative expression, thoughtful look, pensive"
+    weight: 1.0
+
+  - key: playful
+    value: "playful expression, mischievous smile, fun look"
+    weight: 1.0
+
+  - key: shy
+    value: "shy expression, bashful look, timid smile"
+    weight: 1.0
+
+  - key: surprised
+    value: "surprised expression, wide eyes, amazed look"
+    weight: 1.0
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  category: "expression"
+  tags: ["expression", "emotion", "face"]

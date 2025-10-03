@@ -29,7 +29,9 @@ deactivate
 
 ### Running Tests
 
-**IMPORTANT:** Toujours utiliser `python -m pytest` au lieu de `pytest` directement.
+**IMPORTANT:**
+- Toujours utiliser `python3 -m pytest` (pas `python` ni `pytest` directement)
+- **NE PAS utiliser pytest-cov** (problème avec l'environnement)
 
 Cela ajoute automatiquement le répertoire courant au `sys.path` et résout les problèmes d'imports.
 
@@ -37,20 +39,21 @@ Cela ajoute automatiquement le répertoire courant au `sys.path` et résout les 
 # Depuis la racine du projet
 cd /mnt/d/StableDiffusion/local-sd-generator/CLI
 
-# Lancer les tests templating
-../venv/bin/python -m pytest tests/templating/ -v
+# Lancer tous les tests templating Phase 2 (27 tests)
+../venv/bin/python3 -m pytest tests/templating/test_chunk.py tests/templating/test_multi_field.py tests/templating/test_selectors_chunk.py tests/templating/test_phase2_integration.py -v
 
-# Avec coverage
-../venv/bin/python -m pytest tests/templating/ --cov=templating --cov-report=term-missing
+# Lancer les tests templating
+../venv/bin/python3 -m pytest tests/templating/ -v
 
 # Tous les tests
-../venv/bin/python -m pytest tests/ -v
+../venv/bin/python3 -m pytest tests/ -v
 ```
 
-**Pourquoi `python -m pytest` ?**
+**Pourquoi `python3 -m pytest` ?**
 - `pytest` seul ne détecte pas toujours le bon PYTHONPATH
-- `python -m pytest` ajoute le répertoire courant automatiquement
+- `python3 -m pytest` ajoute le répertoire courant automatiquement
 - Résout les `ModuleNotFoundError` dans les imports
+- Sous WSL, toujours utiliser `python3` et pas `python`
 
 ## Documentation Guidelines
 

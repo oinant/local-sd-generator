@@ -1,0 +1,38 @@
+name: "Portrait Variations - Selected Combinations"
+
+description: |
+  Focused portrait generation with selected variations:
+  - 2 ethnicities (caucasian_fair, asian_east)
+  - 3 body types (slim_medium, athletic_medium, curvy_large)
+  - 6 hair styles (selected variety)
+  - 4 expressions (neutral, smiling, seductive, confident)
+  - 3 lighting setups (natural_soft, studio_rembrandt, cinematic)
+  - 2 framing options (bust_portrait, headshot_three_quarter)
+
+  This creates 2×3×6×4×3×2 = 864 total combinations (combinatorial)
+  or a controlled random selection.
+
+imports:
+  PORTRAIT: characters/portrait_base.char.yaml
+  ETHNICITIES: variations/ethnicities.yaml
+  BODY_TYPES: variations/body_types.yaml
+  HAIR: variations/hair_styles.yaml
+  EXPRESSIONS: variations/expressions.yaml
+  LIGHTING: variations/lighting.yaml
+  FRAMING: variations/framing.yaml
+
+prompt: |
+  {PORTRAIT with ethnicity=ETHNICITIES[caucasian_fair,asian_east], body=BODY_TYPES[slim_medium,athletic_medium,curvy_large], hair=HAIR[long_blonde_straight,long_brunette_curly,long_black_straight,medium_blonde_layered,short_blonde_pixie,updo_ponytail], expression=EXPRESSIONS[neutral,smiling,seductive,confident]}
+  {LIGHTING[natural_soft,studio_rembrandt,cinematic]}
+  {FRAMING[bust_portrait,headshot_three_quarter]}
+
+negative_prompt: |
+  low quality, blurry, out of focus, bad anatomy, deformed, disfigured,
+  poorly drawn, amateur, worst quality, jpeg artifacts
+
+generation:
+  mode: random
+  seed_mode: progressive
+  seed: 2000
+  max_images: 50
+  index_base: 0

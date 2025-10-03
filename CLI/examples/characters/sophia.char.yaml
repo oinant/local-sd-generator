@@ -1,0 +1,30 @@
+type: character
+name: "Sophia"
+version: "1.0"
+implements: "base/portrait_woman.char.template.yaml"
+
+description: "Sophia - Athletic blonde woman with blue eyes"
+
+fields:
+  identity:
+    name: "Sophia"
+    age: "28 years old"
+
+  appearance:
+    ethnicity: "fair skin, caucasian features"
+    body_type: "athletic build, toned physique, fit body"
+    breast_size: "medium breasts, firm chest"
+    hair: "long blonde hair, ponytail"
+    eyes: "blue eyes, bright gaze"
+
+  expression:
+    current: "confident expression, strong gaze"
+
+  technical:
+    quality: "masterpiece, best quality, highly detailed, professional photography"
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  character_type: "athletic"
+  tags: ["blonde", "athletic", "caucasian"]

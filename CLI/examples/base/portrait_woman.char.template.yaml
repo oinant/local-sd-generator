@@ -1,0 +1,85 @@
+type: character_template
+name: "Portrait Woman Template"
+version: "1.0"
+description: "Template for female portrait generation with customizable appearance"
+
+output: |
+  {identity.name}, {identity.age}
+  {appearance.ethnicity}, {appearance.body_type}, {appearance.breast_size}
+  {appearance.hair}, {appearance.eyes}
+  {expression.current}
+  {technical.quality}
+
+fields:
+  identity:
+    name:
+      type: text
+      description: "Character name"
+      required: false
+      default: "beautiful woman"
+      example: "Sarah"
+
+    age:
+      type: text
+      description: "Age or age appearance"
+      required: false
+      default: "25 years old"
+      example: "30 years old"
+
+  appearance:
+    ethnicity:
+      type: text
+      description: "Ethnic features (skin, facial features)"
+      required: false
+      default: ""
+      example: "fair skin, caucasian features"
+
+    body_type:
+      type: text
+      description: "Body type and build"
+      required: false
+      default: "average build"
+      example: "athletic build, toned physique"
+
+    breast_size:
+      type: text
+      description: "Breast size description"
+      required: false
+      default: "medium breasts"
+      example: "large breasts, voluptuous"
+
+    hair:
+      type: text
+      description: "Hair style, color, length"
+      required: false
+      default: "long brown hair"
+      example: "short blonde hair, pixie cut"
+
+    eyes:
+      type: text
+      description: "Eye color and characteristics"
+      required: false
+      default: "brown eyes"
+      example: "blue eyes, almond-shaped"
+
+  expression:
+    current:
+      type: text
+      description: "Current facial expression"
+      required: false
+      default: "neutral expression"
+      example: "smiling, cheerful"
+
+  technical:
+    quality:
+      type: text
+      description: "Technical quality tags"
+      required: false
+      default: "masterpiece, best quality, highly detailed"
+      example: "8k uhd, professional photography"
+
+metadata:
+  author: "Template System"
+  created: "2025-10-03"
+  category: "portrait"
+  tags: ["woman", "portrait", "character"]

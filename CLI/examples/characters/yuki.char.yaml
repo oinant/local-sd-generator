@@ -1,0 +1,30 @@
+type: character
+name: "Yuki"
+version: "1.0"
+implements: "base/portrait_woman.char.template.yaml"
+
+description: "Yuki - Petite Asian woman with delicate features"
+
+fields:
+  identity:
+    name: "Yuki"
+    age: "23 years old"
+
+  appearance:
+    ethnicity: "light skin, porcelain complexion, east asian features"
+    body_type: "petite build, small frame, delicate physique"
+    breast_size: "small breasts, petite chest"
+    hair: "long black hair, straight hair, glossy hair"
+    eyes: "almond-shaped dark eyes"
+
+  expression:
+    current: "shy expression, bashful look, timid smile"
+
+  technical:
+    quality: "masterpiece, best quality, highly detailed, soft lighting, professional photography"
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  character_type: "petite"
+  tags: ["asian", "petite", "black-hair"]

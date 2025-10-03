@@ -1,0 +1,51 @@
+type: multi_field
+name: "Ethnic Features for Female Portraits"
+version: "1.0"
+description: "Multi-field variations for different ethnic appearances"
+
+variations:
+  - key: caucasian_fair
+    fields:
+      appearance.ethnicity: "fair skin, pale complexion, caucasian features"
+      appearance.eyes: "blue eyes"
+
+  - key: caucasian_tan
+    fields:
+      appearance.ethnicity: "tanned skin, sun-kissed complexion, caucasian features"
+      appearance.eyes: "green eyes"
+
+  - key: african
+    fields:
+      appearance.ethnicity: "dark skin, ebony complexion, african features"
+      appearance.eyes: "dark brown eyes"
+
+  - key: asian_east
+    fields:
+      appearance.ethnicity: "light skin, porcelain complexion, east asian features"
+      appearance.eyes: "almond-shaped dark eyes"
+
+  - key: asian_south
+    fields:
+      appearance.ethnicity: "brown skin, warm complexion, south asian features"
+      appearance.eyes: "dark brown eyes"
+
+  - key: latina
+    fields:
+      appearance.ethnicity: "olive skin, warm complexion, latina features"
+      appearance.eyes: "brown eyes"
+
+  - key: middle_eastern
+    fields:
+      appearance.ethnicity: "olive skin, mediterranean complexion, middle eastern features"
+      appearance.eyes: "hazel eyes"
+
+  - key: mixed_asian_caucasian
+    fields:
+      appearance.ethnicity: "light tan skin, mixed asian-caucasian features"
+      appearance.eyes: "light brown eyes"
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  category: "appearance"
+  tags: ["ethnicity", "skin", "eyes", "multi-field"]

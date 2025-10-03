@@ -1,0 +1,27 @@
+name: "Quick Test - Portrait System"
+
+description: |
+  Quick test of the portrait system.
+  2 ethnicities × 2 body types × 2 expressions × 2 lighting = 16 combinations
+  Perfect for testing the setup.
+
+imports:
+  PORTRAIT: characters/portrait_base.char.yaml
+  ETHNICITIES: variations/ethnicities.yaml
+  BODY_TYPES: variations/body_types.yaml
+  EXPRESSIONS: variations/expressions.yaml
+  LIGHTING: variations/lighting.yaml
+
+prompt: |
+  {PORTRAIT with ethnicity=ETHNICITIES[caucasian_fair,asian_east], body=BODY_TYPES[athletic_medium,curvy_large], expression=EXPRESSIONS[smiling,seductive]}
+  {LIGHTING[natural_soft,studio_rembrandt]}
+  headshot, front view
+
+negative_prompt: |
+  low quality, blurry, worst quality
+
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 100
+  index_base: 0

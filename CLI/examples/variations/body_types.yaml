@@ -1,0 +1,71 @@
+type: multi_field
+name: "Body Types and Breast Sizes"
+version: "1.0"
+description: "Multi-field variations for body type with corresponding breast size"
+
+variations:
+  - key: petite_small
+    fields:
+      appearance.body_type: "petite build, small frame, delicate physique"
+      appearance.breast_size: "small breasts, petite chest"
+
+  - key: petite_medium
+    fields:
+      appearance.body_type: "petite build, small frame, delicate physique"
+      appearance.breast_size: "medium breasts"
+
+  - key: slim_small
+    fields:
+      appearance.body_type: "slim build, slender figure, lean physique"
+      appearance.breast_size: "small breasts"
+
+  - key: slim_medium
+    fields:
+      appearance.body_type: "slim build, slender figure, lean physique"
+      appearance.breast_size: "medium breasts"
+
+  - key: athletic_medium
+    fields:
+      appearance.body_type: "athletic build, toned physique, fit body"
+      appearance.breast_size: "medium breasts, firm chest"
+
+  - key: athletic_large
+    fields:
+      appearance.body_type: "athletic build, toned physique, muscular definition"
+      appearance.breast_size: "large breasts, athletic chest"
+
+  - key: average_medium
+    fields:
+      appearance.body_type: "average build, normal proportions, balanced physique"
+      appearance.breast_size: "medium breasts"
+
+  - key: average_large
+    fields:
+      appearance.body_type: "average build, normal proportions, balanced physique"
+      appearance.breast_size: "large breasts"
+
+  - key: curvy_large
+    fields:
+      appearance.body_type: "curvy build, hourglass figure, voluptuous physique"
+      appearance.breast_size: "large breasts, full chest"
+
+  - key: curvy_xlarge
+    fields:
+      appearance.body_type: "curvy build, hourglass figure, voluptuous physique"
+      appearance.breast_size: "very large breasts, ample bust"
+
+  - key: plus_large
+    fields:
+      appearance.body_type: "plus size build, full figure, soft curves"
+      appearance.breast_size: "large breasts"
+
+  - key: plus_xlarge
+    fields:
+      appearance.body_type: "plus size build, full figure, abundant curves"
+      appearance.breast_size: "very large breasts, generous bust"
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  category: "appearance"
+  tags: ["body-type", "breast-size", "physique", "multi-field"]

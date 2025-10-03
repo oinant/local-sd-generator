@@ -1,0 +1,67 @@
+type: variations
+name: "Lighting Setups"
+version: "1.0"
+description: "Various lighting conditions and setups for portrait photography"
+
+variations:
+  - key: natural_soft
+    value: "soft natural lighting, window light, diffused sunlight"
+    weight: 1.0
+
+  - key: natural_golden_hour
+    value: "golden hour lighting, warm sunset light, soft golden glow"
+    weight: 1.0
+
+  - key: natural_backlit
+    value: "backlit, rim lighting, silhouette lighting"
+    weight: 1.0
+
+  - key: studio_key
+    value: "studio lighting, key light, professional lighting setup"
+    weight: 1.0
+
+  - key: studio_rembrandt
+    value: "rembrandt lighting, dramatic shadows, classic portrait lighting"
+    weight: 1.0
+
+  - key: studio_butterfly
+    value: "butterfly lighting, glamour lighting, beauty lighting"
+    weight: 1.0
+
+  - key: studio_split
+    value: "split lighting, half shadow half light, dramatic portrait lighting"
+    weight: 1.0
+
+  - key: studio_loop
+    value: "loop lighting, slight shadow, flattering portrait lighting"
+    weight: 1.0
+
+  - key: dramatic_low_key
+    value: "low key lighting, dark background, dramatic shadows"
+    weight: 1.0
+
+  - key: dramatic_high_key
+    value: "high key lighting, bright background, minimal shadows"
+    weight: 1.0
+
+  - key: cinematic
+    value: "cinematic lighting, moody atmosphere, film lighting"
+    weight: 1.0
+
+  - key: neon
+    value: "neon lighting, colorful lights, vibrant glow"
+    weight: 1.0
+
+  - key: candlelight
+    value: "candlelight, warm flickering light, intimate lighting"
+    weight: 1.0
+
+  - key: moonlight
+    value: "moonlight, cool blue light, night lighting"
+    weight: 1.0
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  category: "technical"
+  tags: ["lighting", "photography", "atmosphere"]

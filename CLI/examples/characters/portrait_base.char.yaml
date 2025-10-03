@@ -1,0 +1,30 @@
+type: character
+name: "Base Portrait Woman"
+version: "1.0"
+implements: "base/portrait_woman.char.template.yaml"
+
+description: "Generic base character for portrait generation - designed to be overridden"
+
+fields:
+  identity:
+    name: "beautiful woman"
+    age: "25 years old"
+
+  appearance:
+    ethnicity: ""  # To be overridden
+    body_type: ""  # To be overridden
+    breast_size: ""  # To be overridden
+    hair: ""  # To be overridden
+    eyes: ""  # To be overridden
+
+  expression:
+    current: ""  # To be overridden
+
+  technical:
+    quality: "masterpiece, best quality, highly detailed, 8k uhd, professional photography"
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  usage: "Use with multi-field overrides for ethnicity, body_type, hair, and expression"
+  example: "{PORTRAIT with ethnicity=ETHNICITIES[caucasian_fair], body=BODY_TYPES[athletic_medium]}"

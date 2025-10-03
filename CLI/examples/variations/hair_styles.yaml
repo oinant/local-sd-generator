@@ -1,0 +1,83 @@
+type: variations
+name: "Hair Styles and Colors"
+version: "1.0"
+description: "Various hair styles, lengths, and colors for female portraits"
+
+variations:
+  - key: long_blonde_straight
+    value: "long blonde hair, straight hair, flowing hair"
+    weight: 1.0
+
+  - key: long_blonde_wavy
+    value: "long blonde hair, wavy hair, beach waves"
+    weight: 1.0
+
+  - key: long_brunette_straight
+    value: "long brown hair, straight hair, silky hair"
+    weight: 1.0
+
+  - key: long_brunette_curly
+    value: "long brown hair, curly hair, voluminous curls"
+    weight: 1.0
+
+  - key: long_black_straight
+    value: "long black hair, straight hair, glossy hair"
+    weight: 1.0
+
+  - key: long_red_wavy
+    value: "long red hair, wavy hair, ginger hair"
+    weight: 1.0
+
+  - key: medium_blonde_layered
+    value: "shoulder-length blonde hair, layered haircut"
+    weight: 1.0
+
+  - key: medium_brunette_bob
+    value: "medium brown hair, bob cut, sleek bob"
+    weight: 1.0
+
+  - key: medium_black_straight
+    value: "medium black hair, straight hair, mid-length"
+    weight: 1.0
+
+  - key: short_blonde_pixie
+    value: "short blonde hair, pixie cut, edgy haircut"
+    weight: 1.0
+
+  - key: short_brunette_bob
+    value: "short brown hair, short bob, chin-length"
+    weight: 1.0
+
+  - key: short_black_pixie
+    value: "short black hair, pixie cut, textured short hair"
+    weight: 1.0
+
+  - key: updo_bun
+    value: "hair in a bun, elegant updo, neat bun"
+    weight: 1.0
+
+  - key: updo_ponytail
+    value: "high ponytail, long ponytail, sleek ponytail"
+    weight: 1.0
+
+  - key: braided_long
+    value: "long braided hair, french braid, intricate braid"
+    weight: 1.0
+
+  - key: platinum_blonde_long
+    value: "platinum blonde hair, long hair, icy blonde"
+    weight: 1.0
+
+  - key: pastel_pink_medium
+    value: "pastel pink hair, medium length, dyed hair"
+    weight: 1.0
+
+  - key: silver_grey_long
+    value: "silver grey hair, long hair, ash grey"
+    weight: 1.0
+
+metadata:
+  author: "Examples"
+  created: "2025-10-03"
+  category: "appearance"
+  tags: ["hair", "hairstyle", "color"]

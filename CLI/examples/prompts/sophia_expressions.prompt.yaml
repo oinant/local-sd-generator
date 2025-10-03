@@ -1,0 +1,27 @@
+name: "Sophia - Expression Study"
+
+description: |
+  Character study of Sophia with different expressions and lighting.
+  Fixed character (athletic blonde), varying expressions and lighting.
+
+  12 expressions × 5 lighting setups = 60 combinations (combinatorial)
+
+imports:
+  SOPHIA: characters/sophia.char.yaml
+  EXPRESSIONS: variations/expressions.yaml
+  LIGHTING: variations/lighting.yaml
+
+prompt: |
+  {SOPHIA with expression=EXPRESSIONS}
+  {LIGHTING[natural_soft,studio_rembrandt,studio_butterfly,cinematic,natural_golden_hour]}
+  bust portrait, front view
+
+negative_prompt: |
+  low quality, blurry, out of focus, bad anatomy, deformed,
+  worst quality, amateur
+
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 3000
+  index_base: 0

@@ -1,0 +1,38 @@
+name: "Portrait Variations - Full Exploration"
+
+description: |
+  Complete portrait generation exploring all variations:
+  - 8 ethnicities
+  - 12 body types (with breast sizes)
+  - 18 hair styles
+  - 12 expressions
+  - 14 lighting setups
+  - 14 framing options
+
+  This generates a comprehensive dataset exploring different combinations.
+  Use random mode with limited count or be selective with specific variations.
+
+imports:
+  PORTRAIT: characters/portrait_base.char.yaml
+  ETHNICITIES: variations/ethnicities.yaml
+  BODY_TYPES: variations/body_types.yaml
+  HAIR: variations/hair_styles.yaml
+  EXPRESSIONS: variations/expressions.yaml
+  LIGHTING: variations/lighting.yaml
+  FRAMING: variations/framing.yaml
+
+prompt: |
+  {PORTRAIT with ethnicity=ETHNICITIES, body=BODY_TYPES, hair=HAIR, expression=EXPRESSIONS}
+  {LIGHTING}
+  {FRAMING}
+
+negative_prompt: |
+  low quality, blurry, out of focus, bad anatomy, deformed, disfigured,
+  poorly drawn, amateur, worst quality, jpeg artifacts
+
+generation:
+  mode: random
+  seed_mode: progressive
+  seed: 1000
+  max_images: 100
+  index_base: 0
