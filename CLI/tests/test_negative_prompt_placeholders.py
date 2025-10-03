@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 # Add CLI to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "CLI"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from variation_loader import (
     extract_placeholders_with_limits,

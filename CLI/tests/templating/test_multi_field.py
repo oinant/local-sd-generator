@@ -4,13 +4,13 @@ Tests for multi-field variation expansion functionality.
 
 import pytest
 from pathlib import Path
-from CLI.templating.multi_field import (
+from templating.multi_field import (
     is_multi_field_variation,
     load_multi_field_variations,
     expand_multi_field,
     merge_multi_field_into_chunk,
 )
-from CLI.templating.types import MultiFieldVariation
+from templating.types import MultiFieldVariation
 
 
 # Use fixtures directory

@@ -5,6 +5,7 @@
 - **Lis la doc dans `/docs`** - Structure organisée par composant (CLI, WebApp, Tooling)
 - **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
 - Les tests sont dans `/CLI/tests` et utilisent pytest
+- Probleme d'install de PYCOV, ne l'utilise pas
 
 ## 🐍 Python Environment Setup
 
@@ -32,21 +33,29 @@ deactivate
 **IMPORTANT:**
 - Toujours utiliser `python3 -m pytest` (pas `python` ni `pytest` directement)
 - **NE PAS utiliser pytest-cov** (problème avec l'environnement)
-
-Cela ajoute automatiquement le répertoire courant au `sys.path` et résout les problèmes d'imports.
+- Pytest 8.x requiert des `__init__.py` dans tous les dossiers de tests (structure package-based)
 
 ```bash
-# Depuis la racine du projet
+# Depuis /CLI
 cd /mnt/d/StableDiffusion/local-sd-generator/CLI
 
-# Lancer tous les tests templating Phase 2 (27 tests)
-../venv/bin/python3 -m pytest tests/templating/test_chunk.py tests/templating/test_multi_field.py tests/templating/test_selectors_chunk.py tests/templating/test_phase2_integration.py -v
-
-# Lancer les tests templating
+# Tests Phase 2 (templating) - 52 tests ✅
 ../venv/bin/python3 -m pytest tests/templating/ -v
 
-# Tous les tests
+# Tests unitaires (sans legacy/integration)
+../venv/bin/python3 -m pytest tests/ --ignore=tests/legacy --ignore=tests/integration -v
+
+# Tous les tests (attention: certains tests CLI interactive peuvent bloquer)
 ../venv/bin/python3 -m pytest tests/ -v
+```
+
+**Structure des tests :**
+```
+tests/
+├── templating/         # Tests Phase 2 (52 tests)
+├── integration/        # Tests d'intégration
+├── legacy/            # Anciens tests fonctionnels
+└── [tests unitaires]  # Tests des autres modules
 ```
 
 **Pourquoi `python3 -m pytest` ?**
@@ -54,6 +63,10 @@ cd /mnt/d/StableDiffusion/local-sd-generator/CLI
 - `python3 -m pytest` ajoute le répertoire courant automatiquement
 - Résout les `ModuleNotFoundError` dans les imports
 - Sous WSL, toujours utiliser `python3` et pas `python`
+
+**Tests problématiques connus :**
+- `test_config_selector.py` - Peut bloquer (tests CLI interactive avec input() mocké)
+- `test_integration_phase3.py` - Peut bloquer (même raison)
 
 ## Documentation Guidelines
 

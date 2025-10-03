@@ -3,7 +3,7 @@ Tests for chunk "with" syntax parsing in selectors.
 """
 
 import pytest
-from CLI.templating.selectors import parse_chunk_with_syntax
+from templating.selectors import parse_chunk_with_syntax
 
 
 def test_parse_chunk_with_single_override():

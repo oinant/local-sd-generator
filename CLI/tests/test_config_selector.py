@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import sys
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "CLI"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config.config_selector import (
     ConfigInfo,

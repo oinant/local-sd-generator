@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock, call
 from copy import deepcopy
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "CLI"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from execution.json_generator import (
     prompt_generation_mode,

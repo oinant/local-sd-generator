@@ -6,9 +6,9 @@ Tests the complete flow: chunk + multi-field + selectors + resolver.
 
 import pytest
 from pathlib import Path
-from CLI.templating.resolver import resolve_prompt
-from CLI.templating.prompt_config import load_prompt_config
-from CLI.templating.types import PromptConfig
+from templating.resolver import resolve_prompt
+from templating.prompt_config import load_prompt_config
+from templating.types import PromptConfig
 
 
 @pytest.fixture

@@ -40,7 +40,8 @@
       "Bash(../venv/bin/python3 -m pytest tests/templating/ --cov=templating --cov-report=term-missing -v)",
       "Bash(../venv/bin/python3 -m pytest tests/templating/test_chunk.py tests/templating/test_multi_field.py tests/templating/test_selectors_chunk.py -v)",
       "Bash(../venv/bin/python3 -m pytest tests/templating/test_phase2_integration.py -v)",
-      "Bash(../venv/bin/python3 -m pytest tests/templating/test_chunk.py tests/templating/test_multi_field.py tests/templating/test_selectors_chunk.py tests/templating/test_phase2_integration.py -v)"
+      "Bash(../venv/bin/python3 -m pytest tests/templating/test_chunk.py tests/templating/test_multi_field.py tests/templating/test_selectors_chunk.py tests/templating/test_phase2_integration.py -v)",
+      "WebFetch(domain:docs.pytest.org)"
     ],
     "deny": [],
     "ask": []

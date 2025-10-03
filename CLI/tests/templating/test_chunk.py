@@ -4,13 +4,13 @@ Tests for chunk template and loading functionality.
 
 import pytest
 from pathlib import Path
-from CLI.templating.chunk import (
+from templating.chunk import (
     load_chunk_template,
     load_chunk,
     resolve_chunk_fields,
     render_chunk,
 )
-from CLI.templating.types import ChunkTemplate, Chunk
+from templating.types import ChunkTemplate, Chunk
 
 
 # Use fixtures directory

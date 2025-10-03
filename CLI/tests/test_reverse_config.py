@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
 from reverse_config import (
     parse_session_config,

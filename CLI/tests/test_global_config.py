@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch, mock_open
 
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "CLI"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config.global_config import (
     GlobalConfig,
