@@ -44,7 +44,8 @@ class ImageVariationGenerator:
                  generation_mode: str = "ask",  # "combinatorial", "random", "ask"
                  seed_mode: str = "ask",  # "fixed", "progressive", "random", "ask"
                  session_name: str = "variations",
-                 filename_keys: Optional[List[str]] = None):
+                 filename_keys: Optional[List[str]] = None,
+                 dry_run: bool = False):
         """
         Initialise le générateur.
 
@@ -72,6 +73,7 @@ class ImageVariationGenerator:
         self.seed_mode = seed_mode
         self.session_name = session_name
         self.filename_keys = filename_keys or []
+        self.dry_run = dry_run
 
         # Configuration de génération par défaut
         self.generation_config = GenerationConfig(
@@ -125,7 +127,8 @@ class ImageVariationGenerator:
         client = StableDiffusionAPIClient(
             api_url=self.api_url,
             base_output_dir=self.base_output_dir,
-            session_name=self.session_name
+            session_name=self.session_name,
+            dry_run=self.dry_run
         )
         client.set_generation_config(self.generation_config)
 

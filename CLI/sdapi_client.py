@@ -34,10 +34,12 @@ class StableDiffusionAPIClient:
 
     def __init__(self, api_url: str = "http://127.0.0.1:7860",
                  base_output_dir: str = "apioutput",
-                 session_name: str = None):
+                 session_name: str = None,
+                 dry_run: bool = False):
         self.api_url = api_url
         self.base_output_dir = base_output_dir
         self.session_name = session_name
+        self.dry_run = dry_run
         self.session_start_time = datetime.now()
         self.output_dir = self._create_session_dir()
         self.generation_config = GenerationConfig()
@@ -50,7 +52,13 @@ class StableDiffusionAPIClient:
         else:
             session_dir_name = timestamp
 
-        session_dir = os.path.join(self.base_output_dir, session_dir_name)
+        # En mode dry-run, utiliser un sous-dossier /dryrun
+        if self.dry_run:
+            base_dir = os.path.join(self.base_output_dir, "dryrun")
+        else:
+            base_dir = self.base_output_dir
+
+        session_dir = os.path.join(base_dir, session_dir_name)
         return session_dir
 
     def set_generation_config(self, config: GenerationConfig):
@@ -131,6 +139,19 @@ class StableDiffusionAPIClient:
         }
 
         try:
+            # Mode dry-run: sauver le JSON au lieu d'appeler l'API
+            if self.dry_run:
+                self.create_output_dir()
+                # Remplacer .png par .json pour le nom de fichier
+                json_filename = prompt_config.filename.replace('.png', '.json')
+                filepath = os.path.join(self.output_dir, json_filename)
+
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(payload, f, indent=2, ensure_ascii=False)
+
+                return True
+
+            # Mode normal: appeler l'API
             response = requests.post(f"{self.api_url}/sdapi/v1/txt2img", json=payload)
             response.raise_for_status()
             result = response.json()
@@ -173,9 +194,11 @@ class StableDiffusionAPIClient:
             info["nombre_images_demandees"] = len(prompt_configs)
             self.save_session_config(base_prompt, negative_prompt, info)
 
-        if not self.test_connection():
-            print("❌ Impossible de se connecter à l'API WebUI")
-            return 0, len(prompt_configs)
+        # En mode dry-run, skip le test de connexion
+        if not self.dry_run:
+            if not self.test_connection():
+                print("❌ Impossible de se connecter à l'API WebUI")
+                return 0, len(prompt_configs)
 
         success_count = 0
         total_images = len(prompt_configs)

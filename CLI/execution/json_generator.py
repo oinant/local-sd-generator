@@ -322,7 +322,8 @@ def resolve_interactive_params(config: GenerationSessionConfig,
 def create_generator_from_config(config: GenerationSessionConfig,
                                    api_url: str = "http://127.0.0.1:7860",
                                    base_output_dir: str = "apioutput",
-                                   config_dir: Optional[Path] = None) -> ImageVariationGenerator:
+                                   config_dir: Optional[Path] = None,
+                                   dry_run: bool = False) -> ImageVariationGenerator:
     """
     Create ImageVariationGenerator from resolved config.
 
@@ -372,7 +373,8 @@ def create_generator_from_config(config: GenerationSessionConfig,
         generation_mode=config.generation.mode,
         seed_mode=config.generation.seed_mode,
         session_name=config.output.session_name or "json_config_session",
-        filename_keys=config.output.filename_keys
+        filename_keys=config.output.filename_keys,
+        dry_run=dry_run
     )
 
     # Set generation parameters
@@ -394,7 +396,8 @@ def create_generator_from_config(config: GenerationSessionConfig,
 def run_generation_from_config(config_path: Path,
                                  api_url: str = None,
                                  base_output_dir: str = None,
-                                 available_samplers: Optional[List[str]] = None) -> Dict[str, Any]:
+                                 available_samplers: Optional[List[str]] = None,
+                                 dry_run: bool = False) -> Dict[str, Any]:
     """
     Complete execution flow: load, validate, resolve, generate.
 
@@ -483,7 +486,8 @@ def run_generation_from_config(config_path: Path,
         resolved_config,
         api_url,
         base_output_dir,
-        config_dir=config_path.parent  # Pass config directory for relative path resolution
+        config_dir=config_path.parent,  # Pass config directory for relative path resolution
+        dry_run=dry_run
     )
     print("✓ Generator created\n")
 

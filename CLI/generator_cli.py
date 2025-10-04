@@ -80,6 +80,12 @@ For more information, see documentation at:
         help='Override Stable Diffusion API URL (default from global config)'
     )
 
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Dry-run mode: save API requests as JSON files instead of generating images'
+    )
+
     return parser.parse_args()
 
 
@@ -156,7 +162,8 @@ def main():
         try:
             result = run_generation_from_config(
                 config_path=config_path,
-                api_url=api_url
+                api_url=api_url,
+                dry_run=args.dry_run
             )
 
             # Display final summary

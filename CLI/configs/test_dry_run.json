@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "name": "Dry-Run Test",
+  "description": "Quick test for dry-run mode",
+  "prompt": {
+    "template": "beautiful woman, {Expression}, professional photo",
+    "negative": "low quality, blurry"
+  },
+  "variations": {
+    "Expression": "../examples/variations/expressions.yaml"
+  },
+  "generation": {
+    "mode": "combinatorial",
+    "seed": 42,
+    "seed_mode": "progressive",
+    "max_images": 3
+  },
+  "parameters": {
+    "width": 512,
+    "height": 768,
+    "steps": 20,
+    "cfg_scale": 7.0,
+    "sampler": "DPM++ 2M Karras",
+    "batch_size": 1,
+    "batch_count": 1
+  },
+  "output": {
+    "session_name": "dry_run_test",
+    "filename_keys": ["Expression"]
+  }
+}
