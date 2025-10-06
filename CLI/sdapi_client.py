@@ -174,7 +174,7 @@ class StableDiffusionAPIClient:
                 return True
 
             # Mode normal: appeler l'API
-            response = requests.post(f"{self.api_url}/sdapi/v1/txt2img", json=payload)
+            response = requests.post(f"{self.api_url}/sdapi/v1/txt2img", json=payload, timeout=300)
             response.raise_for_status()
             result = response.json()
 

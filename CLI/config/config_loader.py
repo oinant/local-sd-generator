@@ -5,6 +5,7 @@ Loads and validates JSON configuration files with comprehensive error checking.
 """
 
 import json
+import os
 from pathlib import Path
 from typing import List, Set, Optional
 
@@ -287,7 +288,3 @@ def load_and_validate_config(path: Path,
     config = load_config_from_file(path)
     result = validate_config(config, available_samplers)
     return config, result
-
-
-# Import os for file access check
-import os
