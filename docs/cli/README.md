@@ -5,9 +5,11 @@ Command-line interface for Stable Diffusion batch image generation with variatio
 ## Overview
 
 The CLI provides a powerful system for generating multiple image variations using:
+- **YAML Templates**: Declarative `.prompt.yaml` configuration files (Phase 2)
 - **Placeholders**: Dynamic prompt templating with `{PlaceholderName}`
-- **Variation files**: External text files containing variation options
-- **JSON configs**: Declarative configuration for reproducible generations
+- **Variation files**: External YAML files containing variation options
+- **Chunk Templates**: Reusable prompt components with inheritance
+- **Multi-field Variations**: Combine multiple variation files
 - **Batch processing**: Generate hundreds of variations automatically
 
 ## Documentation
@@ -15,14 +17,15 @@ The CLI provides a powerful system for generating multiple image variations usin
 ### Usage Documentation
 User guides and how-to articles:
 - [Getting Started](./usage/getting-started.md) - Installation and first generation
-- [JSON Config System](./usage/json-config-system.md) - Using JSON configurations
+- [YAML Templating Guide](./usage/yaml-templating-guide.md) - Creating `.prompt.yaml` templates
 - [Variation Files](./usage/variation-files.md) - Creating and managing variations
 - [Examples](./usage/examples.md) - Common use cases and patterns
+- ~~[JSON Config System](./usage/json-config-system.md)~~ - **DEPRECATED** (removed in favor of YAML)
 
 ### Technical Documentation
 Architecture and implementation details:
 - [Architecture Overview](./technical/architecture.md) - System design
-- [Config System](./technical/config-system.md) - JSON config loading & validation
+- [Phase 2 Templating Engine](./technical/phase2-templating-engine.md) - YAML template system
 - [Output System](./technical/output-system.md) - File naming & metadata
 - [Variation Loader](./technical/variation-loader.md) - Placeholder system
 - [Design Decisions](./technical/design-decisions.md) - Why we made certain choices
@@ -30,25 +33,42 @@ Architecture and implementation details:
 ## Quick Start
 
 ```bash
-# Using Python script
-python CLI/facial_expression_generator.py
+# Interactive mode - select from available templates
+python3 template_cli.py
 
-# Using JSON config (Phase 3+)
-python CLI/generator_cli.py --config configs/my_config.json
+# Run specific template
+python3 template_cli.py --template prompts/portrait.prompt.yaml
+
+# Dry-run mode (save JSON requests without calling API)
+python3 template_cli.py --template test.yaml --dry-run
+
+# List available templates
+python3 template_cli.py --list
 ```
 
-## Current Features
+## Current Features (Phase 2)
 
-✅ **Placeholder System**: `{Expression}`, `{Angle}`, etc.
-✅ **Variation Loading**: From external text files
+✅ **YAML Templates**: `.prompt.yaml` format with schema validation
+✅ **Placeholder System**: `{Expression}`, `{Angle}`, inline variations
+✅ **Chunk Templates**: Reusable components with `implements` and overrides
+✅ **Multi-field Variations**: Combine multiple variation files with selectors
+✅ **Flexible Selectors**: Keys, indices, ranges, random selection (`#|1,3,5`, `:5-10`, `:random(10)`)
 ✅ **Generation Modes**: Combinatorial, random
 ✅ **Seed Control**: Fixed, progressive, random
+✅ **Template Inheritance**: Extend base templates with `extends`
 ✅ **Enhanced File Naming**: Descriptive filenames with variation values
 ✅ **JSON Metadata**: Complete generation metadata export
 ✅ **Global Config**: Project-level configuration (`.sdgen_config.json`)
-✅ **JSON Config Loading**: Load and validate generation configs
+✅ **Hires Fix Support**: Two-pass upscaling configuration
 
-🔄 **In Progress**: JSON-driven generation (Phase 3)
+## Migration from Phase 1 (JSON)
+
+**Phase 1 JSON system has been removed.** Use YAML templates instead:
+
+- **Old:** `generator_cli.py --config config.json`
+- **New:** `template_cli.py --template config.prompt.yaml`
+
+See [YAML Templating Guide](./usage/yaml-templating-guide.md) for migration instructions.
 
 ## See Also
 

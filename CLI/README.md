@@ -1,6 +1,6 @@
 # SD Image Generator CLI
 
-**Command-line tool for JSON-driven Stable Diffusion image generation with variations.**
+**Command-line tool for YAML-driven Stable Diffusion image generation with variations.**
 
 ---
 
@@ -8,41 +8,41 @@
 
 ```bash
 # Initialize global config
-python3 generator_cli.py --init-config
+python3 template_cli.py --init-config
 
-# Legacy JSON configs (Phase 1)
-python3 generator_cli.py --list              # List available configs
-python3 generator_cli.py                     # Interactive mode
-python3 generator_cli.py --config example.json
-
-# Phase 2 YAML templates
+# YAML templates (Phase 2 - Current)
 python3 template_cli.py --list               # List available templates
 python3 template_cli.py                      # Interactive mode
 python3 template_cli.py --template config.prompt.yaml --count 5
 python3 template_cli.py --template test.yaml --dry-run  # Test without API
 ```
 
+**Note:** Phase 1 JSON config system (`generator_cli.py`) has been removed. Use YAML templates (`.prompt.yaml`) instead.
+
 ---
 
 ## Features
 
-✅ **JSON Config System**
-- Define prompts, variations, and parameters in JSON
-- Reusable configurations
+✅ **YAML Template System**
+- Define prompts, variations, and parameters in `.prompt.yaml` files
+- Reusable chunk templates with inheritance
+- Multi-field variations and flexible selectors
 - Version control friendly
 
 ✅ **Interactive Selection**
-- Browse available configs
+- Browse available templates
 - Select from list
 - Direct path support
 
-✅ **Interactive Parameters**
-- Set values to "ask" or -1 to prompt at runtime
-- Flexible experimentation
-- Quick parameter changes
+✅ **Advanced Templating**
+- Placeholder system: `{PlaceholderName}`
+- Inline variations: direct lists in YAML
+- Chunk templates: reusable components with `implements`
+- Template inheritance: `extends` for base templates
+- Flexible selectors: keys, indices, ranges, random
 
 ✅ **Validation**
-- Comprehensive config validation
+- Comprehensive template validation
 - Clear error messages
 - Helpful suggestions
 
@@ -50,6 +50,7 @@ python3 template_cli.py --template test.yaml --dry-run  # Test without API
 - Real-time generation progress
 - Success/failure tracking
 - Timing information
+- Dry-run mode for testing
 
 ---
 
@@ -58,31 +59,31 @@ python3 template_cli.py --template test.yaml --dry-run  # Test without API
 ### Interactive Mode
 
 ```bash
-python3 generator_cli.py
+python3 template_cli.py
 ```
 
-Displays list of configs and prompts for selection.
+Displays list of templates and prompts for selection.
 
-### Direct Config Path
+### Direct Template Path
 
 ```bash
-python3 generator_cli.py --config PATH
+python3 template_cli.py --template PATH
 ```
 
-Runs specific config directly.
+Runs specific template directly.
 
-### List Configs
+### List Templates
 
 ```bash
-python3 generator_cli.py --list
+python3 template_cli.py --list
 ```
 
-Lists all available configs with metadata.
+Lists all available `.prompt.yaml` templates with metadata.
 
 ### Initialize Config
 
 ```bash
-python3 generator_cli.py --init-config
+python3 template_cli.py --init-config
 ```
 
 Creates `.sdgen_config.json` with global settings.

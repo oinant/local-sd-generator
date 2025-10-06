@@ -35,87 +35,124 @@ Ensure Stable Diffusion WebUI is running and accessible at `http://127.0.0.1:786
 
 ## Your First Generation
 
-There are two ways to use the generator:
-1. **JSON Config Mode** (Recommended) - Use JSON files to configure generation
-2. **Python Script Mode** - Write custom Python scripts
-
-### Option 1: JSON Config Mode (Recommended)
+### YAML Template Mode (Current)
 
 #### Step 1: Initialize global config
 
 ```bash
-python3 CLI/generator_cli.py --init-config
+python3 CLI/template_cli.py --init-config
 ```
 
 This creates `.sdgen_config.json` with default settings.
 
 #### Step 2: Create a variation file
 
-Create `variations/expressions.txt`:
+Create `variations/expressions.yaml`:
 
+```yaml
+type: variations
+name: Facial Expressions
+version: '1.0'
+description: Basic facial expressions
+
+variations:
+  smiling: "smiling, happy"
+  sad: "sad, crying"
+  angry: "angry, frowning"
+  surprised: "surprised, shocked"
+  neutral: "neutral expression"
 ```
-smiling
-sad
-angry
-surprised
-neutral
-```
 
-#### Step 3: Create a JSON config
+#### Step 3: Create a YAML template
 
-Create `configs/my_first_config.json`:
+Create `prompts/my_first_template.prompt.yaml`:
 
-```json
-{
-  "version": "1.0",
-  "name": "My First Generation",
-  "description": "Test generation with different expressions",
+```yaml
+version: '2.0'
+name: 'My First Generation'
+description: Test generation with different expressions
 
-  "prompt": {
-    "template": "portrait of a person, {Expression}, detailed face",
-    "negative": "low quality, blurry, bad anatomy"
-  },
+base_path: ..
 
-  "variations": {
-    "Expression": "./variations/expressions.txt"
-  },
+imports:
+  Expression: ./variations/expressions.yaml
 
-  "generation": {
-    "mode": "combinatorial",
-    "seed_mode": "progressive",
-    "seed": 42,
-    "max_images": 5
-  },
+template: |
+  portrait of a person, {Expression}, detailed face
 
-  "parameters": {
-    "width": 512,
-    "height": 768,
-    "steps": 30,
-    "cfg_scale": 7.0,
-    "sampler": "DPM++ 2M Karras"
-  },
+negative_prompt: |
+  low quality, blurry, bad anatomy
 
-  "output": {
-    "session_name": "my_first_generation",
-    "filename_keys": ["Expression"]
-  }
-}
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 42
+  max_images: 5
+
+parameters:
+  width: 512
+  height: 768
+  steps: 30
+  cfg_scale: 7.0
+  sampler: DPM++ 2M Karras
+
+output:
+  session_name: my_first_generation
+  filename_keys:
+    - Expression
 ```
 
 #### Step 4: Run the generation
 
 ```bash
 # Interactive mode (select from list)
-python3 CLI/generator_cli.py
+python3 CLI/template_cli.py
 
-# Direct config path
-python3 CLI/generator_cli.py --config configs/my_first_config.json
+# Direct template path
+python3 CLI/template_cli.py --template prompts/my_first_template.prompt.yaml
 
-# List available configs
-python3 CLI/generator_cli.py --list
+# List available templates
+python3 CLI/template_cli.py --list
+
+# Dry-run mode (test without API)
+python3 CLI/template_cli.py --template prompts/my_first_template.prompt.yaml --dry-run
 ```
 
-### Option 2: Python Script Mode
+---
+
+## Advanced Features
+
+### Inline Variations
+
+You can define variations directly in the template:
+
+```yaml
+imports:
+  Expression:
+    - smiling, happy
+    - sad, crying
+    - angry, frowning
+```
+
+### Multiple Variation Files
+
+Combine multiple variation files:
+
+```yaml
+imports:
+  Outfit:
+    - ./variations/outfits_casual.yaml
+    - ./variations/outfits_formal.yaml
+    - ./variations/outfits_fantasy.yaml
+```
+
+### Chunk Templates
+
+Reusable components with inheritance - see [YAML Templating Guide](./yaml-templating-guide.md).
+
+---
+
+## Legacy: Python Script Mode (Deprecated)
 
 #### Step 1: Create a variation file
 

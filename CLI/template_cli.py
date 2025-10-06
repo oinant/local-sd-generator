@@ -23,7 +23,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config.global_config import load_global_config, ensure_global_config
 from templating import load_prompt_config, resolve_prompt
-from execution.json_generator import run_generation_from_config
 
 
 def check_tty() -> bool:
