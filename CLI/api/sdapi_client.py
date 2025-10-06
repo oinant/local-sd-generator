@@ -7,7 +7,7 @@ no progress reporting, no session management.
 
 import requests
 from typing import Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 
 @dataclass

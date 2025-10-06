@@ -2,7 +2,6 @@
 Unit tests for ProgressReporter
 """
 
-import pytest
 from pathlib import Path
 
 from api.progress_reporter import ProgressReporter, SilentProgressReporter
