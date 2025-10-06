@@ -35,12 +35,14 @@ No blocking issues that would prevent deployment or cause critical failures.
 
 ## Important Issues (🟠 Important)
 
-### 1. **Function Too Long** - `resolver.py:resolve_prompt()` (lines 213-397)
+### 1. ✅ **[FIXED]** Function Too Long - `resolver.py:resolve_prompt()` (lines 213-397)
+
+**Status:** ✅ **RESOLVED** (2025-10-06)
 
 **File:** `CLI/templating/resolver.py`
 **Function:** `resolve_prompt()`
-**Lines:** 185 lines
-**Complexity:** High (~15-18)
+**Original:** 185 lines, Complexity E (35+)
+**After:** 20 lines orchestrator, Complexity A
 
 **Problem:**
 - Violates Single Responsibility Principle
@@ -48,47 +50,26 @@ No blocking issues that would prevent deployment or cause critical failures.
 - Difficult to test individual components
 - Hard to maintain and understand
 
-**Impact:**
-- ⬛ Maintainability: Very difficult to modify
-- ⬛ Testability: Can only test integration, not individual steps
-- ⬛ Readability: Cognitive overload
+**Solution Implemented:**
+Extracted 6 focused functions following SRP:
 
-**Recommendation:**
-Extract into smaller functions:
-```python
-def _load_all_imports(config, base_path) -> Dict[str, dict]:
-    """Load all imports from config."""
-    ...
+1. `_load_all_imports()` - Load imports from config (14 lines)
+2. `_parse_prompt_placeholders()` - Parse template for chunks/variations (33 lines)
+3. `_resolve_all_chunks()` - Resolve chunk placeholders (40 lines)
+4. `_resolve_all_variations()` - Resolve variation placeholders (53 lines)
+5. `_generate_combinations()` - Generate combinations based on mode (49 lines)
+6. `_build_resolved_variations()` - Build final ResolvedVariation objects (68 lines)
 
-def _parse_prompt_placeholders(template: str) -> Tuple[dict, dict]:
-    """Parse prompt for chunks and variations."""
-    ...
+**New resolve_prompt():** Clean orchestrator coordinating the 6-step pipeline
 
-def _resolve_all_chunks(chunk_placeholders, imports, config) -> Dict[str, List[str]]:
-    """Resolve all chunk placeholders."""
-    ...
+**Validation:**
+- ✅ 52 Phase 2 tests pass
+- ✅ Complexity reduced from E to A
+- ✅ Each function independently testable
+- ✅ No behavioral changes
 
-def _resolve_all_variations(variation_placeholders, imports, config) -> Dict[str, List[Variation]]:
-    """Resolve all variation placeholders."""
-    ...
-
-def _generate_combinations_with_seeds(all_elements, config) -> List[Dict]:
-    """Generate final combinations with seed assignment."""
-    ...
-
-def resolve_prompt(config: PromptConfig, base_path: Path = None) -> List[ResolvedVariation]:
-    """Orchestrate the resolution pipeline."""
-    imports = _load_all_imports(config, base_path)
-    chunk_placeholders, var_placeholders = _parse_prompt_placeholders(config.prompt_template)
-    chunks = _resolve_all_chunks(chunk_placeholders, imports, config)
-    variations = _resolve_all_variations(var_placeholders, imports, config)
-    combinations = _generate_combinations_with_seeds({**chunks, **variations}, config)
-    return _build_resolved_variations(combinations, config)
-```
-
-**Priority:** 🟠 High (P2)
-**Effort:** Large (6-8h)
-**Action Item:** Create refactoring task
+**Priority:** 🟠 High (P2) → ✅ **COMPLETED**
+**Effort:** Large (6-8h) → **Actual: ~4h**
 
 ---
 

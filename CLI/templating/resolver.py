@@ -210,143 +210,26 @@ def _load_import(filepath, base_path: Path) -> dict:
             }
 
 
-def resolve_prompt(config: PromptConfig, base_path: Path = None) -> List[ResolvedVariation]:
+def _build_resolved_variations(
+    combinations: List[Dict[str, any]],
+    resolved_chunks: Dict[str, List[str]],
+    resolved_variations: Dict[str, List[Variation]],
+    config: PromptConfig
+) -> List[ResolvedVariation]:
     """
-    Resolve a prompt configuration into concrete variations.
+    Build final ResolvedVariation objects with seeds and replaced prompts.
 
     Args:
-        config: The PromptConfig to resolve
-        base_path: Base path for resolving relative import paths (default: current directory)
+        combinations: List of dicts mapping placeholder names to values
+        resolved_chunks: Dict {placeholder: [rendered_chunk1, ...]} (for pattern matching)
+        resolved_variations: Dict {placeholder: [Variation, ...]} (for pattern matching)
+        config: PromptConfig for seed mode and template
 
     Returns:
-        List of ResolvedVariation objects ready for generation
-
-    Raises:
-        FileNotFoundError: If variation files can't be found
-        ValueError: If configuration is invalid
+        List of ResolvedVariation objects
     """
-    if base_path is None:
-        base_path = Path.cwd()
-
-    # Step 1: Load all imports (variations, multi-field, or chunks)
-    imports: Dict[str, dict] = {}
-    for placeholder_name, variation_path in config.imports.items():
-        imports[placeholder_name] = _load_import(variation_path, base_path)
-
-    # Step 2: Parse prompt template for placeholders and chunk "with" syntax
-    # Need to extract full placeholder content for chunk detection
-    chunk_placeholders = {}  # {placeholder_name: (chunk_name, overrides)}
-    variation_placeholders = {}  # {placeholder_name: selector_str}
-
-    # Extract all {XXX...} patterns
-    full_pattern = r'\{([^}]+)\}'
-    for match in re.finditer(full_pattern, config.prompt_template):
-        full_content = match.group(1)  # Content inside {}
-
-        # Check if it's a chunk with syntax
-        chunk_name, overrides = parse_chunk_with_syntax(full_content)
-
-        if chunk_name:
-            # It's a chunk placeholder
-            chunk_placeholders[chunk_name] = (chunk_name, overrides)
-        else:
-            # It's a normal variation placeholder
-            # Extract placeholder name and selector
-            simple_placeholders = extract_placeholders(match.group(0))
-            variation_placeholders.update(simple_placeholders)
-
-    # Step 3: Resolve chunks
-    resolved_chunks: Dict[str, List[str]] = {}  # {placeholder: [rendered_chunk1, rendered_chunk2, ...]}
-
-    for placeholder_name, (chunk_name, overrides) in chunk_placeholders.items():
-        if chunk_name not in imports:
-            raise ValueError(f"Chunk {chunk_name} not found in imports")
-
-        chunk_data = imports[chunk_name]
-        if chunk_data['type'] != 'chunk':
-            raise ValueError(f"Import {chunk_name} is not a chunk")
-
-        # Resolve chunk with overrides
-        rendered_chunks = _resolve_chunk_with_overrides(
-            chunk_data['chunk'],
-            chunk_data['template'],
-            overrides,
-            imports,
-            config
-        )
-        resolved_chunks[chunk_name] = rendered_chunks
-
-    # Step 4: Resolve normal variations
-    resolved_variations: Dict[str, List[Variation]] = {}
-    for placeholder_name, selector_str in variation_placeholders.items():
-        if placeholder_name not in imports:
-            raise ValueError(
-                f"Placeholder {{{placeholder_name}}} used in prompt but not defined in imports"
-            )
-
-        import_data = imports[placeholder_name]
-
-        # Get variations dict based on type
-        if import_data['type'] == 'chunk':
-            raise ValueError(f"Placeholder {{{placeholder_name}}} references a chunk but doesn't use 'with' syntax")
-
-        variations_dict = import_data['data']
-
-        if selector_str:
-            # Parse and resolve selectors
-            selectors = parse_selector(selector_str)
-            selected = resolve_selectors(
-                variations_dict,
-                selectors,
-                index_base=config.index_base,
-                strict_mode=config.strict_mode,
-                allow_duplicates=config.allow_duplicates,
-                random_seed=config.random_seed
-            )
-        else:
-            # No selector = use all
-            selected = list(variations_dict.values())
-
-        resolved_variations[placeholder_name] = selected
-
-    # Step 5: Generate combinations
-    # We need to combine both chunks and normal variations
-    # Chunks are already resolved to strings, variations are Variation objects
-
-    # Create combined dict for combination generation
-    all_elements = {}
-
-    # Add chunks as lists of strings
-    for chunk_name, rendered_list in resolved_chunks.items():
-        all_elements[chunk_name] = rendered_list
-
-    # Add variations as lists of Variation objects
-    for placeholder_name, var_list in resolved_variations.items():
-        all_elements[placeholder_name] = var_list
-
-    # Generate combinations based on mode
-    # Special case: if no variations/chunks, but random/progressive seed mode with max_images
-    # we want to generate N copies with different seeds
-    if not all_elements:
-        if config.seed_mode in ('random', 'progressive') and config.max_images:
-            # Generate N empty combinations for different seeds
-            combinations = [{}] * config.max_images
-        else:
-            # No variations and fixed seed or no max_images: just one image
-            combinations = [{}]
-    elif config.generation_mode == 'combinatorial':
-        combinations = _generate_combinatorial_mixed(all_elements, config.max_images)
-    elif config.generation_mode == 'random':
-        # In random mode, max_images should control output count
-        # regardless of combinatorial possibilities
-        # If seed mode is random/progressive, allow duplicate combinations
-        allow_duplicates = config.seed_mode in ('random', 'progressive')
-        combinations = _generate_random_mixed(all_elements, config.max_images or 100, allow_duplicates=allow_duplicates)
-    else:
-        raise ValueError(f"Unknown generation mode: {config.generation_mode}")
-
-    # Step 6: Generate final prompts with seeds
     result = []
+
     for idx, combination in enumerate(combinations):
         # Determine seed
         if config.seed_mode == 'fixed':
@@ -395,6 +278,243 @@ def resolve_prompt(config: PromptConfig, base_path: Path = None) -> List[Resolve
         ))
 
     return result
+
+
+def _generate_combinations(
+    resolved_chunks: Dict[str, List[str]],
+    resolved_variations: Dict[str, List[Variation]],
+    config: PromptConfig
+) -> List[Dict[str, any]]:
+    """
+    Generate combinations of chunks and variations.
+
+    Args:
+        resolved_chunks: Dict {placeholder: [rendered_chunk1, ...]}
+        resolved_variations: Dict {placeholder: [Variation, ...]}
+        config: PromptConfig for generation mode and max_images
+
+    Returns:
+        List of dicts mapping placeholder names to values (str or Variation)
+    """
+    # Create combined dict for combination generation
+    all_elements = {}
+
+    # Add chunks as lists of strings
+    for chunk_name, rendered_list in resolved_chunks.items():
+        all_elements[chunk_name] = rendered_list
+
+    # Add variations as lists of Variation objects
+    for placeholder_name, var_list in resolved_variations.items():
+        all_elements[placeholder_name] = var_list
+
+    # Generate combinations based on mode
+    # Special case: if no variations/chunks, but random/progressive seed mode with max_images
+    # we want to generate N copies with different seeds
+    if not all_elements:
+        if config.seed_mode in ('random', 'progressive') and config.max_images:
+            # Generate N empty combinations for different seeds
+            combinations = [{}] * config.max_images
+        else:
+            # No variations and fixed seed or no max_images: just one image
+            combinations = [{}]
+    elif config.generation_mode == 'combinatorial':
+        combinations = _generate_combinatorial_mixed(all_elements, config.max_images)
+    elif config.generation_mode == 'random':
+        # In random mode, max_images should control output count
+        # regardless of combinatorial possibilities
+        # If seed mode is random/progressive, allow duplicate combinations
+        allow_duplicates = config.seed_mode in ('random', 'progressive')
+        combinations = _generate_random_mixed(all_elements, config.max_images or 100, allow_duplicates=allow_duplicates)
+    else:
+        raise ValueError(f"Unknown generation mode: {config.generation_mode}")
+
+    return combinations
+
+
+def _resolve_all_variations(
+    variation_placeholders: Dict[str, str],
+    imports: Dict[str, dict],
+    config: PromptConfig
+) -> Dict[str, List[Variation]]:
+    """
+    Resolve all variation placeholders.
+
+    Args:
+        variation_placeholders: Dict {placeholder_name: selector_str}
+        imports: All loaded imports
+        config: PromptConfig for selector resolution settings
+
+    Returns:
+        Dict {placeholder_name: [Variation, ...]}
+
+    Raises:
+        ValueError: If placeholder not found or invalid
+    """
+    resolved_variations: Dict[str, List[Variation]] = {}
+
+    for placeholder_name, selector_str in variation_placeholders.items():
+        if placeholder_name not in imports:
+            raise ValueError(
+                f"Placeholder {{{placeholder_name}}} used in prompt but not defined in imports"
+            )
+
+        import_data = imports[placeholder_name]
+
+        # Get variations dict based on type
+        if import_data['type'] == 'chunk':
+            raise ValueError(f"Placeholder {{{placeholder_name}}} references a chunk but doesn't use 'with' syntax")
+
+        variations_dict = import_data['data']
+
+        if selector_str:
+            # Parse and resolve selectors
+            selectors = parse_selector(selector_str)
+            selected = resolve_selectors(
+                variations_dict,
+                selectors,
+                index_base=config.index_base,
+                strict_mode=config.strict_mode,
+                allow_duplicates=config.allow_duplicates,
+                random_seed=config.random_seed
+            )
+        else:
+            # No selector = use all
+            selected = list(variations_dict.values())
+
+        resolved_variations[placeholder_name] = selected
+
+    return resolved_variations
+
+
+def _resolve_all_chunks(
+    chunk_placeholders: Dict[str, tuple],
+    imports: Dict[str, dict],
+    config: PromptConfig
+) -> Dict[str, List[str]]:
+    """
+    Resolve all chunk placeholders.
+
+    Args:
+        chunk_placeholders: Dict {placeholder_name: (chunk_name, overrides)}
+        imports: All loaded imports
+        config: PromptConfig for generation settings
+
+    Returns:
+        Dict {placeholder: [rendered_chunk1, rendered_chunk2, ...]}
+
+    Raises:
+        ValueError: If chunk not found or invalid
+    """
+    resolved_chunks: Dict[str, List[str]] = {}
+
+    for placeholder_name, (chunk_name, overrides) in chunk_placeholders.items():
+        if chunk_name not in imports:
+            raise ValueError(f"Chunk {chunk_name} not found in imports")
+
+        chunk_data = imports[chunk_name]
+        if chunk_data['type'] != 'chunk':
+            raise ValueError(f"Import {chunk_name} is not a chunk")
+
+        # Resolve chunk with overrides
+        rendered_chunks = _resolve_chunk_with_overrides(
+            chunk_data['chunk'],
+            chunk_data['template'],
+            overrides,
+            imports,
+            config
+        )
+        resolved_chunks[chunk_name] = rendered_chunks
+
+    return resolved_chunks
+
+
+def _parse_prompt_placeholders(prompt_template: str) -> tuple:
+    """
+    Parse prompt template for placeholders and chunk "with" syntax.
+
+    Args:
+        prompt_template: The prompt template string
+
+    Returns:
+        Tuple of (chunk_placeholders, variation_placeholders)
+        - chunk_placeholders: Dict {placeholder_name: (chunk_name, overrides)}
+        - variation_placeholders: Dict {placeholder_name: selector_str}
+    """
+    chunk_placeholders = {}  # {placeholder_name: (chunk_name, overrides)}
+    variation_placeholders = {}  # {placeholder_name: selector_str}
+
+    # Extract all {XXX...} patterns
+    full_pattern = r'\{([^}]+)\}'
+    for match in re.finditer(full_pattern, prompt_template):
+        full_content = match.group(1)  # Content inside {}
+
+        # Check if it's a chunk with syntax
+        chunk_name, overrides = parse_chunk_with_syntax(full_content)
+
+        if chunk_name:
+            # It's a chunk placeholder
+            chunk_placeholders[chunk_name] = (chunk_name, overrides)
+        else:
+            # It's a normal variation placeholder
+            # Extract placeholder name and selector
+            simple_placeholders = extract_placeholders(match.group(0))
+            variation_placeholders.update(simple_placeholders)
+
+    return chunk_placeholders, variation_placeholders
+
+
+def _load_all_imports(config: PromptConfig, base_path: Path) -> Dict[str, dict]:
+    """
+    Load all imports from config.
+
+    Args:
+        config: The PromptConfig containing imports
+        base_path: Base path for resolving relative import paths
+
+    Returns:
+        Dict mapping placeholder names to import data (variations, multi-field, or chunks)
+    """
+    imports: Dict[str, dict] = {}
+    for placeholder_name, variation_path in config.imports.items():
+        imports[placeholder_name] = _load_import(variation_path, base_path)
+    return imports
+
+
+def resolve_prompt(config: PromptConfig, base_path: Path = None) -> List[ResolvedVariation]:
+    """
+    Resolve a prompt configuration into concrete variations.
+
+    Args:
+        config: The PromptConfig to resolve
+        base_path: Base path for resolving relative import paths (default: current directory)
+
+    Returns:
+        List of ResolvedVariation objects ready for generation
+
+    Raises:
+        FileNotFoundError: If variation files can't be found
+        ValueError: If configuration is invalid
+    """
+    if base_path is None:
+        base_path = Path.cwd()
+
+    # Step 1: Load all imports (variations, multi-field, or chunks)
+    imports = _load_all_imports(config, base_path)
+
+    # Step 2: Parse prompt template for placeholders and chunk "with" syntax
+    chunk_placeholders, variation_placeholders = _parse_prompt_placeholders(config.prompt_template)
+
+    # Step 3: Resolve chunks
+    resolved_chunks = _resolve_all_chunks(chunk_placeholders, imports, config)
+
+    # Step 4: Resolve normal variations
+    resolved_variations = _resolve_all_variations(variation_placeholders, imports, config)
+
+    # Step 5: Generate combinations
+    combinations = _generate_combinations(resolved_chunks, resolved_variations, config)
+
+    # Step 6: Generate final prompts with seeds
+    return _build_resolved_variations(combinations, resolved_chunks, resolved_variations, config)
 
 
 def _generate_combinatorial_mixed(

@@ -130,30 +130,33 @@ print("Starting generation...")
 
 ### Critical - Very Complex (E)
 
-#### `templating/resolver.py:resolve_prompt()` - **Complexity: E** 🔴
+#### ✅ `templating/resolver.py:resolve_prompt()` - **Complexity: E → A** 🔴 → ✅
 
+**Status:** ✅ **RESOLVED** (2025-10-06)
+
+**Before:**
 ```
 F 213:0 resolve_prompt - E
 ```
+- **Lines:** 213-397 (185 lines!)
+- **Complexity:** ~35
 
-**Lines:** 213-397 (185 lines!)
-**Complexity:** ~35 (estimated)
+**After refactoring:**
+- **Lines:** 20 lines (clean orchestrator)
+- **Complexity:** A (~3-4)
+- **Functions created:** 6 focused SRP functions (total 257 lines)
+  - `_load_all_imports()` - 14 lines, Complexity A
+  - `_parse_prompt_placeholders()` - 33 lines, Complexity A
+  - `_resolve_all_chunks()` - 40 lines, Complexity B
+  - `_resolve_all_variations()` - 53 lines, Complexity B
+  - `_generate_combinations()` - 49 lines, Complexity B
+  - `_build_resolved_variations()` - 68 lines, Complexity C
 
-**Responsibilities (violates SRP):**
-1. Load imports from config
-2. Parse prompt for placeholders and chunks
-3. Resolve chunk with overrides
-4. Resolve variation placeholders
-5. Generate combinations (combinatorial/random)
-6. Assign seeds (fixed/progressive/random)
-7. Build final ResolvedVariation objects
-
-**Impact:**
-- ⬛ Impossible to unit test individual steps
-- ⬛ Extremely difficult to maintain
-- ⬛ High risk of bugs when modifying
-
-**Recommendation:** REFACTOR IMMEDIATELY (see detailed plan in main review)
+**Validation:**
+- ✅ 52 Phase 2 tests pass
+- ✅ Each function independently testable
+- ✅ No behavioral changes
+- ✅ Complexity dramatically reduced
 
 ### Important - Complex (D)
 
