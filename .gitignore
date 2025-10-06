@@ -218,3 +218,6 @@ backend/frontend/.env
 backend/frontend/.env.local
 /CLI/private_generators/prompts/
 /CLI/apioutput/
+private_generators/
+CLI/private_generators/
+apioutput/
