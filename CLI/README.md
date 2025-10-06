@@ -10,14 +10,16 @@
 # Initialize global config
 python3 generator_cli.py --init-config
 
-# List available configs
-python3 generator_cli.py --list
+# Legacy JSON configs (Phase 1)
+python3 generator_cli.py --list              # List available configs
+python3 generator_cli.py                     # Interactive mode
+python3 generator_cli.py --config example.json
 
-# Run interactive mode
-python3 generator_cli.py
-
-# Run specific config
-python3 generator_cli.py --config configs/example_minimal.json
+# Phase 2 YAML templates
+python3 template_cli.py --list               # List available templates
+python3 template_cli.py                      # Interactive mode
+python3 template_cli.py --template config.prompt.yaml --count 5
+python3 template_cli.py --template test.yaml --dry-run  # Test without API
 ```
 
 ---
@@ -99,7 +101,47 @@ Creates `.sdgen_config.json` with global settings.
 }
 ```
 
-### JSON Config Format
+**Important:** The CLI searches for `.sdgen_config.json` in the current working directory first, then in the user's home directory.
+
+**WSL Users:** Use absolute WSL paths (e.g., `/mnt/d/StableDiffusion/private/results`) instead of Windows paths (e.g., `D:/StableDiffusion/private/results`).
+
+**Output Directories:**
+- `generator_cli.py` (Legacy JSON): Images saved to `{output_dir}/{session_name}/`
+- `template_cli.py` (Phase 2 YAML): Images saved to `{output_dir}/{session_name}_{timestamp}/`
+- `template_cli.py --dry-run`: API requests saved as JSON in session directory
+- `generate_from_template.py`: JSON variations saved to `{output_dir}/dryrun/` (utility tool, generates JSON only)
+
+### Phase 2 YAML Template CLI
+
+The `template_cli.py` provides a complete workflow for Phase 2 templates:
+
+```bash
+# Interactive template selection
+python3 template_cli.py
+
+# Direct template execution
+python3 template_cli.py --template /path/to/template.prompt.yaml
+
+# Generate specific count (overrides template config)
+python3 template_cli.py --template test.yaml --count 10
+
+# Dry-run mode (saves API requests as JSON, no image generation)
+python3 template_cli.py --template test.yaml --dry-run
+```
+
+**Output structure:**
+```
+{output_dir}/
+└── {session_name}_{timestamp}/
+    ├── {session_name}_manifest.json    # All variations with prompts
+    ├── {session_name}_0000.png         # Generated images
+    ├── {session_name}_0001.png
+    └── ...
+```
+
+In `--dry-run` mode, `request_NNNN.json` files are saved instead of images.
+
+### JSON Config Format (Legacy/Phase 1)
 
 ```json
 {

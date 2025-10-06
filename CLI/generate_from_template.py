@@ -16,6 +16,7 @@ from pathlib import Path
 from datetime import datetime
 
 from templating import load_prompt_config, resolve_prompt
+from config.global_config import load_global_config
 
 
 def generate_legacy_json(prompt_config_path: str, max_count: int = None, output_file: str = None):
@@ -82,8 +83,15 @@ def generate_legacy_json(prompt_config_path: str, max_count: int = None, output_
 
     # Determine output file
     if output_file is None:
+        # Load global config to get output_dir
+        global_config = load_global_config()
+        output_dir = Path(global_config.output_dir) / 'dryrun'
+
+        # Create output directory if it doesn't exist
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"generated_{legacy_format['session_name']}_{timestamp}.json"
+        output_file = output_dir / f"generated_{legacy_format['session_name']}_{timestamp}.json"
 
     output_path = Path(output_file)
 

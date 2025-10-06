@@ -19,6 +19,13 @@ class GenerationConfig:
     batch_size: int = 1
     n_iter: int = 1
 
+    # Hires Fix parameters
+    enable_hr: bool = False
+    hr_scale: float = 2.0
+    hr_upscaler: str = "R-ESRGAN 4x+"
+    denoising_strength: float = 0.5
+    hr_second_pass_steps: Optional[int] = None
+
 
 @dataclass
 class PromptConfig:
@@ -137,6 +144,21 @@ class StableDiffusionAPIClient:
             "batch_size": self.generation_config.batch_size,
             "n_iter": self.generation_config.n_iter
         }
+
+        # Add Hires Fix parameters if enabled
+        if self.generation_config.enable_hr:
+            payload["enable_hr"] = True
+            payload["hr_scale"] = self.generation_config.hr_scale
+            payload["hr_upscaler"] = self.generation_config.hr_upscaler
+            payload["denoising_strength"] = self.generation_config.denoising_strength
+
+            # Calculate target resolution
+            payload["hr_resize_x"] = round(self.generation_config.width * self.generation_config.hr_scale)
+            payload["hr_resize_y"] = round(self.generation_config.height * self.generation_config.hr_scale)
+
+            # Add second pass steps if specified
+            if self.generation_config.hr_second_pass_steps is not None:
+                payload["hr_second_pass_steps"] = self.generation_config.hr_second_pass_steps
 
         try:
             # Mode dry-run: sauver le JSON au lieu d'appeler l'API

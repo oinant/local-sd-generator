@@ -41,6 +41,13 @@ class ParametersConfig:
     batch_size: int = 1
     batch_count: int = 1
 
+    # Hires Fix parameters
+    enable_hr: bool = False
+    hr_scale: float = 2.0
+    hr_upscaler: str = "R-ESRGAN 4x+"
+    denoising_strength: float = 0.5
+    hr_second_pass_steps: Optional[int] = None
+
 
 @dataclass
 class OutputConfig:
@@ -106,7 +113,12 @@ class GenerationSessionConfig:
                 cfg_scale=parameters_data.get("cfg_scale", 7.0),
                 sampler=parameters_data.get("sampler", "DPM++ 2M Karras"),
                 batch_size=parameters_data.get("batch_size", 1),
-                batch_count=parameters_data.get("batch_count", 1)
+                batch_count=parameters_data.get("batch_count", 1),
+                enable_hr=parameters_data.get("enable_hr", False),
+                hr_scale=parameters_data.get("hr_scale", 2.0),
+                hr_upscaler=parameters_data.get("hr_upscaler", "R-ESRGAN 4x+"),
+                denoising_strength=parameters_data.get("denoising_strength", 0.5),
+                hr_second_pass_steps=parameters_data.get("hr_second_pass_steps")
             ),
             output=OutputConfig(
                 session_name=output_data.get("session_name"),
@@ -146,7 +158,12 @@ class GenerationSessionConfig:
                 "cfg_scale": self.parameters.cfg_scale,
                 "sampler": self.parameters.sampler,
                 "batch_size": self.parameters.batch_size,
-                "batch_count": self.parameters.batch_count
+                "batch_count": self.parameters.batch_count,
+                "enable_hr": self.parameters.enable_hr,
+                "hr_scale": self.parameters.hr_scale,
+                "hr_upscaler": self.parameters.hr_upscaler,
+                "denoising_strength": self.parameters.denoising_strength,
+                "hr_second_pass_steps": self.parameters.hr_second_pass_steps
             },
             "output": {
                 "session_name": self.output.session_name,

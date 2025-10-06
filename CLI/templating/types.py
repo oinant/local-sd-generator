@@ -36,12 +36,29 @@ class PromptConfig:
     seed_mode: str = "progressive"
     seed: int = 42
     max_images: Optional[int] = None
+    base_path: Optional[str] = None  # Relative base path for imports (from YAML)
 
     # Selector configuration
     index_base: int = 0  # 0-indexed or 1-indexed
     strict_mode: bool = True
     allow_duplicates: bool = False
     random_seed: Optional[int] = None
+
+    # SD API parameters
+    width: int = 512
+    height: int = 512
+    steps: int = 20
+    cfg_scale: float = 7.0
+    sampler: str = "Euler a"
+    batch_size: int = 1
+    batch_count: int = 1
+
+    # Hires Fix parameters
+    enable_hr: bool = False
+    hr_scale: float = 2.0
+    hr_upscaler: str = "R-ESRGAN 4x+"
+    denoising_strength: float = 0.5
+    hr_second_pass_steps: Optional[int] = None
 
 
 @dataclass

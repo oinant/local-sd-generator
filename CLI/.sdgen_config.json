@@ -1,0 +1,5 @@
+{
+  "configs_dir": "/mnt/d/StableDiffusion/private-new/prompts",
+  "output_dir": "/mnt/d/StableDiffusion/private-new/results",
+  "api_url": "http://172.29.128.1:7860"
+}

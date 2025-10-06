@@ -127,9 +127,13 @@ def _resolve_chunk_with_overrides(
         return results
 
 
-def _load_import(filepath: Path, base_path: Path) -> dict:
+def _load_import(filepath, base_path: Path) -> dict:
     """
     Load an import file (either variations or chunk).
+
+    Args:
+        filepath: Can be a Path, str, or dict (for virtual multi-field or inline)
+        base_path: Base path for resolving relative paths
 
     Returns:
         dict with 'type' key indicating the content type:
@@ -137,6 +141,43 @@ def _load_import(filepath: Path, base_path: Path) -> dict:
         - {'type': 'multi_field', 'data': Dict[str, MultiFieldVariation]}
         - {'type': 'chunk', 'chunk': Chunk, 'template': ChunkTemplate}
     """
+    # Handle virtual multi-field (list of files from prompt config)
+    if isinstance(filepath, dict):
+        if filepath.get('type') == 'multi-field':
+            # Virtual multi-field from list of sources
+            merged_variations = {}
+            for source_path in filepath.get('sources', []):
+                source_file = base_path / source_path
+                source_vars = load_variations(source_file)
+                merged_variations.update(source_vars)
+            return {
+                'type': 'multi_field',
+                'data': merged_variations
+            }
+        elif filepath.get('type') == 'inline':
+            # Inline variations from prompt config
+            from .types import Variation
+            variations = {}
+            values = filepath.get('values', [])
+
+            if isinstance(values, list):
+                # List format: ['happy', 'sad', 'angry']
+                for idx, value in enumerate(values):
+                    key = f"_{idx}"  # Auto-generated key
+                    variations[key] = Variation(key=key, value=str(value), weight=1.0)
+            elif isinstance(values, dict):
+                # Dict format: {happy: 'smiling', sad: 'crying'}
+                for key, value in values.items():
+                    variations[key] = Variation(key=key, value=str(value), weight=1.0)
+
+            return {
+                'type': 'variations',
+                'data': variations
+            }
+        else:
+            raise ValueError(f"Invalid virtual import format: {filepath}")
+
+    filepath = Path(filepath)
     full_path = base_path / filepath
 
     if _is_chunk_file(str(filepath)):
@@ -284,10 +325,23 @@ def resolve_prompt(config: PromptConfig, base_path: Path = None) -> List[Resolve
         all_elements[placeholder_name] = var_list
 
     # Generate combinations based on mode
-    if config.generation_mode == 'combinatorial':
+    # Special case: if no variations/chunks, but random/progressive seed mode with max_images
+    # we want to generate N copies with different seeds
+    if not all_elements:
+        if config.seed_mode in ('random', 'progressive') and config.max_images:
+            # Generate N empty combinations for different seeds
+            combinations = [{}] * config.max_images
+        else:
+            # No variations and fixed seed or no max_images: just one image
+            combinations = [{}]
+    elif config.generation_mode == 'combinatorial':
         combinations = _generate_combinatorial_mixed(all_elements, config.max_images)
     elif config.generation_mode == 'random':
-        combinations = _generate_random_mixed(all_elements, config.max_images or 100)
+        # In random mode, max_images should control output count
+        # regardless of combinatorial possibilities
+        # If seed mode is random/progressive, allow duplicate combinations
+        allow_duplicates = config.seed_mode in ('random', 'progressive')
+        combinations = _generate_random_mixed(all_elements, config.max_images or 100, allow_duplicates=allow_duplicates)
     else:
         raise ValueError(f"Unknown generation mode: {config.generation_mode}")
 
@@ -417,14 +471,16 @@ def _generate_combinatorial(
 
 def _generate_random_mixed(
     elements: Dict[str, List],
-    count: int
+    count: int,
+    allow_duplicates: bool = False
 ) -> List[Dict[str, any]]:
     """
-    Generate random unique combinations for mixed types (chunks and variations).
+    Generate random combinations for mixed types (chunks and variations).
 
     Args:
         elements: Dict of name -> list of items (can be strings or Variation objects)
         count: Number of combinations to generate
+        allow_duplicates: If True, allow duplicate combinations (useful for different seeds)
 
     Returns:
         List of dicts mapping names to items
@@ -434,28 +490,36 @@ def _generate_random_mixed(
 
     names = sorted(elements.keys())
     result = []
-    seen = set()
 
-    # Try to generate unique combinations
-    max_attempts = count * 10  # Prevent infinite loops
-    attempts = 0
-
-    while len(result) < count and attempts < max_attempts:
-        combo = {}
-        for name in names:
-            combo[name] = random.choice(elements[name])
-
-        # Create hashable key for uniqueness check
-        combo_key = tuple(
-            (k, combo[k].key if isinstance(combo[k], Variation) else combo[k])
-            for k in sorted(combo.keys())
-        )
-
-        if combo_key not in seen:
-            seen.add(combo_key)
+    if allow_duplicates:
+        # Simple mode: just generate count random combinations
+        for _ in range(count):
+            combo = {}
+            for name in names:
+                combo[name] = random.choice(elements[name])
             result.append(combo)
+    else:
+        # Original mode: try to generate unique combinations
+        seen = set()
+        max_attempts = count * 10  # Prevent infinite loops
+        attempts = 0
 
-        attempts += 1
+        while len(result) < count and attempts < max_attempts:
+            combo = {}
+            for name in names:
+                combo[name] = random.choice(elements[name])
+
+            # Create hashable key for uniqueness check
+            combo_key = tuple(
+                (k, combo[k].key if isinstance(combo[k], Variation) else combo[k])
+                for k in sorted(combo.keys())
+            )
+
+            if combo_key not in seen:
+                seen.add(combo_key)
+                result.append(combo)
+
+            attempts += 1
 
     return result
 

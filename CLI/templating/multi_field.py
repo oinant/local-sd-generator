@@ -20,24 +20,36 @@ def is_multi_field_variation(variation_data: dict) -> bool:
         variation_data: Parsed YAML data from variation file
 
     Returns:
-        True if the file has type: multi_field
+        True if the file has type: multi_field or multi-field
     """
-    return variation_data.get('type') == 'multi_field'
+    return variation_data.get('type') in ('multi_field', 'multi-field')
 
 
-def load_multi_field_variations(filepath: Path, base_path: Path = None) -> Dict[str, MultiFieldVariation]:
+def load_multi_field_variations(filepath: Path, base_path: Path = None) -> Dict[str, 'Variation']:
     """
     Load multi-field variations from a YAML file.
+
+    Supports two formats:
+    1. Phase 2 converted format with 'sources' (combines multiple files)
+    2. Original multi-field format with 'variations' (multi-field variations)
 
     Args:
         filepath: Path to the multi-field variation file
         base_path: Base directory for resolving relative paths
 
     Returns:
-        Dictionary mapping variation keys to MultiFieldVariation objects
+        Dictionary mapping variation keys to Variation objects (or MultiFieldVariation)
 
-    Example:
-        variations/ethnic_features.yaml:
+    Example Phase 2 (sources):
+        ```yaml
+        type: multi-field
+        sources:
+          - ../../variations/haircolors.realist.yaml
+          - ../../variations/haircolors.gradient.yaml
+        merge_strategy: combine
+        ```
+
+    Example Original (multi-field):
         ```yaml
         type: multi_field
         variations:
@@ -46,8 +58,6 @@ def load_multi_field_variations(filepath: Path, base_path: Path = None) -> Dict[
               appearance.skin: "dark skin"
               appearance.hair: "coily black hair"
         ```
-
-        Result: {"african": MultiFieldVariation(key="african", fields={...})}
     """
     if base_path:
         filepath = base_path / filepath
@@ -58,6 +68,21 @@ def load_multi_field_variations(filepath: Path, base_path: Path = None) -> Dict[
     if not is_multi_field_variation(data):
         raise ValueError(f"File {filepath} is not a multi_field variation file")
 
+    # Check if this is Phase 2 format with 'sources'
+    if 'sources' in data:
+        # Load and merge all source files
+        from .loaders import load_variations
+        merged_variations = {}
+
+        for source_path in data.get('sources', []):
+            # Resolve relative path
+            source_file = filepath.parent / source_path
+            source_vars = load_variations(source_file)
+            merged_variations.update(source_vars)
+
+        return merged_variations
+
+    # Original multi-field format with 'variations'
     variations = {}
     for var_entry in data.get('variations', []):
         key = var_entry.get('key')

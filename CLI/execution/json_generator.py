@@ -385,7 +385,13 @@ def create_generator_from_config(config: GenerationSessionConfig,
         height=config.parameters.height,
         sampler_name=config.parameters.sampler,
         batch_size=config.parameters.batch_size,
-        n_iter=config.parameters.batch_count
+        n_iter=config.parameters.batch_count,
+        # Hires Fix parameters
+        enable_hr=config.parameters.enable_hr,
+        hr_scale=config.parameters.hr_scale,
+        hr_upscaler=config.parameters.hr_upscaler,
+        denoising_strength=config.parameters.denoising_strength,
+        hr_second_pass_steps=config.parameters.hr_second_pass_steps
     )
 
     generator.set_generation_config(gen_config)

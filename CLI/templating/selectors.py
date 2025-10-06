@@ -192,13 +192,16 @@ def extract_placeholders(prompt_template: str) -> Dict[str, Optional[str]]:
 
     Args:
         prompt_template: Template string like "beautiful {EXPR[happy,sad]}, {POSE}"
+                        or Phase 2: "beautiful {FacialExpression[happy,sad]}, {Pose}"
 
     Returns:
         Dict mapping placeholder names to their selector strings (or None if no selector)
         Example: {"EXPR": "[happy,sad]", "POSE": None}
+                 {"FacialExpression": "[happy,sad]", "Pose": None}
     """
     # Pattern: {PLACEHOLDER} or {PLACEHOLDER[selector]}
-    pattern = r'\{([A-Z_]+)(?:\[([^\]]+)\])?\}'
+    # Support both UPPERCASE (Phase 1) and PascalCase/camelCase (Phase 2)
+    pattern = r'\{([A-Za-z_][A-Za-z0-9_]*)(?:\[([^\]]+)\])?\}'
     matches = re.findall(pattern, prompt_template)
 
     placeholders = {}

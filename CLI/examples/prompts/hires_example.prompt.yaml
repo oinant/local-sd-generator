@@ -1,0 +1,57 @@
+version: '2.0'
+name: 'Portrait with Hires Fix - Example'
+description: |
+  Example demonstrating Hires Fix upscaling.
+
+  Base resolution: 832x1216
+  Upscaled resolution: 1664x2432 (2x)
+
+  This generates high-resolution portraits using a two-pass process:
+  1. Generate at base resolution (832x1216)
+  2. Upscale to final resolution (1664x2432) with R-ESRGAN 4x+
+
+base_path: ../..
+
+imports:
+  EXPRESSIONS: variations/expressions.yaml
+  HAIR: variations/hair_styles.yaml
+  LIGHTING: variations/lighting.yaml
+
+template: |
+  masterpiece, best quality, ultra-detailed, photorealistic,
+  beautiful young woman, {EXPRESSIONS}, {HAIR},
+  detailed face, sharp focus,
+  {LIGHTING}
+
+negative_prompt: |
+  low quality, worst quality, blurry, out of focus,
+  bad anatomy, deformed, disfigured,
+  poorly drawn, amateur, jpeg artifacts
+
+generation:
+  mode: random
+  seed: 42
+  seed_mode: progressive
+  max_images: 10
+
+parameters:
+  width: 832
+  height: 1216
+  steps: 30
+  cfg_scale: 7
+  sampler: DPM++ 2M Karras
+  batch_size: 1
+  batch_count: 1
+
+  # Hires Fix configuration
+  enable_hr: true
+  hr_scale: 2.0
+  hr_upscaler: R-ESRGAN 4x+
+  denoising_strength: 0.5
+  hr_second_pass_steps: 20
+
+output:
+  session_name: Portrait_HiresFix_Example
+  filename_keys:
+    - EXPRESSIONS
+    - HAIR
