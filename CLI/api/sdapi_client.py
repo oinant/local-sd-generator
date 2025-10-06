@@ -61,7 +61,7 @@ class SDAPIClient:
         Args:
             api_url: Base URL for Stable Diffusion WebUI API
         """
-        self.api_url = api_url
+        self.api_url = api_url.rstrip('/')
         self.generation_config = GenerationConfig()
 
     def set_generation_config(self, config: GenerationConfig):
