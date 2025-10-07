@@ -136,6 +136,90 @@ def select_template_interactive(configs_dir: Path) -> Path:
             raise ValueError("User cancelled selection")
 
 
+def print_samplers(api_client):
+    """Print available samplers from SD WebUI."""
+    try:
+        samplers = api_client.get_samplers()
+        print(f"\n{'='*80}")
+        print(f"Available Samplers ({len(samplers)} found)")
+        print(f"{'='*80}\n")
+        for sampler in samplers:
+            name = sampler.get('name', 'Unknown')
+            aliases = sampler.get('aliases', [])
+            alias_str = f" (aliases: {', '.join(aliases)})" if aliases else ""
+            print(f"  • {name}{alias_str}")
+        print()
+    except Exception as e:
+        print(f"✗ Failed to fetch samplers: {e}")
+
+
+def print_schedulers(api_client):
+    """Print available schedulers from SD WebUI."""
+    try:
+        schedulers = api_client.get_schedulers()
+        print(f"\n{'='*80}")
+        print(f"Available Schedulers ({len(schedulers)} found)")
+        print(f"{'='*80}\n")
+        for scheduler in schedulers:
+            name = scheduler.get('name', 'Unknown')
+            label = scheduler.get('label', name)
+            print(f"  • {label}")
+        print()
+    except Exception as e:
+        print(f"✗ Failed to fetch schedulers: {e}")
+
+
+def print_models(api_client):
+    """Print available SD models/checkpoints."""
+    try:
+        models = api_client.get_sd_models()
+        print(f"\n{'='*80}")
+        print(f"Available SD Models ({len(models)} found)")
+        print(f"{'='*80}\n")
+        for model in models:
+            title = model.get('title', 'Unknown')
+            model_name = model.get('model_name', '')
+            hash_val = model.get('hash', '')
+            if hash_val:
+                print(f"  • {model_name} [{hash_val}]")
+            else:
+                print(f"  • {title}")
+        print()
+    except Exception as e:
+        print(f"✗ Failed to fetch models: {e}")
+
+
+def print_upscalers(api_client):
+    """Print available upscalers."""
+    try:
+        upscalers = api_client.get_upscalers()
+        print(f"\n{'='*80}")
+        print(f"Available Upscalers ({len(upscalers)} found)")
+        print(f"{'='*80}\n")
+        for upscaler in upscalers:
+            name = upscaler.get('name', 'Unknown')
+            scale = upscaler.get('scale', 'N/A')
+            print(f"  • {name} (scale: {scale}x)")
+        print()
+    except Exception as e:
+        print(f"✗ Failed to fetch upscalers: {e}")
+
+
+def print_model_info(api_client):
+    """Print currently loaded model information."""
+    try:
+        info = api_client.get_model_info()
+        print(f"\n{'='*80}")
+        print("Current Model Information")
+        print(f"{'='*80}\n")
+        print(f"  Checkpoint: {info.get('checkpoint', 'unknown')}")
+        print(f"  VAE:        {info.get('vae', 'auto')}")
+        print(f"  CLIP Skip:  {info.get('clip_skip', 1)}")
+        print()
+    except Exception as e:
+        print(f"✗ Failed to fetch model info: {e}")
+
+
 def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
@@ -195,6 +279,37 @@ For more information, see:
         help='Dry-run mode: save API requests as JSON files instead of generating images'
     )
 
+    # API introspection commands
+    parser.add_argument(
+        '--list-samplers',
+        action='store_true',
+        help='List available samplers from SD WebUI and exit'
+    )
+
+    parser.add_argument(
+        '--list-schedulers',
+        action='store_true',
+        help='List available schedulers from SD WebUI and exit'
+    )
+
+    parser.add_argument(
+        '--list-models',
+        action='store_true',
+        help='List available SD models/checkpoints and exit'
+    )
+
+    parser.add_argument(
+        '--list-upscalers',
+        action='store_true',
+        help='List available upscalers (for Hires Fix) and exit'
+    )
+
+    parser.add_argument(
+        '--show-model-info',
+        action='store_true',
+        help='Show currently loaded model information and exit'
+    )
+
     return parser.parse_args()
 
 
@@ -230,6 +345,37 @@ def main():
         # List mode
         if args.list:
             list_yaml_templates(configs_dir)
+            return 0
+
+        # API introspection modes (require API connection)
+        if any([args.list_samplers, args.list_schedulers, args.list_models,
+                args.list_upscalers, args.show_model_info]):
+            from api import SDAPIClient
+
+            api_client = SDAPIClient(api_url=api_url)
+
+            print(f"\nConnecting to SD API: {api_url}")
+            if not api_client.test_connection():
+                print("✗ Failed to connect to SD API")
+                print("   Make sure Stable Diffusion WebUI is running")
+                return 1
+            print("✓ Connected to SD API")
+
+            if args.list_samplers:
+                print_samplers(api_client)
+
+            if args.list_schedulers:
+                print_schedulers(api_client)
+
+            if args.list_models:
+                print_models(api_client)
+
+            if args.list_upscalers:
+                print_upscalers(api_client)
+
+            if args.show_model_info:
+                print_model_info(api_client)
+
             return 0
 
         # Determine template path
@@ -367,6 +513,7 @@ def main():
             steps=config.steps,
             cfg_scale=config.cfg_scale,
             sampler_name=config.sampler,
+            scheduler=config.scheduler,
             batch_size=config.batch_size,
             n_iter=config.batch_count,
             # Hires Fix parameters

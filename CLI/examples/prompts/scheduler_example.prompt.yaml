@@ -1,0 +1,58 @@
+version: '2.0'
+name: 'Scheduler Parameter - Example'
+description: |
+  Example demonstrating explicit scheduler parameter.
+
+  Modern SD WebUI (v1.9+) separates sampler and scheduler:
+  - Sampler: Core algorithm (DPM++ 2M, Euler, etc.)
+  - Scheduler: Noise schedule (Karras, Exponential, etc.)
+
+  This allows testing different schedulers with the same sampler.
+
+base_path: ../..
+
+imports:
+  EXPRESSIONS: variations/expressions.yaml
+  HAIR: variations/hair_styles.yaml
+
+template: |
+  masterpiece, best quality, professional photograph,
+  beautiful young woman, {EXPRESSIONS}, {HAIR},
+  detailed face, perfect eyes, sharp focus
+
+negative_prompt: |
+  low quality, worst quality, blurry, out of focus,
+  bad anatomy, deformed, disfigured
+
+generation:
+  mode: random
+  seed: 42
+  seed_mode: progressive
+  max_images: 6
+
+parameters:
+  width: 512
+  height: 768
+  steps: 30
+  cfg_scale: 7
+
+  # Modern format: separate sampler and scheduler
+  sampler: DPM++ 2M      # Base sampler (no scheduler in name)
+  scheduler: Karras      # Explicit scheduler
+
+  # Other common schedulers:
+  # - Exponential
+  # - Polyexponential
+  # - SGM Uniform (recommended for SDXL)
+  # - Normal
+  # - Simple
+  # - Align Your Steps
+
+  batch_size: 1
+  batch_count: 1
+
+output:
+  session_name: Scheduler_Example
+  filename_keys:
+    - EXPRESSIONS
+    - HAIR

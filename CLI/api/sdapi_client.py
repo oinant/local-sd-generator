@@ -18,6 +18,7 @@ class GenerationConfig:
     width: int = 512
     height: int = 768
     sampler_name: str = "DPM++ 2M Karras"
+    scheduler: Optional[str] = None  # NEW: Explicit scheduler (Karras, Exponential, etc.)
     batch_size: int = 1
     n_iter: int = 1
 
@@ -144,6 +145,10 @@ class SDAPIClient:
             "n_iter": self.generation_config.n_iter
         }
 
+        # Add scheduler if specified
+        if self.generation_config.scheduler is not None:
+            payload["scheduler"] = self.generation_config.scheduler
+
         # Add Hires Fix parameters if enabled
         if self.generation_config.enable_hr:
             payload["enable_hr"] = True
@@ -176,3 +181,137 @@ class SDAPIClient:
             dict: API payload that would be sent
         """
         return self._build_payload(prompt_config)
+
+    # ========== API Introspection Methods ==========
+
+    def get_samplers(self, timeout: int = 5) -> list[dict]:
+        """
+        Get list of available samplers from SD WebUI
+
+        Returns:
+            List of sampler dicts with keys: 'name', 'aliases', 'options'
+
+        Example:
+            [
+                {"name": "Euler", "aliases": ["euler"], "options": {}},
+                {"name": "DPM++ 2M Karras", "aliases": [], "options": {}}
+            ]
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        response = requests.get(
+            f"{self.api_url}/sdapi/v1/samplers",
+            timeout=timeout
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_schedulers(self, timeout: int = 5) -> list[dict]:
+        """
+        Get list of available schedulers from SD WebUI
+
+        Returns:
+            List of scheduler dicts with keys: 'name', 'label', 'aliases'
+
+        Example:
+            [
+                {"name": "karras", "label": "Karras", "aliases": []},
+                {"name": "exponential", "label": "Exponential", "aliases": []}
+            ]
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        response = requests.get(
+            f"{self.api_url}/sdapi/v1/schedulers",
+            timeout=timeout
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_sd_models(self, timeout: int = 5) -> list[dict]:
+        """
+        Get list of available Stable Diffusion models/checkpoints
+
+        Returns:
+            List of model dicts with keys: 'title', 'model_name', 'hash', 'sha256', 'filename', 'config'
+
+        Example:
+            [
+                {
+                    "title": "realisticVisionV60B1_v51VAE.safetensors [15012c538f]",
+                    "model_name": "realisticVisionV60B1_v51VAE",
+                    "hash": "15012c538f",
+                    "filename": "/path/to/model.safetensors"
+                }
+            ]
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        response = requests.get(
+            f"{self.api_url}/sdapi/v1/sd-models",
+            timeout=timeout
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_upscalers(self, timeout: int = 5) -> list[dict]:
+        """
+        Get list of available upscalers (for Hires Fix, etc.)
+
+        Returns:
+            List of upscaler dicts with keys: 'name', 'model_name', 'model_path', 'model_url', 'scale'
+
+        Example:
+            [
+                {
+                    "name": "R-ESRGAN 4x+",
+                    "model_name": "R-ESRGAN 4x+",
+                    "scale": 4
+                },
+                {
+                    "name": "Latent",
+                    "model_name": None,
+                    "scale": 2
+                }
+            ]
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        response = requests.get(
+            f"{self.api_url}/sdapi/v1/upscalers",
+            timeout=timeout
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_model_info(self, timeout: int = 5) -> dict:
+        """
+        Fetch current model/checkpoint information from WebUI options
+
+        Returns:
+            dict with model info:
+            {
+                "checkpoint": "model_name.safetensors [hash]",
+                "vae": "vae_name.ckpt",
+                "clip_skip": 1
+            }
+
+        Raises:
+            requests.RequestException: If API call fails
+        """
+        response = requests.get(
+            f"{self.api_url}/sdapi/v1/options",
+            timeout=timeout
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return {
+            "checkpoint": data.get("sd_model_checkpoint", "unknown"),
+            "vae": data.get("sd_vae", "auto"),
+            "clip_skip": data.get("CLIP_stop_at_last_layers", 1)
+        }

@@ -99,6 +99,7 @@ parameters:
   steps: 30
   cfg_scale: 7.0
   sampler: "DPM++ 2M Karras"
+  scheduler: "Karras"  # Optional: explicit scheduler (SD 1.9+)
   batch_size: 1
   batch_count: 1
 
@@ -569,6 +570,45 @@ variations:
 
 ---
 
+## CLI Commands
+
+### API Introspection
+
+Query SD WebUI API for available options (requires WebUI running):
+
+```bash
+# List samplers
+python3 template_cli.py --list-samplers
+
+# List schedulers (SD 1.9+)
+python3 template_cli.py --list-schedulers
+
+# List models/checkpoints
+python3 template_cli.py --list-models
+
+# List upscalers (for Hires Fix)
+python3 template_cli.py --list-upscalers
+
+# Show current model info
+python3 template_cli.py --show-model-info
+```
+
+### Scheduler Parameter
+
+Modern SD WebUI (1.9+) separates sampler and scheduler:
+
+```yaml
+parameters:
+  sampler: "DPM++ 2M"     # Base algorithm
+  scheduler: "Karras"     # Noise schedule
+```
+
+Common schedulers: `Karras`, `Exponential`, `SGM Uniform` (SDXL), `Polyexponential`, `Align Your Steps`
+
+See `examples/prompts/scheduler_example.prompt.yaml` for full example.
+
+---
+
 ## Related Documentation
 
 - [Getting Started Guide](../usage/getting-started.md)
@@ -585,6 +625,7 @@ variations:
 | 2025-10-03 | Phase 2 implementation complete (52 tests) |
 | 2025-10-06 | API module refactoring (SRP architecture) |
 | 2025-10-07 | Legacy Phase 1 removed, documentation updated |
+| 2025-10-07 | Scheduler parameter + API introspection commands added |
 
 ---
 

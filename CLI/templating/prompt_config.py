@@ -261,6 +261,7 @@ def _parse_prompt_config(data: dict, filepath: Path) -> PromptConfig:
         steps=parameters.get('steps', 20),
         cfg_scale=parameters.get('cfg_scale', 7.0),
         sampler=parameters.get('sampler', 'Euler a'),
+        scheduler=parameters.get('scheduler'),
         batch_size=parameters.get('batch_size', 1),
         batch_count=parameters.get('batch_count', 1),
         # Hires Fix parameters

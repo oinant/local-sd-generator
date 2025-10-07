@@ -50,6 +50,7 @@ class PromptConfig:
     steps: int = 20
     cfg_scale: float = 7.0
     sampler: str = "Euler a"
+    scheduler: Optional[str] = None  # Explicit scheduler (Karras, Exponential, etc.)
     batch_size: int = 1
     batch_count: int = 1
 

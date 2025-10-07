@@ -159,6 +159,152 @@ class TestSDAPIClient:
 
         assert payload['seed'] == -1  # -1 means random seed
 
+    @patch('requests.post')
+    def test_generate_image_with_scheduler(self, mock_post):
+        """Test image generation with explicit scheduler"""
+        mock_response = Mock()
+        mock_response.json.return_value = {'images': ['data']}
+        mock_response.raise_for_status = Mock()
+        mock_post.return_value = mock_response
+
+        client = SDAPIClient()
+        config = GenerationConfig(
+            sampler_name="DPM++ 2M",
+            scheduler="Karras"
+        )
+        client.set_generation_config(config)
+
+        prompt_config = PromptConfig(prompt="test", filename="test.png")
+        client.generate_image(prompt_config)
+
+        # Check scheduler in payload
+        payload = mock_post.call_args[1]['json']
+        assert payload['sampler_name'] == "DPM++ 2M"
+        assert payload['scheduler'] == "Karras"
+
+    def test_build_payload_without_scheduler(self):
+        """Test payload building without scheduler (backward compatible)"""
+        client = SDAPIClient()
+        config = GenerationConfig(sampler_name="Euler a")
+        client.set_generation_config(config)
+
+        prompt_config = PromptConfig(prompt="test")
+        payload = client.get_payload_for_config(prompt_config)
+
+        assert payload['sampler_name'] == "Euler a"
+        assert 'scheduler' not in payload  # Should not include if None
+
+    @patch('requests.get')
+    def test_get_samplers(self, mock_get):
+        """Test fetching samplers list"""
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {"name": "Euler", "aliases": ["euler"], "options": {}},
+            {"name": "DPM++ 2M Karras", "aliases": [], "options": {}}
+        ]
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        samplers = client.get_samplers()
+
+        assert len(samplers) == 2
+        assert samplers[0]['name'] == "Euler"
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/sdapi/v1/samplers",
+            timeout=5
+        )
+
+    @patch('requests.get')
+    def test_get_schedulers(self, mock_get):
+        """Test fetching schedulers list"""
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {"name": "karras", "label": "Karras", "aliases": []},
+            {"name": "exponential", "label": "Exponential", "aliases": []}
+        ]
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        schedulers = client.get_schedulers()
+
+        assert len(schedulers) == 2
+        assert schedulers[0]['label'] == "Karras"
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/sdapi/v1/schedulers",
+            timeout=5
+        )
+
+    @patch('requests.get')
+    def test_get_sd_models(self, mock_get):
+        """Test fetching SD models list"""
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {
+                "title": "model_v1.safetensors [abc123]",
+                "model_name": "model_v1",
+                "hash": "abc123",
+                "filename": "/path/to/model.safetensors"
+            }
+        ]
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        models = client.get_sd_models()
+
+        assert len(models) == 1
+        assert models[0]['model_name'] == "model_v1"
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/sdapi/v1/sd-models",
+            timeout=5
+        )
+
+    @patch('requests.get')
+    def test_get_upscalers(self, mock_get):
+        """Test fetching upscalers list"""
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {"name": "R-ESRGAN 4x+", "model_name": "R-ESRGAN 4x+", "scale": 4},
+            {"name": "Latent", "model_name": None, "scale": 2}
+        ]
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        upscalers = client.get_upscalers()
+
+        assert len(upscalers) == 2
+        assert upscalers[0]['name'] == "R-ESRGAN 4x+"
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/sdapi/v1/upscalers",
+            timeout=5
+        )
+
+    @patch('requests.get')
+    def test_get_model_info(self, mock_get):
+        """Test fetching current model info"""
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "sd_model_checkpoint": "realisticVision_v51.safetensors [hash]",
+            "sd_vae": "vae-ft-mse.ckpt",
+            "CLIP_stop_at_last_layers": 2
+        }
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        info = client.get_model_info()
+
+        assert info['checkpoint'] == "realisticVision_v51.safetensors [hash]"
+        assert info['vae'] == "vae-ft-mse.ckpt"
+        assert info['clip_skip'] == 2
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/sdapi/v1/options",
+            timeout=5
+        )
+
 
 class TestGenerationConfig:
     """Test GenerationConfig dataclass"""
@@ -172,6 +318,7 @@ class TestGenerationConfig:
         assert config.width == 512
         assert config.height == 768
         assert config.sampler_name == "DPM++ 2M Karras"
+        assert config.scheduler is None  # NEW: scheduler defaults to None
         assert config.enable_hr is False
 
     def test_custom_values(self):
