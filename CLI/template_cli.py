@@ -224,7 +224,7 @@ def main():
         # Verify configs directory exists
         if not configs_dir.exists():
             print(f"✗ Configs directory not found: {configs_dir}")
-            print(f"\nCreate the directory or update your .sdgen_config.json")
+            print("\nCreate the directory or update your .sdgen_config.json")
             return 1
 
         # List mode
@@ -286,29 +286,45 @@ def main():
         variations = resolve_prompt(config, base_path=base_path)
         print(f"Generated {len(variations)} variations\n")
 
-        # Generate using the SD API client directly with resolved prompts
-        from sdapi_client import StableDiffusionAPIClient, GenerationConfig, PromptConfig
+        # Generate using the new API module
+        from api import BatchGenerator, SDAPIClient, SessionManager, ImageWriter, ProgressReporter
+        from api.sdapi_client import GenerationConfig, PromptConfig
 
         session_name = config.name.lower().replace(" ", "_").replace("-", "_")
         output_base_dir = Path(global_config.output_dir)
 
-        # Initialize SD API client (it creates session dir automatically)
-        client = StableDiffusionAPIClient(
-            api_url=api_url,
+        # Initialize components
+        api_client = SDAPIClient(api_url=api_url)
+        session_manager = SessionManager(
             base_output_dir=str(output_base_dir),
             session_name=session_name,
             dry_run=args.dry_run
         )
+        image_writer = ImageWriter(session_manager.output_dir)
+        progress = ProgressReporter(
+            total_images=len(variations),
+            output_dir=session_manager.output_dir,
+            verbose=True
+        )
 
-        session_dir = Path(client.output_dir)
+        # Create batch generator
+        generator = BatchGenerator(
+            api_client=api_client,
+            session_manager=session_manager,
+            image_writer=image_writer,
+            progress_reporter=progress,
+            dry_run=args.dry_run
+        )
+
+        session_dir = Path(session_manager.output_dir)
 
         print(f"{'='*80}")
-        print(f"Starting Image Generation")
+        print("Starting Image Generation")
         print(f"{'='*80}\n")
         print(f"Output directory: {session_dir}\n")
 
         # Create output directory
-        client.create_output_dir()
+        session_manager.create_session_dir()
 
         # Save JSON manifest with variations
         manifest_path = session_dir / f"{session_name}_manifest.json"
@@ -338,7 +354,7 @@ def main():
         # Test connection if not in dry-run mode
         if not args.dry_run:
             print(f"Connecting to SD API: {api_url}")
-            if not client.test_connection():
+            if not api_client.test_connection():
                 print("✗ Failed to connect to SD API")
                 print("   Make sure Stable Diffusion WebUI is running")
                 return 1
@@ -360,78 +376,42 @@ def main():
             denoising_strength=config.denoising_strength,
             hr_second_pass_steps=config.hr_second_pass_steps
         )
-        client.set_generation_config(gen_config)
+        api_client.generation_config = gen_config
 
-        # Generate images
-        success_count = 0
-        fail_count = 0
+        # Convert Phase 2 variations to PromptConfig list
+        prompt_configs = []
+        for idx, var in enumerate(variations):
+            prompt_cfg = PromptConfig(
+                prompt=var.final_prompt,
+                negative_prompt=var.negative_prompt,
+                seed=var.seed,
+                filename=f"{session_name}_{idx:04d}.png"
+            )
+            prompt_configs.append(prompt_cfg)
 
+        # Generate images using BatchGenerator
         try:
-            for idx, var in enumerate(variations):
-                print(f"[{idx+1}/{len(variations)}] Generating image...")
-                print(f"  Seed: {var.seed}")
-                print(f"  Prompt: {var.final_prompt[:80]}...")
+            success_count, total_count = generator.generate_batch(
+                prompt_configs=prompt_configs,
+                delay_between_images=2.0
+            )
 
-                # Create PromptConfig for this variation
-                prompt_cfg = PromptConfig(
-                    prompt=var.final_prompt,
-                    negative_prompt=var.negative_prompt,
-                    seed=var.seed,
-                    filename=f"{session_name}_{idx:04d}.png"
-                )
-
-                if args.dry_run:
-                    # Save API request as JSON
-                    request_file = session_dir / f"request_{idx:04d}.json"
-                    request_data = {
-                        "prompt": var.final_prompt,
-                        "negative_prompt": var.negative_prompt,
-                        "seed": var.seed,
-                        "width": gen_config.width,
-                        "height": gen_config.height,
-                        "steps": gen_config.steps,
-                        "cfg_scale": gen_config.cfg_scale,
-                        "sampler_name": gen_config.sampler_name
-                    }
-                    with open(request_file, 'w') as f:
-                        json.dump(request_data, f, indent=2, ensure_ascii=False)
-                    print(f"  ✓ Saved request: {request_file.name}\n")
-                    success_count += 1
-                else:
-                    # Generate actual image using client
-                    try:
-                        if client.generate_single_image(prompt_cfg):
-                            print(f"  ✓ Generated: {prompt_cfg.filename}\n")
-                            success_count += 1
-                        else:
-                            print(f"  ✗ Generation failed\n")
-                            fail_count += 1
-                    except Exception as e:
-                        print(f"  ✗ Error: {e}\n")
-                        fail_count += 1
-
-            result = {
-                'success': True,
-                'total_generated': len(variations),
-                'success_count': success_count,
-                'fail_count': fail_count,
-                'output_dir': str(session_dir)
-            }
+            fail_count = total_count - success_count
 
             # Display final summary
             print(f"\n{'='*80}")
-            print(f"✓ Generation Complete")
+            print("✓ Generation Complete")
             print(f"{'='*80}\n")
-            print(f"Total images: {result.get('total_generated', 0)}")
-            print(f"Success: {result.get('success_count', 0)}")
-            print(f"Failed: {result.get('fail_count', 0)}")
+            print(f"Total images: {total_count}")
+            print(f"Success: {success_count}")
+            print(f"Failed: {fail_count}")
 
             if args.dry_run:
-                print(f"\nDry-run mode: API requests saved to:")
-                print(f"  {result.get('output_dir', 'N/A')}")
+                print("\nDry-run mode: API requests saved to:")
+                print(f"  {session_dir}")
             else:
-                print(f"\nImages saved to:")
-                print(f"  {result.get('output_dir', 'N/A')}")
+                print("\nImages saved to:")
+                print(f"  {session_dir}")
 
             return 0
 
