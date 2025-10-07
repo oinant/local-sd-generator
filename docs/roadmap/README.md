@@ -4,16 +4,20 @@ Feature planning and implementation tracking for SD Image Generator.
 
 ## 📊 Current Status
 
-**Active Work:** JSON Config System - Phase 3
-**Progress:** 2/3 core phases completed (66%)
-**Tests:** 135 passing ✅
+**Active Work:** Phase 2 YAML templating complete, API module refactored
+**Architecture:** New SRP-compliant `api/` module (5 classes)
+**Tests:** 199 passing ✅ (52 templating + 65 API + 82 other)
+**Last Update:** 2025-10-07
 
 ## 🗂️ Roadmap Organization
 
 ### [✅ Done](./done/)
 Completed features with full documentation and tests.
 
-**Recent completions:**
+**Recent completions (2025-10-07):**
+- **API Module Refactoring** - SRP architecture with 5 focused classes (65 tests)
+- **Phase 1 to Legacy Migration** - Removed 5K+ lines of monolithic code
+- **Template CLI Migration** - Uses new API module architecture
 - JSON Config Phase 1: Enhanced File Naming & Metadata (49 tests)
 - JSON Config Phase 2: Global Config & Validation (86 tests)
 - Placeholder Priority System
@@ -28,6 +32,8 @@ Features currently being implemented.
 Features planned for next sprint.
 
 **Up next:**
+- **Numeric Slider Placeholders** - LoRA slider testing (`{DetailLevel:Unit:-1:3}`)
+- **Character Templates (Phase 2)** - Reusable character definitions with inheritance
 - JSON Config Phase 3: Config Selection & Execution (SF-2, SF-3)
 
 ### [🔮 Future](./future/)
