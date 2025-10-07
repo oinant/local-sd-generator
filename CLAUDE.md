@@ -31,22 +31,34 @@ deactivate
 ### Running Tests
 
 **IMPORTANT:**
+- **TOUJOURS activer le venv d'abord** : `source venv/bin/activate` (depuis la racine du projet)
 - Toujours utiliser `python3 -m pytest` (pas `python` ni `pytest` directement)
 - **NE PAS utiliser pytest-cov** (problème avec l'environnement)
 - Pytest 8.x requiert des `__init__.py` dans tous les dossiers de tests (structure package-based)
 
 ```bash
-# Depuis /CLI
-cd /mnt/d/StableDiffusion/local-sd-generator/CLI
+# ÉTAPE 1 : Activer le venv (depuis la racine du projet)
+cd /mnt/d/StableDiffusion/local-sd-generator
+source venv/bin/activate
 
-# Tests Phase 2 (templating) - 52 tests ✅
-../venv/bin/python3 -m pytest tests/templating/ -v
+# ÉTAPE 2 : Aller dans /CLI
+cd CLI
+
+# ÉTAPE 3 : Lancer les tests
+# Tests Phase 2 (templating) - 66 tests ✅
+python3 -m pytest tests/templating/ -v
 
 # Tests unitaires (sans legacy/integration)
-../venv/bin/python3 -m pytest tests/ --ignore=tests/legacy --ignore=tests/integration -v
+python3 -m pytest tests/ --ignore=tests/legacy --ignore=tests/integration -v
 
 # Tous les tests (attention: certains tests CLI interactive peuvent bloquer)
-../venv/bin/python3 -m pytest tests/ -v
+python3 -m pytest tests/ -v
+```
+
+**Alternative sans activer le venv (moins pratique) :**
+```bash
+cd /mnt/d/StableDiffusion/local-sd-generator/CLI
+../venv/bin/python3 -m pytest tests/templating/ -v
 ```
 
 **Structure des tests :**
@@ -67,6 +79,80 @@ tests/
 **Tests problématiques connus :**
 - `test_config_selector.py` - Peut bloquer (tests CLI interactive avec input() mocké)
 - `test_integration_phase3.py` - Peut bloquer (même raison)
+
+### Code Quality Tools
+
+Le projet utilise plusieurs outils d'analyse de code pour maintenir la qualité :
+
+**Outils installés** (dans `CLI/pyproject.toml`, section `[project.optional-dependencies].dev`) :
+- `flake8` - Style checker (PEP 8)
+- `radon` - Analyseur de complexité cyclomatique
+- `vulture` - Détecteur de code mort
+- `bandit` - Scanner de sécurité
+- `mypy` - Type checker (statique)
+
+**Installation des outils :**
+```bash
+# Les outils sont déjà référencés dans CLI/pyproject.toml
+# Installer directement :
+venv/bin/pip install flake8 radon vulture bandit mypy
+```
+
+**Commandes d'analyse :**
+
+```bash
+# Depuis la racine du projet
+
+# 1. Style checking (PEP 8)
+venv/bin/python3 -m flake8 CLI \
+  --exclude=tests,__pycache__,private_generators,example_* \
+  --max-line-length=120 \
+  --count --statistics
+
+# 2. Complexité cyclomatique
+# -a : moyenne, -nb : pas de note globale
+venv/bin/python3 -m radon cc CLI \
+  --exclude="tests,__pycache__,private_generators,example_*" \
+  -a -nb
+
+# 3. Code mort (dead code)
+cd CLI && ../venv/bin/python3 -m vulture . \
+  --min-confidence=80 2>&1 | \
+  grep -v "tests/" | grep -v "example_"
+
+# 4. Sécurité
+# -r : recursif, -ll : low/low severity (moins verbeux)
+venv/bin/python3 -m bandit -r CLI -ll -f txt
+
+# 5. Type checking (optionnel, peut être verbeux)
+venv/bin/python3 -m mypy CLI --ignore-missing-imports
+```
+
+**Analyse complète :**
+```bash
+# Lancer tous les checks d'un coup
+cd /mnt/d/StableDiffusion/local-sd-generator
+venv/bin/python3 -m flake8 CLI --exclude=tests,private_generators --max-line-length=120 && \
+venv/bin/python3 -m radon cc CLI --exclude="tests,private_generators" -a && \
+echo "✓ Quality checks passed"
+```
+
+**Seuils de complexité (radon) :**
+- **A (1-5)** : Simple ✅
+- **B (6-10)** : Modéré ✅ (acceptable)
+- **C (11-20)** : Complexe 🟡 (à surveiller)
+- **D (21-30)** : Très complexe 🟠 (refactor recommandé)
+- **E (31-40)** : Extrêmement complexe 🔴 (refactor urgent)
+- **F (41+)** : Non maintenable 💀 (refactor immédiat)
+
+**Rapports d'analyse :**
+- Voir `docs/tooling/code_review_2025-10-06.md` pour la dernière code review manuelle
+- Voir `docs/tooling/automated_metrics_2025-10-06.md` pour les métriques objectives
+
+**Problèmes connus à corriger :**
+- Import order (E402) : 15 instances - imports pas en haut de fichier
+- Complexité E : `resolver.py:resolve_prompt()` - 185 lignes, complexité 35+
+- Missing timeout : `sdapi_client.py:177` - requête sans timeout
 
 ## Documentation Guidelines
 
@@ -362,6 +448,59 @@ prompt_template="1girl, {Outfit:$2}, {Angle:$10}, beautiful"
 # Boucle extérieure : Outfit (poids 2)
 # Boucle intérieure : Angle (poids 10)
 # Résultat : Pour chaque Outfit, génère toutes les variations d'Angle
+```
+
+## 🔍 Code Review Guidelines
+
+Avant de commencer une code review, consulter ces documents :
+
+### Documents de référence
+- **[Code Review Guidelines](docs/tooling/CODE_REVIEW_GUIDELINES.md)** - Directives complètes pour les code reviews
+  - Principes SOLID et architecture
+  - Qualité du code (complexité, lisibilité, DRY)
+  - Organisation et documentation
+  - Performance et sécurité
+  - Checklist par fichier (~30-35 min)
+  - Red flags et problèmes courants
+
+- **[Code Review Action Templates](docs/tooling/CODE_REVIEW_ACTION_TEMPLATES.md)** - Templates pour actions post-review
+  - 6 templates de fiches d'action détaillés
+  - Matrice de priorisation (Criticité × Effort)
+  - Workflows d'exécution (simple/complexe)
+  - Dashboard de suivi et validation
+  - Templates GitHub Issues et communication
+
+### Processus de code review
+
+**Phase 1 : Review**
+1. Lire les guidelines dans `CODE_REVIEW_GUIDELINES.md`
+2. Reviewer les fichiers avec la checklist
+3. Identifier les problèmes (🔴 Bloquant, 🟠 Important, 🟡 Suggestion, 💡 Question)
+
+**Phase 2 : Actions**
+1. Créer fiches d'action avec templates appropriés
+2. Prioriser selon matrice (P1-P5)
+3. Planifier dans sprints
+
+**Phase 3 : Exécution**
+1. Suivre workflows selon taille (Small/Medium/Large)
+2. Tracker progrès avec dashboard
+3. Valider avec checklist avant fermeture
+
+### Outils automatiques recommandés
+```bash
+# Style et qualité
+flake8 CLI/ --max-line-length=120
+mypy CLI/ --strict
+
+# Complexité
+radon cc CLI/ -a -nb
+
+# Code mort
+vulture CLI/
+
+# Sécurité
+bandit -r CLI/
 ```
 
 ## Commands

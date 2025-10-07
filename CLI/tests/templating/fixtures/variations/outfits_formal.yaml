@@ -1,0 +1,7 @@
+type: variations
+name: Outfits Formal
+version: '1.0'
+variations:
+  suit: "wearing business suit"
+  dress: "wearing elegant dress"
+  tuxedo: "wearing black tuxedo with bow tie"

@@ -22,6 +22,8 @@ def is_multi_field_variation(variation_data: dict) -> bool:
     Returns:
         True if the file has type: multi_field or multi-field
     """
+    if variation_data is None:
+        return False
     return variation_data.get('type') in ('multi_field', 'multi-field')
 
 

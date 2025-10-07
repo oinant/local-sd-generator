@@ -476,7 +476,86 @@ def _load_all_imports(config: PromptConfig, base_path: Path) -> Dict[str, dict]:
     """
     imports: Dict[str, dict] = {}
     for placeholder_name, variation_path in config.imports.items():
-        imports[placeholder_name] = _load_import(variation_path, base_path)
+        # Handle four cases:
+        # 1. String path: single file import
+        # 2. Dict with 'sources': multi-file import (PromptConfig normalized list to this format)
+        # 3. List of strings starting with '../' or ending in '.yaml': multiple file imports to merge
+        # 4. List of plain strings: inline variation values
+
+        if isinstance(variation_path, str):
+            # Single file import
+            imports[placeholder_name] = _load_import(variation_path, base_path)
+        elif isinstance(variation_path, dict):
+            # PromptConfig has normalized list imports to dict format with 'sources'
+            if 'sources' in variation_path:
+                # Multi-file import
+                merged_variations = {}
+                for file_path in variation_path['sources']:
+                    if isinstance(file_path, str):
+                        import_data = _load_import(file_path, base_path)
+                        if import_data['type'] == 'variations':
+                            merged_variations.update(import_data['data'])
+                imports[placeholder_name] = {
+                    'type': 'variations',
+                    'data': merged_variations
+                }
+            elif 'inline_values' in variation_path:
+                # Inline values (PromptConfig normalized - old format)
+                from .types import Variation
+                inline_variations = {}
+                for idx, value in enumerate(variation_path['inline_values']):
+                    if isinstance(value, str):
+                        inline_variations[str(idx)] = Variation(key=str(idx), value=value)
+                imports[placeholder_name] = {
+                    'type': 'variations',
+                    'data': inline_variations
+                }
+            elif variation_path.get('type') == 'inline' and 'values' in variation_path:
+                # Inline values (PromptConfig normalized - new format)
+                from .types import Variation
+                inline_variations = {}
+                for idx, value in enumerate(variation_path['values']):
+                    if isinstance(value, str):
+                        inline_variations[str(idx)] = Variation(key=str(idx), value=value)
+                imports[placeholder_name] = {
+                    'type': 'variations',
+                    'data': inline_variations
+                }
+            else:
+                raise ValueError(f"Unknown dict format for {placeholder_name}: {variation_path}")
+        elif isinstance(variation_path, list):
+            # Legacy: direct list (not normalized by PromptConfig)
+            is_file_list = any(
+                isinstance(item, str) and ('/' in item or item.endswith('.yaml'))
+                for item in variation_path
+            )
+
+            if is_file_list:
+                # Multiple file imports - merge them
+                merged_variations = {}
+                for file_path in variation_path:
+                    if isinstance(file_path, str) and ('/' in file_path or file_path.endswith('.yaml')):
+                        import_data = _load_import(file_path, base_path)
+                        if import_data['type'] == 'variations':
+                            merged_variations.update(import_data['data'])
+                imports[placeholder_name] = {
+                    'type': 'variations',
+                    'data': merged_variations
+                }
+            else:
+                # Inline values - convert to variations dict
+                from .types import Variation
+                inline_variations = {}
+                for idx, value in enumerate(variation_path):
+                    if isinstance(value, str):
+                        inline_variations[str(idx)] = Variation(key=str(idx), value=value)
+                imports[placeholder_name] = {
+                    'type': 'variations',
+                    'data': inline_variations
+                }
+        else:
+            raise ValueError(f"Invalid import format for {placeholder_name}: {type(variation_path)}")
+
     return imports
 
 

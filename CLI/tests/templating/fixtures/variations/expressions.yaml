@@ -1,0 +1,7 @@
+type: variations
+name: Expressions
+version: '1.0'
+variations:
+  happy: "smiling, cheerful expression"
+  sad: "sad, melancholic expression"
+  neutral: "neutral expression, calm face"

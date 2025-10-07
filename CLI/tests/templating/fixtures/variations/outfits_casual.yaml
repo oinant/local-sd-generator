@@ -1,0 +1,7 @@
+type: variations
+name: Outfits Casual
+version: '1.0'
+variations:
+  jeans_tshirt: "wearing jeans and t-shirt"
+  hoodie: "wearing hoodie and casual pants"
+  sneakers_joggers: "wearing sneakers with joggers and bomber jacket"
