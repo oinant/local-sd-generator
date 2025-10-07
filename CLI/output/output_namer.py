@@ -65,8 +65,7 @@ def sanitize_filename_component(value: str, max_length: int = 50) -> str:
 def generate_session_folder_name(
     timestamp: datetime,
     session_name: Optional[str] = None,
-    filename_keys: Optional[List[str]] = None,
-    variations_sample: Optional[Dict[str, Dict[str, str]]] = None
+    filename_keys: Optional[List[str]] = None
 ) -> str:
     """
     Generate a session folder name based on configuration.
@@ -82,7 +81,6 @@ def generate_session_folder_name(
         timestamp: DateTime object for the session start
         session_name: Optional custom session name
         filename_keys: Optional list of variation keys to use in folder name
-        variations_sample: Optional dict of variations (for future use)
 
     Returns:
         Session folder name string
