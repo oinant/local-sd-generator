@@ -12,6 +12,16 @@ This directory contains obsolete roadmap documents kept for historical reference
 ### Legacy Roadmap
 - **roadmap.md** - Old roadmap format (replaced by organized structure in `/done/`, `/next/`, `/future/`)
 
+### Superseded Specifications
+- **json-config-feature.md** - JSON config system spec (1168 lines, obsolete)
+  - **Why archived:** Project chose YAML templating instead of JSON configs
+  - **Current equivalent:** Phase 2 YAML system (see `/docs/cli/technical/yaml-templating-system.md`)
+  - **Features completed differently:**
+    - SF-4 (Enhanced Naming) - Implemented in `output_namer.py`
+    - SF-5 (JSON Metadata) - Implemented in `metadata_generator.py`
+    - SF-7 (Global Config) - Implemented in `global_config.py`
+  - **Status:** JSON approach abandoned in favor of YAML (more flexible, human-friendly)
+
 ## Current Roadmap Structure
 
 The active roadmap is now organized as:
@@ -21,7 +31,13 @@ The active roadmap is now organized as:
 - `README.md` - Current status and roadmap overview
 - `braindump.md` - Ideas and feature proposals
 
+## Current System Documentation
+
+- **YAML Templating:** `/docs/cli/technical/yaml-templating-system.md`
+- **Architecture:** `/docs/cli/technical/architecture.md`
+- **User Guide:** `/docs/cli/usage/yaml-templating-guide.md`
+
 ---
 
 **Archived:** 2025-10-07
-**Reason:** Features completed, replaced by new organizational structure
+**Reason:** Features completed, replaced by new organizational structure and YAML-based system
