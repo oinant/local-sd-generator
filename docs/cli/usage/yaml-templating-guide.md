@@ -362,23 +362,6 @@ graph LR
 
 ## Niveau 3b : Listes d'imports
 
-### Avant (Phase 1)
-
-```yaml
-# Fallait créer un fichier intermédiaire
-# haircolors_combined.yaml:
-type: multi-field
-sources:
-  - haircolors.realist.yaml
-  - haircolors.fantasy.yaml
-
-# Puis l'importer
-imports:
-  HairColor: ../variations/haircolors_combined.yaml
-```
-
-### Maintenant (Phase 2)
-
 ```yaml
 # Import direct d'une liste !
 imports:
