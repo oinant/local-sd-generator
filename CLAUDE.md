@@ -163,7 +163,8 @@ docs/
 ├── cli/          # Documentation CLI
 │   ├── usage/    # Guides utilisateur
 │   └── technical/ # Documentation technique
-├── webapp/       # Documentation Web App
+├── front/        # Documentation Frontend
+├── api/          # Documentation API
 ├── tooling/      # Documentation outils dev
 └── roadmap/      # Planning des features
     ├── done/     # Features terminées
@@ -186,12 +187,12 @@ docs/
   - **Tests** : Plan de tests
 
 #### 2. **Pendant le développement**
-- Maintenir la doc technique à jour dans `docs/{cli|webapp|tooling}/technical/`
+- Maintenir la doc technique à jour dans `docs/{cli|front|api|tooling}/technical/`
 - Documenter les décisions importantes :
   - Pourquoi tel choix plutôt qu'un autre ?
   - Quels trade-offs ont été faits ?
   - Quelles alternatives ont été considérées ?
-- Ajouter des exemples d'usage dans `docs/{cli|webapp|tooling}/usage/` au fur et à mesure
+- Ajouter des exemples d'usage dans `docs/{cli|front|api|tooling}/usage/` au fur et à mesure
 
 #### 3. **Quand c'est terminé**
 - Déplacer la spec de `wip/` vers `done/`
@@ -213,7 +214,7 @@ Chaque fichier dans `roadmap/{done|wip|next|future}/` doit suivre ce template :
 
 **Status:** done|wip|next|future
 **Priority:** 1-10
-**Component:** cli|webapp|tooling
+**Component:** cli|front|api|tooling
 **Created:** YYYY-MM-DD
 **Completed:** YYYY-MM-DD (si done)
 

@@ -13,9 +13,9 @@ Simplifier l'architecture webapp en utilisant une source unique de vérité pour
 
 ```
 /CLI/apioutput/           # Images générées par les scripts CLI
-/backend/app/...          # Backend FastAPI
-/backend/frontend/...     # Frontend Vue.js
-/backend/uploads/         # Dossier séparé pour images webapp
+/api/app/...          # Backend FastAPI
+/api/frontend/...     # Frontend Vue.js
+/api/uploads/         # Dossier séparé pour images webapp
 ```
 
 **Problèmes :**
@@ -34,13 +34,13 @@ Simplifier l'architecture webapp en utilisant une source unique de vérité pour
 │   ├── image_0002.png
 │   └── ...
 
-/backend/static/thumbnails/        # Réplique en thumbnails WebP
+/api/static/thumbnails/        # Réplique en thumbnails WebP
 ├── session_2025-09-30_14-30-45/
 │   ├── image_0001.webp
 │   ├── image_0002.webp
 │   └── ...
 
-/backend/database.sqlite           # Métadonnées centralisées
+/api/database.sqlite           # Métadonnées centralisées
 ```
 
 ## Thumbnail Generation
@@ -49,7 +49,7 @@ Simplifier l'architecture webapp en utilisant une source unique de vérité pour
 
 1. Image PNG générée dans `/CLI/apioutput/session_xxx/`
 2. **En background** : génération d'un thumbnail WebP
-3. Thumbnail placé dans `/backend/static/thumbnails/session_xxx/`
+3. Thumbnail placé dans `/api/static/thumbnails/session_xxx/`
 4. Métadonnées enregistrées dans SQLite
 
 **Configuration suggérée pour thumbnails :**
@@ -90,7 +90,7 @@ CREATE TABLE images (
     filename TEXT NOT NULL,
     image_number INTEGER NOT NULL,
     original_path TEXT NOT NULL,      -- /CLI/apioutput/session_xxx/image_0001.png
-    thumbnail_path TEXT,               -- /backend/static/thumbnails/session_xxx/image_0001.webp
+    thumbnail_path TEXT,               -- /api/static/thumbnails/session_xxx/image_0001.webp
     prompt_used TEXT,
     seed INTEGER,
     variations_used TEXT,              -- JSON: {"Hair": "long blonde", "Expression": "smiling"}
@@ -167,7 +167,7 @@ CREATE INDEX idx_variation_usage_image ON variation_usage(image_id);
 **Phase 1 : Génération thumbnails**
 - Hook dans les générateurs pour créer thumbnail après chaque image
 - Utiliser Pillow pour conversion PNG → WebP
-- Structure miroir dans /backend/static/thumbnails/
+- Structure miroir dans /api/static/thumbnails/
 
 **Phase 2 : Base de données SQLite**
 - Créer schema et migrations

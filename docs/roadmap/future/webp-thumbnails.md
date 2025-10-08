@@ -16,7 +16,7 @@ Créer automatiquement des thumbnails WebP optimisés lors de la génération d'
 
 1. Image PNG générée dans `/CLI/apioutput/session_xxx/`
 2. **En background** : génération d'un thumbnail WebP
-3. Thumbnail placé dans `/backend/static/thumbnails/session_xxx/`
+3. Thumbnail placé dans `/api/static/thumbnails/session_xxx/`
 4. Métadonnées enregistrées dans SQLite
 
 ---
@@ -92,7 +92,7 @@ CLI/apioutput/session_xxx/
 ├── image_0001.png    (1920×1080, 3.5 MB)
 └── image_0002.png    (1920×1080, 3.2 MB)
 
-backend/static/thumbnails/session_xxx/
+api/static/thumbnails/session_xxx/
 ├── image_0001.webp   (512×288, 45 KB)
 └── image_0002.webp   (512×288, 42 KB)
 ```

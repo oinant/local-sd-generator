@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Thumbnail Generator for SD Image Gallery
-Converts PNG images from CLI/apioutput to WebP thumbnails in backend/static/
+Converts PNG images from CLI/apioutput to WebP thumbnails in api/static/
 Supports three modes: initial (full scan), diff (incremental), and watch (real-time)
 """
 
@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 # Constants
 SOURCE_DIR = Path("CLI/apioutput")
-TARGET_DIR = Path("backend/static/thumbnails")
+TARGET_DIR = Path("api/static/thumbnails")
 THUMBNAIL_HEIGHT = 240
 WEBP_QUALITY = 85
-STATE_FILE = Path("backend/watchdogs/.thumbnail_state.json")
+STATE_FILE = Path("api/services/watchdogs/.thumbnail_state.json")
 TIMESTAMP_FORMAT = "%Y-%m-%d_%H%M%S"
 
 

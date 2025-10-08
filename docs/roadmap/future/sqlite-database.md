@@ -43,7 +43,7 @@ CREATE TABLE images (
     filename TEXT NOT NULL,
     image_number INTEGER NOT NULL,
     original_path TEXT NOT NULL,      -- /CLI/apioutput/session_xxx/image_0001.png
-    thumbnail_path TEXT,               -- /backend/static/thumbnails/session_xxx/image_0001.webp
+    thumbnail_path TEXT,               -- /api/static/thumbnails/session_xxx/image_0001.webp
     prompt_used TEXT,
     seed INTEGER,
     variations_used TEXT,              -- JSON: {"Hair": "long blonde", "Expression": "smiling"}

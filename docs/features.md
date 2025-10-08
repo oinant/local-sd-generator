@@ -10,7 +10,7 @@ Ce document décrit toutes les fonctionnalités disponibles dans le système de 
 2. [Système de Placeholders](#système-de-placeholders) 📖 [**Guide complet des placeholders**](placeholders.md)
 3. [Modes de Génération](#modes-de-génération)
 4. [Modes de Seed](#modes-de-seed)
-5. [Webapp](#webapp)
+5. [Frontend Web](#frontend-web)
 6. [Fichiers de Variations](#fichiers-de-variations)
 
 ---
@@ -398,23 +398,23 @@ variations = load_variations_from_file("file.txt", encoding='latin1')
 ### Démarrage
 
 ```bash
-cd backend
-python -m uvicorn app.main:app --reload
+cd api
+python -m uvicorn main:app --reload
 ```
 
 Puis ouvrir `http://localhost:8000`
 
 ### Configuration
 
-Le fichier `.env` dans `/backend/` configure :
+Le fichier `.env` dans `/api/` configure :
 - Chemins des dossiers d'images
 - Port du serveur
 - Options de sécurité
 
 **Exemple `.env` :**
 ```
-IMAGES_ROOT=/path/to/local-sd-generator/apioutput
-UPLOAD_FOLDER=/path/to/backend/uploads
+IMAGES_ROOT=/path/to/local-sd-generator/CLI/apioutput
+UPLOAD_FOLDER=/path/to/api/uploads
 SECRET_KEY=your-secret-key-here
 ```
 
@@ -422,9 +422,9 @@ SECRET_KEY=your-secret-key-here
 
 ```
 /CLI/apioutput/           # Source des images générées
-/backend/app/             # API FastAPI
-/backend/frontend/        # Interface Vue.js
-/backend/uploads/         # Images uploadées via webapp
+/api/                     # API FastAPI
+/front/                   # Interface Vue.js
+/api/static/thumbnails/   # Thumbnails optimisés
 ```
 
 ---
@@ -473,10 +473,10 @@ Images dans : `CLI/apioutput/anime_test_TIMESTAMP/`
 
 Métadonnées dans : `CLI/apioutput/anime_test_TIMESTAMP/session_config.txt`
 
-### 5. Visualiser via webapp
+### 5. Visualiser via frontend
 
 ```bash
-cd backend
+cd api
 python -m uvicorn app.main:app --reload
 ```
 
@@ -678,4 +678,4 @@ Pour rapporter des bugs ou suggérer des fonctionnalités, consultez le fichier 
 - 🔜 Lancement depuis fichier de configuration
 - 🔜 Génération de thumbnails WebP
 - 🔜 Base de données SQLite pour métadonnées
-- 🔜 Architecture webapp simplifiée
+- 🔜 Architecture frontend optimisée avec thumbnails

@@ -6,7 +6,7 @@ Simple CLI and API tools allowing to prompt your local StableDiffusion WebUI API
 ### Configuration
 1. Copy the environment configuration:
 ```bash
-cd backend
+cd api
 cp .env.example .env
 ```
 
@@ -24,16 +24,16 @@ VALID_GUIDS=["your-admin-guid", "your-user-guid", "your-readonly-guid"]
 READ_ONLY_GUIDS=["your-readonly-guid"]
 ```
 
-### Backend (FastAPI)
+### Backend API (FastAPI)
 ```bash
-cd backend
-hatch shell
-hatch run api:serve
+cd api
+pip install -e .
+python -m uvicorn main:app --reload
 ```
 
 ### Frontend (Vue.js)
 ```bash
-cd backend/frontend
+cd front
 npm install
 npm run serve
 ```

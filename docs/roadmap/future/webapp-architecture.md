@@ -12,9 +12,9 @@ Architecture multi-dossiers complexe avec duplication :
 
 ```
 /CLI/apioutput/           # Images générées par scripts CLI
-/backend/app/             # Backend FastAPI
-/backend/frontend/        # Frontend Vue.js
-/backend/uploads/         # Dossier séparé pour images webapp
+/api/app/             # Backend FastAPI
+/api/frontend/        # Frontend Vue.js
+/api/uploads/         # Dossier séparé pour images webapp
 ```
 
 **Problèmes :**
@@ -39,13 +39,13 @@ Architecture multi-dossiers complexe avec duplication :
 │   ├── image_0002.png
 │   └── ...
 
-/backend/static/thumbnails/        # Réplique WebP optimisée
+/api/static/thumbnails/        # Réplique WebP optimisée
 ├── session_2025-09-30_14-30-45/
 │   ├── image_0001.webp
 │   ├── image_0002.webp
 │   └── ...
 
-/backend/database.sqlite           # Métadonnées centralisées
+/api/database.sqlite           # Métadonnées centralisées
 ```
 
 ---
@@ -81,7 +81,7 @@ Architecture multi-dossiers complexe avec duplication :
 ### Phase 1 : Génération thumbnails
 - Hook dans ImageVariationGenerator
 - Conversion PNG → WebP avec Pillow
-- Structure miroir dans /backend/static/thumbnails/
+- Structure miroir dans /api/static/thumbnails/
 
 ### Phase 2 : Base de données SQLite
 - Créer schema et migrations

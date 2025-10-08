@@ -1,46 +1,45 @@
 # Thumbnail Generator
 
-Convertit automatiquement les images PNG de `CLI/apioutput` en thumbnails WebP dans `backend/static/thumbnails/`.
+Convertit automatiquement les images PNG de `CLI/apioutput` en thumbnails WebP dans `api/static/thumbnails/`.
 
 ## Installation
 
-Les dépendances sont incluses dans le `pyproject.toml` du backend :
+Les dépendances sont incluses dans le `pyproject.toml` de l'API :
 ```bash
-cd backend
-hatch env create
+cd api
+pip install -e .
 ```
 
 ## Utilisation
 
-**Important :** Lancer depuis le répertoire `backend/`
+**Important :** Lancer depuis la racine du projet
 
 ### Mode Initial
 Traite toutes les images existantes :
 ```bash
-cd backend
-hatch run python watchdogs/thumbnail_generator.py initial --source ../CLI/apioutput --target static/thumbnails
+python api/services/watchdogs/thumbnail_generator.py initial
 ```
 
 ### Mode Diff
 Traite seulement les nouveaux dossiers depuis la dernière exécution :
 ```bash
-hatch run python watchdogs/thumbnail_generator.py diff --source ../CLI/apioutput --target static/thumbnails
+python api/services/watchdogs/thumbnail_generator.py diff
 ```
 
 ### Mode Watch
 Surveille en temps réel et traite automatiquement les nouvelles images :
 ```bash
-hatch run python watchdogs/thumbnail_generator.py watch --source ../CLI/apioutput --target static/thumbnails
+python api/services/watchdogs/thumbnail_generator.py watch
 ```
 
 ## Configuration
 
 Paramètres par défaut (modifiables dans le script) :
 - **Source :** `CLI/apioutput`
-- **Destination :** `backend/static/thumbnails`
+- **Destination :** `api/static/thumbnails`
 - **Hauteur thumbnail :** 240px (ratio conservé)
 - **Qualité WebP :** 85
-- **État :** `.thumbnail_state.json` (pour mode diff)
+- **État :** `api/services/watchdogs/.thumbnail_state.json` (pour mode diff)
 
 ## Format des dossiers
 
@@ -57,9 +56,9 @@ CLI/apioutput/2025-09-30_223814_test/image1.png
 
 →
 
-backend/static/thumbnails/2025-09-30_223814_test/image1.webp
-                                                  /image2.webp
-                                                  /subfolder/image3.webp
+api/static/thumbnails/2025-09-30_223814_test/image1.webp
+                                              /image2.webp
+                                              /subfolder/image3.webp
 ```
 
 ## Gestion des erreurs
