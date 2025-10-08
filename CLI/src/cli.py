@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -27,11 +28,31 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-# Add CLI directory to path
-sys.path.insert(0, str(Path(__file__).parent))
-
 from config.global_config import load_global_config, ensure_global_config
 from templating import load_prompt_config, resolve_prompt
+
+
+def normalize_prompt(prompt: str) -> str:
+    """
+    Normalize prompt by replacing newlines with commas and cleaning up.
+
+    Args:
+        prompt: Raw prompt string with possible newlines
+
+    Returns:
+        Normalized prompt with clean comma separation
+    """
+    # Replace newlines with ", "
+    normalized = prompt.replace('\n', ', ').replace('\r', '')
+
+    # Clean up multiple commas and spaces
+    normalized = re.sub(r',(\s*,)+', ',', normalized)  # Multiple commas with optional spaces
+    normalized = re.sub(r'\s+', ' ', normalized)        # Multiple spaces → single space
+    normalized = re.sub(r',\s+', ', ', normalized)      # Normalize space after comma
+    normalized = re.sub(r'\s+,', ',', normalized)       # Remove space before comma
+    normalized = normalized.strip()                      # Trim edges
+
+    return normalized
 
 # Initialize Typer app and Rich console
 app = typer.Typer(
@@ -235,7 +256,7 @@ def generate_images(
 
         # Generate using the new API module
         from api import BatchGenerator, SDAPIClient, SessionManager, ImageWriter, ProgressReporter
-        from api.sdapi_client import GenerationConfig, PromptConfig
+        from api import GenerationConfig, PromptConfig
 
         session_name = config.name.lower().replace(" ", "_").replace("-", "_")
         output_base_dir = Path(global_config.output_dir)
@@ -286,10 +307,14 @@ def generate_images(
         }
 
         for var in variations:
+            # Normalize newlines in prompts for manifest
+            normalized_prompt = normalize_prompt(var.final_prompt)
+            normalized_negative = normalize_prompt(var.negative_prompt)
+
             manifest["variations"].append({
                 "index": var.index,
-                "prompt": var.final_prompt,
-                "negative_prompt": var.negative_prompt,
+                "prompt": normalized_prompt,
+                "negative_prompt": normalized_negative,
                 "seed": var.seed,
                 "placeholders": var.placeholders
             })

@@ -217,7 +217,7 @@ backend/frontend/dist/
 backend/frontend/.env
 backend/frontend/.env.local
 /CLI/private_generators/prompts/
-/CLI/apioutput/
+/CLI/src/apioutput/
 private_generators/
 CLI/private_generators/
 apioutput/

@@ -5,6 +5,7 @@ This client handles ONLY API communication - no filesystem operations,
 no progress reporting, no session management.
 """
 
+import re
 import requests
 from typing import Optional
 from dataclasses import dataclass
@@ -94,6 +95,28 @@ class SDAPIClient:
         except Exception:
             return False
 
+    def _normalize_prompt(self, prompt: str) -> str:
+        """
+        Normalize prompt by replacing newlines and cleaning up commas.
+
+        Args:
+            prompt: Raw prompt string
+
+        Returns:
+            Normalized prompt with clean comma separation
+        """
+        # Replace newlines with ", "
+        normalized = prompt.replace('\n', ', ').replace('\r', '')
+
+        # Clean up multiple commas and spaces
+        normalized = re.sub(r',(\s*,)+', ',', normalized)  # Multiple commas with optional spaces
+        normalized = re.sub(r'\s+', ' ', normalized)        # Multiple spaces → single space
+        normalized = re.sub(r',\s+', ', ', normalized)      # Normalize space after comma
+        normalized = re.sub(r'\s+,', ',', normalized)       # Remove space before comma
+        normalized = normalized.strip()                      # Trim edges
+
+        return normalized
+
     def generate_image(self, prompt_config: PromptConfig, timeout: int = 300) -> dict:
         """
         Generate a single image via API
@@ -132,9 +155,13 @@ class SDAPIClient:
         Returns:
             dict: API payload ready to send
         """
+        # Normalize prompts: replace newlines with ", " and clean up
+        prompt = self._normalize_prompt(prompt_config.prompt)
+        negative_prompt = self._normalize_prompt(prompt_config.negative_prompt)
+
         payload = {
-            "prompt": prompt_config.prompt,
-            "negative_prompt": prompt_config.negative_prompt,
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
             "seed": prompt_config.seed if prompt_config.seed is not None else -1,
             "steps": self.generation_config.steps,
             "cfg_scale": self.generation_config.cfg_scale,

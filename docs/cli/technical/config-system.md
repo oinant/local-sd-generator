@@ -127,7 +127,7 @@ def save_global_config(config: GlobalConfig, path: Path) -> None:
 ### Usage Example
 
 ```python
-from CLI.config.global_config import load_global_config, create_default_global_config
+from CLI.src.config.global_config import load_global_config, create_default_global_config
 
 # Load global config (creates with defaults if not found)
 global_config = load_global_config()
@@ -396,7 +396,7 @@ ValidationError:
 ### Load and Validate Config
 
 ```python
-from CLI.config.config_loader import ConfigLoader
+from CLI.src.config import ConfigLoader
 from pathlib import Path
 
 # Load config
@@ -423,8 +423,8 @@ except ValidationError as e:
 ### Manual Validation
 
 ```python
-from CLI.config.config_schema import GenerationConfig
-from CLI.config.config_loader import ConfigLoader
+from CLI.src.config import GenerationConfig
+from CLI.src.config import ConfigLoader
 
 # Create config object manually
 config = GenerationConfig(
@@ -448,7 +448,7 @@ else:
 ### Check Variation Files
 
 ```python
-from CLI.config.config_loader import ConfigLoader
+from CLI.src.config import ConfigLoader
 
 variations = {
     "Expression": "/path/to/expressions.txt",

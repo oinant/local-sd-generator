@@ -7,6 +7,51 @@
 - Les tests sont dans `/CLI/tests` et utilisent pytest
 - Probleme d'install de PYCOV, ne l'utilise pas
 
+## ⚠️ Configuration Critique
+
+**Le fichier `.sdgen_config.json` DOIT être dans le home directory (`~/.sdgen_config.json`) !**
+
+```bash
+# Créer/modifier la config
+sdgen init
+
+# Fichier créé : ~/.sdgen_config.json
+# Contenu :
+{
+  "configs_dir": "/path/to/your/templates",
+  "output_dir": "/path/to/output",
+  "api_url": "http://127.0.0.1:7860"
+}
+```
+
+**NE PAS** mettre la config dans le dossier du projet, elle ne sera pas trouvée depuis d'autres répertoires.
+
+## 📁 Structure du Projet
+
+Le projet utilise la **structure src/ layout** (meilleure pratique Python moderne) :
+
+```
+local-sd-generator/
+├── CLI/                    # Package CLI (générateur SD)
+│   ├── src/               # Code source (PYTHONPATH configuré sur src/)
+│   │   ├── api/          # Client API SD WebUI
+│   │   ├── templating/   # Moteur de templates Phase 2
+│   │   ├── config/       # Configuration globale
+│   │   ├── execution/    # Exécution et orchestration
+│   │   └── output/       # Gestion des outputs
+│   ├── tests/            # Tests unitaires et d'intégration
+│   ├── template_cli.py   # Point d'entrée CLI (argparse)
+│   ├── template_cli_typer.py  # Point d'entrée CLI moderne (Typer)
+│   └── pyproject.toml    # Configuration package CLI
+├── backend/              # Backend FastAPI (anciennement /api/)
+│   └── pyproject.toml
+├── front/                # Frontend (si existant)
+├── venv/                 # Virtual environment Python
+└── docs/                 # Documentation
+```
+
+**Note importante** : Le dossier backend était anciennement nommé `/api/`, ce qui créait un conflit de noms avec `/CLI/src/api/`. Il a été renommé en `/backend/` pour éviter les problèmes d'imports Python.
+
 ## 🐍 Python Environment Setup
 
 ### Virtual Environment
@@ -63,12 +108,14 @@ cd /mnt/d/StableDiffusion/local-sd-generator/CLI
 
 **Structure des tests :**
 ```
-tests/
-├── templating/         # Tests Phase 2 (52 tests)
-├── integration/        # Tests d'intégration
-├── legacy/            # Anciens tests fonctionnels
-└── [tests unitaires]  # Tests des autres modules
+CLI/tests/
+├── api/               # Tests API client (75 tests) ✅
+├── templating/        # Tests Phase 2 (66 tests) ✅
+├── integration/       # Tests d'intégration
+└── legacy/            # Anciens tests fonctionnels
 ```
+
+**Total : 141 tests passent** (API + templating)
 
 **Pourquoi `python3 -m pytest` ?**
 - `pytest` seul ne détecte pas toujours le bon PYTHONPATH

@@ -584,11 +584,11 @@ flowchart LR
 
 ## Références
 
-- **[Loaders](../../../CLI/templating/loaders.py)** - Chargement des variations
-- **[Prompt Config](../../../CLI/templating/prompt_config.py)** - Parsing et héritage
-- **[Resolver](../../../CLI/templating/resolver.py)** - Résolution et combinaisons
-- **[Multi-field](../../../CLI/templating/multi_field.py)** - Variations multi-champs
-- **[Chunk](../../../CLI/templating/chunk.py)** - Templates de personnages
+- **[Loaders](../../../CLI/src/templating/loaders.py)** - Chargement des variations
+- **[Prompt Config](../../../CLI/src/templating/prompt_config.py)** - Parsing et héritage
+- **[Resolver](../../../CLI/src/templating/resolver.py)** - Résolution et combinaisons
+- **[Multi-field](../../../CLI/src/templating/multi_field.py)** - Variations multi-champs
+- **[Chunk](../../../CLI/src/templating/chunk.py)** - Templates de personnages
 
 ---
 

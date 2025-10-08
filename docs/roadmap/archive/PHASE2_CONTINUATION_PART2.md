@@ -393,8 +393,9 @@ cd /mnt/d/StableDiffusion/local-sd-generator/CLI
 Phase 2 est maintenant **COMPLÈTE** et **FONCTIONNELLE** !
 
 **Pour utiliser:**
+
 ```python
-from CLI.templating import load_prompt_config, resolve_prompt
+from CLI.src.templating import load_prompt_config, resolve_prompt
 
 config = load_prompt_config("path/to/config.prompt.yaml")
 variations = resolve_prompt(config, base_path=fixtures_path)

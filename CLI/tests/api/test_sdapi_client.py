@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import Mock, patch
 import requests
 
-from api.sdapi_client import SDAPIClient, GenerationConfig, PromptConfig
+from api import SDAPIClient, GenerationConfig, PromptConfig
 
 
 class TestSDAPIClient:
@@ -158,6 +158,62 @@ class TestSDAPIClient:
         payload = client.get_payload_for_config(prompt_config)
 
         assert payload['seed'] == -1  # -1 means random seed
+
+    def test_build_payload_normalizes_newlines_in_prompt(self):
+        """Test that newlines in prompt are replaced with ', '"""
+        client = SDAPIClient()
+        prompt_config = PromptConfig(
+            prompt="masterpiece\nbest quality\n1girl",
+            negative_prompt="low quality\nblurry"
+        )
+
+        payload = client.get_payload_for_config(prompt_config)
+
+        assert payload['prompt'] == "masterpiece, best quality, 1girl"
+        assert payload['negative_prompt'] == "low quality, blurry"
+
+    def test_build_payload_handles_windows_newlines(self):
+        """Test that Windows-style CRLF newlines are handled correctly"""
+        client = SDAPIClient()
+        prompt_config = PromptConfig(
+            prompt="line1\r\nline2\r\nline3",
+            negative_prompt="bad\r\nugly"
+        )
+
+        payload = client.get_payload_for_config(prompt_config)
+
+        assert payload['prompt'] == "line1, line2, line3"
+        assert payload['negative_prompt'] == "bad, ugly"
+
+    def test_build_payload_with_no_newlines(self):
+        """Test that prompts without newlines are unchanged"""
+        client = SDAPIClient()
+        prompt_config = PromptConfig(
+            prompt="simple prompt",
+            negative_prompt="simple negative"
+        )
+
+        payload = client.get_payload_for_config(prompt_config)
+
+        assert payload['prompt'] == "simple prompt"
+        assert payload['negative_prompt'] == "simple negative"
+
+    def test_build_payload_cleans_multiple_commas(self):
+        """Test that multiple commas from newline replacement are cleaned up"""
+        client = SDAPIClient()
+        prompt_config = PromptConfig(
+            prompt="tag1,\ntag2,\n\ntag3",  # Will create ,, after replacement
+            negative_prompt="bad1,\n\nbad2"
+        )
+
+        payload = client.get_payload_for_config(prompt_config)
+
+        # Should clean up ,, to single ,
+        assert payload['prompt'] == "tag1, tag2, tag3"
+        assert payload['negative_prompt'] == "bad1, bad2"
+        # Verify no double commas
+        assert ',,' not in payload['prompt']
+        assert ',,' not in payload['negative_prompt']
 
     @patch('requests.post')
     def test_generate_image_with_scheduler(self, mock_post):

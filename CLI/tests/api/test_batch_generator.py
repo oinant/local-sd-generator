@@ -8,11 +8,11 @@ import shutil
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from api.batch_generator import BatchGenerator, create_batch_generator
-from api.sdapi_client import SDAPIClient, PromptConfig, GenerationConfig
-from api.session_manager import SessionManager
-from api.image_writer import ImageWriter
-from api.progress_reporter import SilentProgressReporter
+from api import BatchGenerator, create_batch_generator
+from api import SDAPIClient, PromptConfig, GenerationConfig
+from api import SessionManager
+from api import ImageWriter
+from api import SilentProgressReporter
 
 
 class TestBatchGenerator:

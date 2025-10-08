@@ -960,8 +960,8 @@ graph LR
 
 ## Ressources
 
-- **[Exemples de templates](../../../CLI/examples/prompts/)** - Templates prêts à l'emploi
-- **[Exemples de variations](../../../CLI/examples/variations/)** - Fichiers de variations
+- **[Exemples de templates](../../../CLI/src/examples/prompts/)** - Templates prêts à l'emploi
+- **[Exemples de variations](../../../CLI/src/examples/variations/)** - Fichiers de variations
 - **[Architecture technique](../technical/phase2-templating-engine.md)** - Documentation technique détaillée
 
 ---

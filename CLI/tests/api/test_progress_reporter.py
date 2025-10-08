@@ -4,7 +4,7 @@ Unit tests for ProgressReporter
 
 from pathlib import Path
 
-from api.progress_reporter import ProgressReporter, SilentProgressReporter
+from api import ProgressReporter, SilentProgressReporter
 
 
 class TestProgressReporter:

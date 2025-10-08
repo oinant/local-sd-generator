@@ -503,7 +503,7 @@ pytest tests/test_output_*.py --cov=CLI/output --cov-report=html
 ### Generate Session Folder Name
 
 ```python
-from CLI.output.output_namer import generate_session_folder_name, get_timestamp
+from CLI.src.output.output_namer import generate_session_folder_name, get_timestamp
 
 timestamp = get_timestamp()  # "20251001_143052"
 
@@ -530,7 +530,7 @@ folder3 = generate_session_folder_name(timestamp)
 ### Generate Image Filename
 
 ```python
-from CLI.output.output_namer import generate_image_filename
+from CLI.src.output.output_namer import generate_image_filename
 
 variation = {
     "Expression": "wide eyes, surprised",
@@ -553,7 +553,7 @@ filename2 = generate_image_filename(5, variation)
 ### Save Metadata
 
 ```python
-from CLI.output.metadata_generator import generate_metadata_dict, save_metadata_json
+from CLI.src.output.metadata_generator import generate_metadata_dict, save_metadata_json
 from pathlib import Path
 
 # Generate metadata

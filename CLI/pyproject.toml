@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_backend"
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "sdgen-cli"
@@ -14,7 +14,12 @@ authors = [
 dependencies = [
     "pyyaml>=6.0",
     "requests>=2.28.0",
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
 ]
+
+[project.scripts]
+sdgen = "cli:app"
 
 [project.optional-dependencies]
 dev = [
@@ -26,14 +31,10 @@ dev = [
     "bandit>=1.7.0",
     "mypy>=1.8.0",
 ]
-modern-cli = [
-    "typer[all]>=0.9.0",
-    "rich>=13.0.0",
-]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = ["src"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -44,7 +45,7 @@ addopts = [
 ]
 
 [tool.coverage.run]
-source = ["."]
+source = ["src"]
 omit = [
     "tests/*",
     "*/test_*.py",

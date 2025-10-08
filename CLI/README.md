@@ -1,23 +1,49 @@
-# SD Image Generator CLI
+# SD Image Generator CLI (`sdgen`)
 
-**Command-line tool for YAML-driven Stable Diffusion image generation with variations.**
+**Modern command-line tool for YAML-driven Stable Diffusion image generation with advanced templating.**
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
+
+### 1. **First-time Setup** (IMPORTANT!)
 
 ```bash
-# Initialize global config
-python3 template_cli.py --init-config
-
-# YAML templates (Phase 2 - Current)
-python3 template_cli.py --list               # List available templates
-python3 template_cli.py                      # Interactive mode
-python3 template_cli.py --template config.prompt.yaml --count 5
-python3 template_cli.py --template test.yaml --dry-run  # Test without API
+# Initialize your global config
+sdgen init
 ```
 
-**Note:** Phase 1 JSON config system (`generator_cli.py`) has been removed. Use YAML templates (`.prompt.yaml`) instead.
+This creates `~/.sdgen_config.json` with:
+- `configs_dir`: Path to your YAML templates
+- `output_dir`: Where images are saved
+- `api_url`: Stable Diffusion WebUI API endpoint
+
+**⚠️ IMPORTANT:** The config file MUST be in your home directory (`~/.sdgen_config.json`), not in the project folder!
+
+### 2. **Basic Usage**
+
+```bash
+# List available templates
+sdgen list
+
+# Generate images (interactive mode)
+sdgen generate
+
+# Generate from specific template
+sdgen generate -t path/to/template.prompt.yaml
+
+# Dry-run (test without API)
+sdgen generate -t template.yaml --dry-run
+
+# Validate a template
+sdgen validate template.yaml
+
+# API introspection
+sdgen api samplers
+sdgen api models
+```
+
+**Note:** Phase 1 JSON config system has been removed. Use YAML templates (`.prompt.yaml`) instead.
 
 ---
 
@@ -54,12 +80,12 @@ python3 template_cli.py --template test.yaml --dry-run  # Test without API
 
 ---
 
-## Usage
+## 📖 Usage
 
 ### Interactive Mode
 
 ```bash
-python3 template_cli.py
+sdgen generate
 ```
 
 Displays list of templates and prompts for selection.
@@ -67,7 +93,7 @@ Displays list of templates and prompts for selection.
 ### Direct Template Path
 
 ```bash
-python3 template_cli.py --template PATH
+sdgen generate -t PATH
 ```
 
 Runs specific template directly.
@@ -75,7 +101,7 @@ Runs specific template directly.
 ### List Templates
 
 ```bash
-python3 template_cli.py --list
+sdgen list
 ```
 
 Lists all available `.prompt.yaml` templates with metadata.
@@ -83,10 +109,10 @@ Lists all available `.prompt.yaml` templates with metadata.
 ### Initialize Config
 
 ```bash
-python3 template_cli.py --init-config
+sdgen init
 ```
 
-Creates `.sdgen_config.json` with global settings.
+Creates `~/.sdgen_config.json` in your home directory with global settings.
 
 ---
 
@@ -102,32 +128,32 @@ Creates `.sdgen_config.json` with global settings.
 }
 ```
 
-**Important:** The CLI searches for `.sdgen_config.json` in the current working directory first, then in the user's home directory.
+**Important:** `sdgen` searches for `.sdgen_config.json` in the current working directory first, then in the user's home directory (`~/.sdgen_config.json`). **Always use the home directory for global config!**
 
 **WSL Users:** Use absolute WSL paths (e.g., `/mnt/d/StableDiffusion/private/results`) instead of Windows paths (e.g., `D:/StableDiffusion/private/results`).
 
 **Output Directories:**
 - `generator_cli.py` (Legacy JSON): Images saved to `{output_dir}/{session_name}/`
-- `template_cli.py` (Phase 2 YAML): Images saved to `{output_dir}/{session_name}_{timestamp}/`
-- `template_cli.py --dry-run`: API requests saved as JSON in session directory
+- `sdgen` (Phase 2 YAML): Images saved to `{output_dir}/{session_name}_{timestamp}/`
+- `sdgen --dry-run`: API requests saved as JSON in session directory
 - `generate_from_template.py`: JSON variations saved to `{output_dir}/dryrun/` (utility tool, generates JSON only)
 
 ### Phase 2 YAML Template CLI
 
-The `template_cli.py` provides a complete workflow for Phase 2 templates:
+The `sdgen` provides a complete workflow for Phase 2 templates:
 
 ```bash
 # Interactive template selection
-python3 template_cli.py
+sdgen generate
 
 # Direct template execution
-python3 template_cli.py --template /path/to/template.prompt.yaml
+sdgen generate -t /path/to/template.prompt.yaml
 
 # Generate specific count (overrides template config)
-python3 template_cli.py --template test.yaml --count 10
+sdgen generate -t test.yaml --count 10
 
 # Dry-run mode (saves API requests as JSON, no image generation)
-python3 template_cli.py --template test.yaml --dry-run
+sdgen generate -t test.yaml --dry-run
 ```
 
 **Output structure:**

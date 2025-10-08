@@ -8,8 +8,8 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-from api.session_manager import SessionManager
-from api.sdapi_client import GenerationConfig
+from api import SessionManager
+from api import GenerationConfig
 
 
 class TestSessionManager:

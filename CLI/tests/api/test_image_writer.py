@@ -9,7 +9,7 @@ import base64
 import json
 from pathlib import Path
 
-from api.image_writer import ImageWriter
+from api import ImageWriter
 
 
 class TestImageWriter:

@@ -58,14 +58,14 @@ Global configuration file to specify configs and outputs directories.
 #### API
 
 ```python
-from CLI.config.global_config import load_global_config
+from CLI.src.config.global_config import load_global_config
 
 # Load global config (creates with defaults if not found)
 config = load_global_config()
 
 print(config.configs_dir)  # Path
-print(config.output_dir)   # Path
-print(config.api_url)      # str
+print(config.output_dir)  # Path
+print(config.api_url)  # str
 ```
 
 #### Success Criteria
@@ -140,7 +140,7 @@ Load and validate JSON configuration files with clear error messages.
 #### API
 
 ```python
-from CLI.config.config_loader import ConfigLoader
+from CLI.src.config import ConfigLoader
 from pathlib import Path
 
 # Load and validate config
@@ -396,7 +396,7 @@ pytest tests/test_global_config.py tests/test_config_schema.py tests/test_config
 ### Load and Validate
 
 ```python
-from CLI.config.config_loader import ConfigLoader
+from CLI.src.config import ConfigLoader
 from pathlib import Path
 
 # Load config
