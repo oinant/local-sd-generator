@@ -1,0 +1,193 @@
+"""
+Import resolver for Template System V2.0 - Phase 4.
+
+This module handles resolution of imports with support for:
+- Single file imports
+- Inline string imports (with MD5 auto-generated keys)
+- Multi-source merging with conflict detection
+- Nested imports (e.g., chunks: {positive: ..., negative: ...})
+"""
+
+from pathlib import Path
+from typing import Dict, List, Any, Union
+from ..utils.hash_utils import md5_short
+
+
+class ImportResolver:
+    """
+    Resolves imports from configuration files.
+
+    Supports:
+    - Single file: Outfit: ../variations/outfit.yaml
+    - Inline strings: Place: ["luxury room", "jungle"]
+    - Multi-source: Outfit: [../urban.yaml, ../chic.yaml, "red dress"]
+    - Nested imports: chunks: {positive: ..., negative: ...}
+    """
+
+    def __init__(self, loader, parser):
+        """
+        Initialize the import resolver.
+
+        Args:
+            loader: YamlLoader instance for loading files
+            parser: ConfigParser instance for parsing variations
+        """
+        self.loader = loader
+        self.parser = parser
+
+    def resolve_imports(
+        self,
+        config,
+        base_path: Path
+    ) -> Dict[str, Dict[str, str]]:
+        """
+        Resolve all imports from a configuration.
+
+        Args:
+            config: Configuration object (TemplateConfig, ChunkConfig, or PromptConfig)
+            base_path: Base path for resolving relative paths
+
+        Returns:
+            Dict mapping import names to variation dictionaries
+            Format: {import_name: {key: value}}
+            Example: {"Outfit": {"Urban1": "jeans", "7d8e3a2f": "red dress"}}
+
+        Raises:
+            ValueError: If duplicate keys found in multi-source merge
+            FileNotFoundError: If import file not found
+        """
+        resolved = {}
+
+        for import_name, import_value in config.imports.items():
+            if isinstance(import_value, str):
+                # Single file import
+                variations = self._load_variation_file(import_value, base_path)
+                resolved[import_name] = variations
+
+            elif isinstance(import_value, list):
+                # Multi-source merge (files + inline strings)
+                merged = self._merge_multi_sources(
+                    import_value,
+                    base_path,
+                    import_name
+                )
+                resolved[import_name] = merged
+
+            elif isinstance(import_value, dict):
+                # Nested imports (e.g., chunks: {positive: ..., negative: ...})
+                nested = {}
+                for nested_name, nested_value in import_value.items():
+                    if isinstance(nested_value, str):
+                        # Single file
+                        variations = self._load_variation_file(
+                            nested_value,
+                            base_path
+                        )
+                        nested[nested_name] = variations
+                    elif isinstance(nested_value, list):
+                        # Multi-source in nested context
+                        merged = self._merge_multi_sources(
+                            nested_value,
+                            base_path,
+                            f"{import_name}.{nested_name}"
+                        )
+                        nested[nested_name] = merged
+                resolved[import_name] = nested
+
+        return resolved
+
+    def _load_variation_file(
+        self,
+        path: str,
+        base_path: Path
+    ) -> Dict[str, str]:
+        """
+        Load variations from a single file.
+
+        Args:
+            path: Relative path to variation file
+            base_path: Base path for resolution
+
+        Returns:
+            Dict of variations {key: value}
+
+        Raises:
+            FileNotFoundError: If file not found
+            ValueError: If file format invalid
+        """
+        resolved_path = self.loader.resolve_path(path, base_path)
+        data = self.loader.load_file(resolved_path, base_path)
+        return self.parser.parse_variations(data)
+
+    def _merge_multi_sources(
+        self,
+        sources: List[str],
+        base_path: Path,
+        import_name: str
+    ) -> Dict[str, str]:
+        """
+        Merge variations from multiple sources.
+
+        Supports mixing files and inline strings.
+        Inline strings get auto-generated MD5 keys.
+
+        Args:
+            sources: List of file paths and/or inline strings
+            base_path: Base path for resolving file paths
+            import_name: Name of import (for error messages)
+
+        Returns:
+            Merged dict of variations
+
+        Raises:
+            ValueError: If duplicate keys found between files
+        """
+        merged = {}
+        key_sources = {}  # Track source of each key for conflict detection
+
+        for source in sources:
+            if self._is_inline_string(source):
+                # Inline string - generate MD5 key
+                inline_key = md5_short(source)
+                # Remove quotes if present
+                clean_value = source.strip('"\'')
+                merged[inline_key] = clean_value
+                key_sources[inline_key] = f"inline({inline_key})"
+            else:
+                # File - load and merge
+                variations = self._load_variation_file(source, base_path)
+
+                # Detect conflicts
+                for key, value in variations.items():
+                    if key in merged:
+                        raise ValueError(
+                            f"Duplicate key '{key}' in {import_name} imports "
+                            f"(found in {key_sources[key]} and {source})"
+                        )
+                    merged[key] = value
+                    key_sources[key] = source
+
+        return merged
+
+    def _is_inline_string(self, source: str) -> bool:
+        """
+        Check if a source is an inline string vs a file path.
+
+        Inline strings either:
+        - Start with quotes (" or ')
+        - Don't end with .yaml
+
+        Args:
+            source: Source string to check
+
+        Returns:
+            True if inline string, False if file path
+        """
+        source = source.strip()
+        # Starts with quote = inline
+        if source.startswith('"') or source.startswith("'"):
+            return True
+        # Doesn't end with .yaml = inline
+        if not source.endswith('.yaml'):
+            return True
+        return False

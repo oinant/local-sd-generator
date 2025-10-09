@@ -252,18 +252,160 @@ resolved = resolver.resolve_implements(child_config)
 # → All parent fields merged according to V2.0 rules
 ```
 
-### Next Steps: Phase 4 - Imports & Variations
+---
 
-Phase 4 will implement import resolution with multi-source merging:
-1. ImportResolver with file + inline string support
-2. Multi-source merge with conflict detection
-3. MD5 hash generation for inline strings
-4. Nested imports support (chunks: {positive: ..., negative: ...})
+## Phase 4: Imports & Variations ✅ COMPLETED
 
-See: `docs/roadmap/template-system-v2-architecture.md` (lines 1230-1247)
+**Date:** 2025-10-09
+**Status:** Implemented and tested
+
+### What was implemented
+
+Phase 4 implements import resolution with multi-source merging and conflict detection:
+
+#### 1. ImportResolver (`resolvers/import_resolver.py`)
+Resolves all types of imports from configuration files:
+
+**Core Methods:**
+- `resolve_imports()`: Main entry point, resolves all imports from config
+- `_load_variation_file()`: Loads single variation file (YAML dict)
+- `_merge_multi_sources()`: Merges multiple sources (files + inline)
+- `_is_inline_string()`: Detects inline strings vs file paths
+
+**Import Types Supported:**
+- ✅ **Single file:** `Outfit: ../variations/outfit.yaml`
+- ✅ **Inline strings:** `Place: ["luxury room", "jungle"]`
+- ✅ **Multi-source:** `Outfit: [../urban.yaml, ../chic.yaml, "red dress"]`
+- ✅ **Nested imports:** `chunks: {positive: ..., negative: ...}`
+
+**Features:**
+- ✅ MD5 short hash (8 chars) for inline string keys
+- ✅ Duplicate key conflict detection (ValueError)
+- ✅ Order preservation in multi-source merge
+- ✅ Quote stripping from inline values
+- ✅ Inline strings never conflict (unique MD5 keys)
+
+### Test Coverage
+
+**16 unit tests** covering:
+- ✅ Single file imports (3 tests)
+- ✅ Inline string imports with MD5 keys (3 tests)
+- ✅ Multi-source merging (3 tests)
+- ✅ Conflict detection (2 tests)
+- ✅ Nested imports (2 tests)
+- ✅ Edge cases (empty imports, single items) (3 tests)
+
+**No regressions:** All 224 existing V1 tests still pass.
+
+**Total: 340 tests** (116 V2 + 224 V1)
+
+### Success Criteria (from spec)
+
+✅ **Import fichiers YAML fonctionne**
+✅ **Inline strings avec clés auto-générées (MD5 8-char)**
+✅ **Conflits de clés détectés et ValueError raised**
+✅ **Multi-source merge préserve ordre**
+✅ **Nested imports (chunks: {positive, negative})**
+✅ **Tests passent (16 tests)**
+✅ **Pas de régression V1**
+
+### File Structure
+
+```
+v2/
+├── resolvers/
+│   ├── inheritance_resolver.py   # Phase 3
+│   ├── import_resolver.py        # Phase 4 ⭐ NEW
+│   └── __init__.py
+├── tests/v2/unit/
+│   ├── test_import_resolver.py   # 16 tests ⭐ NEW
+│   └── ...
+```
+
+### Example Usage
+
+```python
+from templating.v2.loaders.yaml_loader import YamlLoader
+from templating.v2.loaders.parser import ConfigParser
+from templating.v2.resolvers.import_resolver import ImportResolver
+
+# Setup
+loader = YamlLoader()
+parser = ConfigParser()
+resolver = ImportResolver(loader, parser)
+
+# Resolve imports from a config
+base_path = config.source_file.parent
+resolved_imports = resolver.resolve_imports(config, base_path)
+
+# Result format:
+# {
+#   "Outfit": {
+#     "Urban1": "jeans and t-shirt",
+#     "Chic1": "elegant dress",
+#     "7d8e3a2f": "red dress"  # MD5 key for inline
+#   }
+# }
+```
+
+### Import Resolution Examples
+
+**1. Single file:**
+```yaml
+imports:
+  Angle: ../variations/angles.yaml
+```
+→ Loads and returns dict from angles.yaml
+
+**2. Inline strings:**
+```yaml
+imports:
+  Place:
+    - "luxury living room"
+    - "tropical jungle"
+```
+→ Returns: `{md5("luxury..."): "luxury living room", md5("tropical..."): "tropical jungle"}`
+
+**3. Multi-source merge:**
+```yaml
+imports:
+  Outfit:
+    - ../variations/outfit.urban.yaml   # 3 items
+    - ../variations/outfit.chic.yaml    # 3 items
+    - "red dress, elegant"              # 1 inline
+```
+→ Returns: 7 items total, order preserved
+
+**4. Conflict detection:**
+```yaml
+imports:
+  Outfit:
+    - outfit_urban.yaml    # Has key "Casual"
+    - outfit_conflict.yaml # Also has "Casual"
+```
+→ Raises: `ValueError: Duplicate key 'Casual' in Outfit imports (found in outfit_urban.yaml and outfit_conflict.yaml)`
+
+**5. Nested imports:**
+```yaml
+imports:
+  chunks:
+    positive: ../chunks/positive.yaml
+    negative: ../chunks/negative.yaml
+```
+→ Returns: `{"chunks": {"positive": {...}, "negative": {...}}}`
+
+### Next Steps: Phase 5 - Template Resolution
+
+Phase 5 will implement template resolution with chunk injection and selectors:
+1. TemplateResolver with chunk injection (`@Chunk`, `@{Chunk with ...}`)
+2. Selector parsing and application (`[15]`, `[#1,3,5]`, `[$8]`)
+3. Placeholder resolution with context
+4. Support for `with` syntax parameter passing
+
+See: `docs/roadmap/template-system-v2-architecture.md` (lines 1280+)
 
 ---
 
-**Total Implementation time:** ~3 hours (Phases 1-3)
-**Total Lines of code:** ~1410 (production) + ~1930 (tests)
-**Test pass rate:** 100% (324/324)
+**Total Implementation time:** ~4 hours (Phases 1-4)
+**Total Lines of code:** ~1610 (production) + ~2410 (tests)
+**Test pass rate:** 100% (340/340)

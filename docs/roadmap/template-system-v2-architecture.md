@@ -1240,23 +1240,40 @@ Phase 5: Templates
 
 ---
 
-### Phase 4 : Imports & Variations (Semaine 4)
+### Phase 4 : Imports & Variations (Semaine 4) - ✅ **COMPLETED** (2025-10-09)
 **Objectif :** Chargement variations + Merge multi-sources
 
 **Tâches :**
-1. Créer `resolvers/import_resolver.py`
-   - `resolve_imports()`
-   - `_merge_multi_sources()` avec détection conflits
-2. Implémenter MD5 hash pour inline strings
+1. ✅ Créer `resolvers/import_resolver.py`
+   - ✅ `resolve_imports()` - Load all imports from config
+   - ✅ `_load_variation_file()` - Load single variation file
+   - ✅ `_merge_multi_sources()` avec détection conflits
+   - ✅ `_is_inline_string()` - Detect inline vs file
+2. ✅ Implémenter MD5 hash pour inline strings
 
-**Tests :**
-- `tests/v2/test_imports.py` : Import fichiers, inline, mix
-- `tests/v2/test_merge_variations.py` : Conflits de clés
+**Tests :** ✅ 16 tests (tests/v2/unit/test_import_resolver.py)
+- ✅ Single file imports (3 tests)
+- ✅ Inline strings avec MD5 auto-keys (3 tests)
+- ✅ Multi-source merging (3 tests)
+- ✅ Conflict detection (2 tests)
+- ✅ Nested imports (2 tests)
+- ✅ Edge cases (3 tests)
 
 **Critères de succès :**
 - ✅ Import fichiers YAML fonctionne
-- ✅ Inline strings avec clés auto-générées (MD5)
-- ✅ Conflits de clés détectés et loggés
+- ✅ Inline strings avec clés auto-générées (MD5 8-char)
+- ✅ Conflits de clés détectés et ValueError raised
+- ✅ Multi-source merge préserve ordre
+- ✅ Nested imports (chunks: {positive, negative})
+
+**Métriques :**
+- Tests: 16 nouveaux tests Phase 4
+- Total V2: 116 tests (Phase 1+2: 83, Phase 3: 17, Phase 4: 16)
+- Total projet: 340 tests (V1: 224, V2: 116)
+- Régression V1: ✅ Aucune
+- Fichiers créés:
+  - `CLI/src/templating/v2/resolvers/import_resolver.py` (197 lignes)
+  - `CLI/tests/v2/unit/test_import_resolver.py` (478 lignes)
 
 ---
 
