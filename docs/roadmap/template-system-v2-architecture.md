@@ -1207,23 +1207,36 @@ Phase 5: Templates
 
 ---
 
-### Phase 3 : Héritage (Semaine 3)
+### Phase 3 : Héritage (Semaine 3) - ✅ **COMPLETED** (2025-10-09)
 **Objectif :** Résolution `implements:` avec merge
 
 **Tâches :**
-1. Créer `resolvers/inheritance_resolver.py`
-   - `resolve_implements()` récursif
-   - `merge_configs()` avec règles spécifiques
-2. Implémenter cache de résolution
+1. ✅ Créer `resolvers/inheritance_resolver.py`
+   - ✅ `resolve_implements()` récursif
+   - ✅ `merge_configs()` avec règles spécifiques
+2. ✅ Implémenter cache de résolution
 
-**Tests :**
-- `tests/v2/test_inheritance.py` : Héritage simple, multi-niveaux
-- `tests/v2/test_merge.py` : Merge parameters, imports, chunks
+**Tests :** ✅ 17 tests (tests/v2/unit/test_inheritance_resolver.py)
+- ✅ Héritage simple (template, chunk, prompt)
+- ✅ Multi-niveaux (3 niveaux grandparent → parent → child)
+- ✅ Merge rules (parameters, imports, chunks, defaults, template, negative_prompt)
+- ✅ Cache behavior (hits, clear, invalidate)
+- ✅ Type validation (chunks: same type, mismatch error, no-type warning)
+- ✅ Error handling (missing files, absolute paths)
 
 **Critères de succès :**
 - ✅ Héritage multi-niveaux fonctionne
-- ✅ Merge respecte les règles (parameters: MERGE, template: REPLACE)
+- ✅ Merge respecte les règles (parameters: MERGE, template: REPLACE avec WARNING)
 - ✅ Cache évite rechargements
+
+**Métriques :**
+- Tests: 17 nouveaux tests Phase 3
+- Total V2: 100 tests (Phase 1+2: 83, Phase 3: 17)
+- Total projet: 324 tests (V1: 224, V2: 100)
+- Régression V1: ✅ Aucune
+- Fichiers créés:
+  - `CLI/src/templating/v2/resolvers/inheritance_resolver.py` (262 lignes)
+  - `CLI/tests/v2/unit/test_inheritance_resolver.py` (441 lignes)
 
 ---
 
