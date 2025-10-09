@@ -394,18 +394,199 @@ imports:
 ```
 → Returns: `{"chunks": {"positive": {...}, "negative": {...}}}`
 
-### Next Steps: Phase 5 - Template Resolution
+---
 
-Phase 5 will implement template resolution with chunk injection and selectors:
-1. TemplateResolver with chunk injection (`@Chunk`, `@{Chunk with ...}`)
-2. Selector parsing and application (`[15]`, `[#1,3,5]`, `[$8]`)
-3. Placeholder resolution with context
-4. Support for `with` syntax parameter passing
+## Phase 5: Template Resolution ✅ COMPLETED
 
-See: `docs/roadmap/template-system-v2-architecture.md` (lines 1280+)
+**Date:** 2025-10-09
+**Status:** Implemented and tested
+
+### What was implemented
+
+Phase 5 implements comprehensive template resolution with chunk injection and advanced selectors:
+
+#### 1. TemplateResolver (`resolvers/template_resolver.py`)
+Template resolution engine with full V2.0 syntax support:
+
+**Core Methods:**
+- `resolve_template()`: Main entry point, resolves chunks + placeholders
+- `_inject_chunks_with_params()`: Chunk injection with parameter passing
+- `_inject_chunk_refs()`: Simple and nested chunk references
+- `_resolve_placeholders()`: Placeholder resolution with context priority
+- `_parse_selectors()`: Parse all selector types from `[selector]` syntax
+- `_apply_selector()`: Apply selectors to variation dicts
+- `extract_weights()`: Extract weights for combinatorial generation
+
+**Chunk Injection Syntax:**
+- ✅ Simple refs: `@Character` → Loads chunk template
+- ✅ Nested refs: `@chunks.positive` → Navigates nested imports
+- ✅ With params: `@{Character with Angles:{Angle[15]}, Poses:{Pose[$5]}}` → Parameter passing
+
+**Selector Types (from spec section 7.4):**
+- ✅ `[N]` - Limit to N random variations
+- ✅ `[#1,3,5]` - Select specific indexes (0-based)
+- ✅ `[BobCut,LongHair]` - Select by keys
+- ✅ `[$W]` - Combinatorial weight (for loop ordering)
+- ✅ `[sel1;sel2]` - Combine selectors with semicolon separator
+
+**Placeholder Resolution:**
+- ✅ Context priority: `chunks` > `defaults` > `imports`
+- ✅ Placeholder with selectors: `{Angle[15;$8]}`
+- ✅ Recursive resolution through chunk templates
+- ✅ Missing placeholder → empty string (graceful handling)
+
+**Features:**
+- ✅ Selector parsing with regex patterns
+- ✅ Selector application (limit, index, key, weight)
+- ✅ Parameter splitting respecting nested braces/brackets
+- ✅ Weight extraction for combinatorial generation
+- ✅ Supports all V2.0 selector combinations
+
+### Test Coverage
+
+**35 unit tests** covering:
+- ✅ Selector parsing (7 tests) - All selector types + combinations
+- ✅ Selector application (6 tests) - Apply to variations, edge cases
+- ✅ Placeholder resolution (7 tests) - Context priority, selectors
+- ✅ Chunk injection (3 tests) - Simple refs, recursive resolution
+- ✅ Nested chunk refs (3 tests) - Navigation, placeholders
+- ✅ Chunk with params (3 tests) - Parameter passing, parsing
+- ✅ Helper methods (4 tests) - Utilities, weight extraction
+- ✅ Integration tests (2 tests) - Complex scenarios
+
+**No regressions:** All 224 existing V1 tests still pass.
+
+**Total: 375 tests** (151 V2 + 224 V1)
+
+### Success Criteria (from spec)
+
+✅ **Simple chunk injection works (@ChunkName)**
+✅ **Nested chunk refs work (@chunks.positive)**
+✅ **Chunk with params works (@{Chunk with Param:{Import[sel]}})**
+✅ **All selector types parsed correctly**
+✅ **Selector combinations work ([sel1;sel2])**
+✅ **Placeholder resolution with context priority**
+✅ **Tests passent (35 tests, goal was 20-25)**
+✅ **Pas de régression V1 (224/224 passing)**
+✅ **Pas de régression V2 (116/116 previous tests passing)**
+
+### File Structure
+
+```
+v2/
+├── resolvers/
+│   ├── inheritance_resolver.py   # Phase 3
+│   ├── import_resolver.py        # Phase 4
+│   ├── template_resolver.py      # Phase 5 ⭐ NEW
+│   └── __init__.py
+├── tests/v2/unit/
+│   ├── test_template_resolver.py # 35 tests ⭐ NEW
+│   └── ...
+```
+
+### Example Usage
+
+```python
+from templating.v2.resolvers.template_resolver import TemplateResolver
+
+# Setup
+resolver = TemplateResolver(loader, parser, import_resolver)
+
+# Context with resolved imports and chunks
+context = {
+    'imports': {
+        'Character': {'template': '1girl, {Main}, {Angle}'},
+        'Angle': {'Front': 'front view', 'Side': 'side view'},
+        'Pose': {'Standing': 'standing', 'Sitting': 'sitting'}
+    },
+    'chunks': {'Main': '22, slim'},
+    'defaults': {'Quality': 'masterpiece'}
+}
+
+# 1. Simple chunk injection
+template = "@Character, detailed"
+result = resolver.resolve_template(template, context)
+# → "1girl, 22, slim, {Angle}, detailed"
+
+# 2. Chunk with parameters
+template = "@{Character with Angles:{Angle[Front]}, Poses:{Pose}}"
+result = resolver.resolve_template(template, context)
+# → "1girl, 22, slim, front view"
+
+# 3. Placeholder with selectors
+template = "{Angle[15;$8]}"
+result = resolver.resolve_template(template, context)
+# → One of the angle values (15 random max, weight 8)
+
+# 4. Extract weights for combinatorial
+weights = resolver.extract_weights("{Outfit[$2]}, {Angle[$10]}")
+# → {'Outfit': 2, 'Angle': 10}
+# → Loop order: Outfit (outer, weight 2) -> Angle (inner, weight 10)
+```
+
+### Template Resolution Examples
+
+**1. Simple chunk reference:**
+```yaml
+template: |
+  @Character,
+  detailed background
+```
+→ Injects Character chunk template recursively
+
+**2. Nested chunk reference:**
+```yaml
+imports:
+  chunks:
+    positive: ../chunks/positive.chunk.yaml
+
+template: |
+  @chunks.positive,
+  beautiful girl
+```
+→ Navigates nested import structure
+
+**3. Chunk with parameter passing:**
+```yaml
+template: |
+  @{Character with Angles:{Angle[15]}, Poses:{Pose[$0]}}
+```
+→ Passes Angle (15 random) and Pose (weight 0 = non-combinatorial) to Character chunk
+
+**4. Selector combinations:**
+```yaml
+# Limit + Weight
+{Angle[15;$8]}        # 15 random angles, weight 8
+
+# Index + Weight
+{Angle[#1,3,5;$0]}    # Select indexes 1,3,5, weight 0 (non-combinatorial)
+
+# Keys + Weight
+{Haircut[BobCut,LongHair;$5]}  # Select specific keys, weight 5
+```
+
+**5. Context priority:**
+```python
+context = {
+    'chunks': {'Value': 'from_chunks'},      # Priority 1
+    'defaults': {'Value': 'from_defaults'},  # Priority 2
+    'imports': {'Value': {...}}              # Priority 3
+}
+# {Value} → "from_chunks" (highest priority)
+```
+
+### Next Steps: Phase 6 - Normalization & Generation
+
+Phase 6 will implement prompt normalization and generation orchestration:
+1. Normalizer for prompt cleanup (commas, newlines, empty placeholders)
+2. Generator for combinatorial/random mode
+3. Integration with existing SD API client
+4. End-to-end workflow
+
+See: `docs/roadmap/template-system-v2-architecture.md` (Phase 6 plan)
 
 ---
 
-**Total Implementation time:** ~4 hours (Phases 1-4)
-**Total Lines of code:** ~1610 (production) + ~2410 (tests)
-**Test pass rate:** 100% (340/340)
+**Total Implementation time:** ~6 hours (Phases 1-5)
+**Total Lines of code:** ~2135 (production) + ~2970 (tests)
+**Test pass rate:** 100% (375/375)

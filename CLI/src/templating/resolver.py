@@ -245,12 +245,17 @@ def _build_resolved_variations(
         # combination is dict of {name: value} where value is either str (chunk) or Variation
         final_prompt = config.prompt_template
 
-        # Replace chunks first (they have "with" syntax)
+        # Replace chunks first (support both syntaxes)
         for chunk_name, rendered_chunk in combination.items():
             if chunk_name in resolved_chunks:
-                # This is a chunk - replace the entire {CHUNK with ...} pattern
-                chunk_pattern = r'\{' + chunk_name + r'\s+with\s+[^}]+\}'
-                final_prompt = re.sub(chunk_pattern, rendered_chunk, final_prompt)
+                # Try to replace {CHUNK with ...} pattern first
+                chunk_with_pattern = r'\{' + chunk_name + r'\s+with\s*[^}]*\}'
+                if re.search(chunk_with_pattern, final_prompt):
+                    final_prompt = re.sub(chunk_with_pattern, rendered_chunk, final_prompt)
+                else:
+                    # Fall back to simple {CHUNK} pattern (no "with")
+                    simple_chunk_pattern = r'\{' + chunk_name + r'\}'
+                    final_prompt = re.sub(simple_chunk_pattern, rendered_chunk, final_prompt)
 
         # Replace normal variations
         for placeholder_name, value in combination.items():
@@ -335,9 +340,11 @@ def _resolve_all_variations(
     variation_placeholders: Dict[str, str],
     imports: Dict[str, dict],
     config: PromptConfig
-) -> Dict[str, List[Variation]]:
+) -> tuple:
     """
     Resolve all variation placeholders.
+
+    Also detects simple chunks (without "with" syntax) and returns them separately.
 
     Args:
         variation_placeholders: Dict {placeholder_name: selector_str}
@@ -345,12 +352,15 @@ def _resolve_all_variations(
         config: PromptConfig for selector resolution settings
 
     Returns:
-        Dict {placeholder_name: [Variation, ...]}
+        Tuple of (resolved_variations, simple_chunks)
+        - resolved_variations: Dict {placeholder_name: [Variation, ...]}
+        - simple_chunks: Dict {chunk_name: (chunk_name, empty_overrides)} for chunks without "with"
 
     Raises:
         ValueError: If placeholder not found or invalid
     """
     resolved_variations: Dict[str, List[Variation]] = {}
+    simple_chunks: Dict[str, tuple] = {}  # Chunks detected without "with" syntax
 
     for placeholder_name, selector_str in variation_placeholders.items():
         if placeholder_name not in imports:
@@ -360,9 +370,12 @@ def _resolve_all_variations(
 
         import_data = imports[placeholder_name]
 
-        # Get variations dict based on type
+        # Check if this is a chunk (without "with" syntax)
         if import_data['type'] == 'chunk':
-            raise ValueError(f"Placeholder {{{placeholder_name}}} references a chunk but doesn't use 'with' syntax")
+            # This is a simple chunk usage: {CHUNK} without "with"
+            # Add to simple_chunks with empty overrides
+            simple_chunks[placeholder_name] = (placeholder_name, {})
+            continue
 
         variations_dict = import_data['data']
 
@@ -383,7 +396,7 @@ def _resolve_all_variations(
 
         resolved_variations[placeholder_name] = selected
 
-    return resolved_variations
+    return resolved_variations, simple_chunks
 
 
 def _resolve_all_chunks(
@@ -432,6 +445,10 @@ def _parse_prompt_placeholders(prompt_template: str) -> tuple:
     """
     Parse prompt template for placeholders and chunk "with" syntax.
 
+    Supports two syntaxes for chunks:
+    1. {CHUNK with field=SOURCE[selector]} - chunk with overrides
+    2. {CHUNK} - chunk without overrides (will be detected later based on imports)
+
     Args:
         prompt_template: The prompt template string
 
@@ -448,14 +465,15 @@ def _parse_prompt_placeholders(prompt_template: str) -> tuple:
     for match in re.finditer(full_pattern, prompt_template):
         full_content = match.group(1)  # Content inside {}
 
-        # Check if it's a chunk with syntax
+        # Check if it's a chunk with "with" syntax
         chunk_name, overrides = parse_chunk_with_syntax(full_content)
 
         if chunk_name:
-            # It's a chunk placeholder
+            # It's a chunk placeholder with "with" syntax
             chunk_placeholders[chunk_name] = (chunk_name, overrides)
         else:
-            # It's a normal variation placeholder
+            # It's a normal variation placeholder (or simple chunk without "with")
+            # We'll determine if it's a chunk later based on imports
             # Extract placeholder name and selector
             simple_placeholders = extract_placeholders(match.group(0))
             variation_placeholders.update(simple_placeholders)
@@ -583,16 +601,19 @@ def resolve_prompt(config: PromptConfig, base_path: Path = None) -> List[Resolve
     # Step 2: Parse prompt template for placeholders and chunk "with" syntax
     chunk_placeholders, variation_placeholders = _parse_prompt_placeholders(config.prompt_template)
 
-    # Step 3: Resolve chunks
+    # Step 3: Resolve normal variations (also detects simple chunks)
+    resolved_variations, simple_chunks = _resolve_all_variations(variation_placeholders, imports, config)
+
+    # Step 4: Merge simple chunks with chunk_placeholders
+    chunk_placeholders.update(simple_chunks)
+
+    # Step 5: Resolve all chunks (with "with" syntax and simple chunks)
     resolved_chunks = _resolve_all_chunks(chunk_placeholders, imports, config)
 
-    # Step 4: Resolve normal variations
-    resolved_variations = _resolve_all_variations(variation_placeholders, imports, config)
-
-    # Step 5: Generate combinations
+    # Step 6: Generate combinations
     combinations = _generate_combinations(resolved_chunks, resolved_variations, config)
 
-    # Step 6: Generate final prompts with seeds
+    # Step 7: Generate final prompts with seeds
     return _build_resolved_variations(combinations, resolved_chunks, resolved_variations, config)
 
 

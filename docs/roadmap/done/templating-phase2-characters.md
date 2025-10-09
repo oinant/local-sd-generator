@@ -1,9 +1,10 @@
-# Next-Gen Templating System - Phase 2: Character Templates
+# Next-Gen Templating System - Phase 2: Character Templates (Chunks)
 
-**Status:** next
+**Status:** done ✅
 **Priority:** 6
 **Component:** cli
 **Created:** 2025-10-03
+**Completed:** 2025-10-08
 **Depends on:** Phase 1 (done)
 
 ## Description
@@ -198,10 +199,12 @@ Variation 1:
 - [x] Chunk field resolution avec priorités ✅
 - [x] Multi-field expansion fonctionnel ✅
 - [x] Syntaxe `{CHUNK with ...}` parsée ✅
-- [x] 22 tests Phase 2 qui passent ✅
-- [ ] Intégration dans resolver.py (TODO)
-- [ ] Test end-to-end complet (TODO)
-- [ ] Demo fonctionnelle (TODO)
+- [x] Syntaxe `{CHUNK}` simple (sans "with") supportée ✅ (bonus!)
+- [x] Intégration complète dans resolver.py ✅
+- [x] 22 tests Phase 2 unitaires ✅
+- [x] 5 tests end-to-end d'intégration ✅
+- [x] Demo fonctionnelle avec architecture HassakuXL ✅
+- [x] **Total : 66 tests Phase 2 passent** ✅
 
 ## Tests à implémenter
 
@@ -255,6 +258,53 @@ ETHNICITIES: ethnic_features.yaml (multi_field)
 - Pas de conditional fields (si X alors Y)
 - Pas de computed fields (formules)
 
+## Completion Summary
+
+**Completed:** 2025-10-08
+**Tests:** 66/66 passing ✅ (22 unit + 5 integration + 39 other)
+**Files modified:**
+- `CLI/src/templating/chunk.py` (new)
+- `CLI/src/templating/multi_field.py` (new)
+- `CLI/src/templating/selectors.py` (modified - chunk with syntax)
+- `CLI/src/templating/resolver.py` (modified - dual chunk syntax support)
+- `CLI/src/templating/types.py` (modified - new types)
+
+**Files created:**
+- `CLI/tests/templating/test_chunk.py` (8 tests)
+- `CLI/tests/templating/test_multi_field.py` (8 tests)
+- `CLI/tests/templating/test_selectors_chunk.py` (6 tests)
+- `CLI/tests/templating/test_phase2_integration.py` (5 tests)
+
+**Demo architecture created:**
+- `/mnt/d/StableDiffusion/private-new/templates/` (HassakuXL templates)
+- `/mnt/d/StableDiffusion/private-new/prompts/hassaku/test-templates/` (test prompts)
+
+**Key commits:** (à ajouter manuellement lors du commit)
+
+### Features Delivered
+
+1. **Chunk System** - Reusable text templates with field inheritance
+2. **Multi-field Expansion** - Single placeholder expands multiple fields
+3. **Dual Syntax** - Support both `{CHUNK}` and `{CHUNK with field=SOURCE}`
+4. **Hierarchical Templates** - Base template → Style → Framing → Prompt
+5. **Full Integration** - Works with existing Phase 1 variations
+
+### Known Limitations (deferred to Phase 3)
+
+1. **Nested Placeholders**: Placeholders inside chunk fields are not resolved
+   - Example: chunk has `body: "{BodyType}"` → `{BodyType}` stays literal
+   - **Workaround**: Use overrides with `{CHUNK with body=BodyTypes}`
+
+2. **Chunk → Chunk Inheritance**: Can't chain chunk implements chunk
+   - Example: `Manga-FullBody` can't implement `Manga` which implements `Base`
+   - **Workaround**: Flatten hierarchy (Manga-FullBody implements Base directly)
+
+3. **No Conditionals**: Can't do `if rating == "nsfw" then outfit=NSFW_OUTFITS`
+   - **Workaround**: Create separate prompt files per condition
+
+4. **No Computed Fields**: Can't auto-compute lighting based on time_of_day
+   - **Workaround**: Define fields explicitly
+
 ## Prochaines étapes après Phase 2
 
-Phase 3 : Nested variations + Explain system
+**Phase 3** : Nested variations + Explain system + Fix limitations above
