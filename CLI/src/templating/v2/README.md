@@ -575,18 +575,113 @@ context = {
 # {Value} → "from_chunks" (highest priority)
 ```
 
-### Next Steps: Phase 6 - Normalization & Generation
+---
 
-Phase 6 will implement prompt normalization and generation orchestration:
-1. Normalizer for prompt cleanup (commas, newlines, empty placeholders)
-2. Generator for combinatorial/random mode
-3. Integration with existing SD API client
-4. End-to-end workflow
+## Phase 6: Normalization & Generation 🚧 IN PROGRESS
 
-See: `docs/roadmap/template-system-v2-architecture.md` (Phase 6 plan)
+**Date:** 2025-10-09
+**Status:** Partial implementation (Normalizer complete)
+
+### What was implemented
+
+Phase 6 implements prompt normalization and generation pipeline:
+
+#### 1. PromptNormalizer (`normalizers/normalizer.py`) ✅ COMPLETED
+Normalizes resolved prompts according to spec section 8:
+
+**Normalization Rules:**
+- ✅ **Rule 1:** Trim whitespace at start/end of lines (preserves trailing ", " for SD)
+- ✅ **Rule 2:** Collapse multiple commas (`,, ` → `, `)
+- ✅ **Rule 3:** Remove orphan commas (lines with only comma/whitespace)
+- ✅ **Rule 4:** Normalize spacing around commas (no space before, one space after)
+- ✅ **Rule 5:** Preserve max 1 blank line between content
+
+**Key Design Decisions:**
+- Trailing ", " before newlines is PRESERVED (intentional SD formatting)
+- Orphan comma lines are replaced with empty lines (for blank line preservation)
+- Normalization order: collapse → orphan → spacing → trim → blank lines
+- Final strip() to clean entire result
+
+**Test Coverage: 22/22 tests passing** ✅
+
+#### 2. PromptGenerator (`generators/generator.py`) ⏳ TO DO
+Will implement combinatorial and random generation modes:
+
+**Planned Features:**
+- Mode "combinatorial": Nested loops with weight ordering
+- Mode "random": Random combinations
+- Weight $0: Non-combinatorial (random per image)
+- Selector application during generation
+- Seed management (fixed/progressive/random)
+
+#### 3. V2Pipeline (`orchestrator.py`) ⏳ TO DO
+Will implement end-to-end pipeline orchestration:
+
+**Planned Features:**
+- Full pipeline: load → validate → resolve → generate → normalize
+- Integration with existing resolvers (Inheritance, Import, Template)
+- Error handling and logging
+- Cache management
+
+### Test Coverage (Normalizer only)
+
+**22 unit tests** covering:
+- ✅ Rule 1: Trim whitespace (2 tests)
+- ✅ Rule 2: Collapse commas (3 tests)
+- ✅ Rule 3: Remove orphan commas (3 tests)
+- ✅ Rule 4: Normalize spacing (3 tests)
+- ✅ Rule 5: Preserve blank lines (3 tests)
+- ✅ Combined rules (2 tests)
+- ✅ Edge cases (4 tests)
+- ✅ Real-world examples (2 tests)
+
+**No regressions:** All 224 existing V1 tests still pass.
+
+**Total: 397 tests** (173 V2 + 224 V1)
+
+### File Structure
+
+```
+v2/
+├── normalizers/
+│   ├── normalizer.py          # PromptNormalizer ⭐ NEW (Phase 6)
+│   └── __init__.py
+├── generators/                 # ⏳ TO DO
+│   └── __init__.py
+├── orchestrator.py             # ⏳ TO DO
+├── tests/v2/unit/
+│   ├── test_normalizer.py     # 22 tests ⭐ NEW
+│   └── ...
+```
+
+### Success Criteria (Normalizer - COMPLETED)
+
+✅ **All 5 normalization rules implemented**
+✅ **Trailing ", " preserved for SD compatibility**
+✅ **Orphan commas removed (empty placeholders)**
+✅ **Tests passent (22/22)**
+✅ **Pas de régression V1 (224/224)**
+
+### Next Steps: Complete Phase 6
+
+**Remaining tasks:**
+1. ✅ PromptNormalizer (DONE - 22 tests)
+2. ⏳ PromptGenerator (combinatorial + random modes)
+   - Weight-based loop ordering
+   - Selector application
+   - Seed management
+   - ~25-30 tests estimated
+3. ⏳ V2Pipeline orchestrator
+   - End-to-end workflow
+   - Integration with all resolvers
+   - ~15-20 tests estimated
+
+**Estimated remaining:** ~500-600 LOC + ~45-50 tests
+
+See: `docs/roadmap/template-system-v2-architecture.md` (Phase 6 complete plan)
 
 ---
 
-**Total Implementation time:** ~6 hours (Phases 1-5)
-**Total Lines of code:** ~2135 (production) + ~2970 (tests)
-**Test pass rate:** 100% (375/375)
+**Total Implementation time:** ~7 hours (Phases 1-5 + Normalizer)
+**Total Lines of code:** ~2320 (production) + ~3265 (tests)
+**Test pass rate:** 100% (397/397)
