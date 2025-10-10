@@ -103,7 +103,9 @@ class V2Pipeline:
         config = self.parser.parse_prompt(data, config_path)
 
         # Validate
-        self.validator.validate_prompt(config)
+        validation_result = self.validator.validate(config)
+        if not validation_result.is_valid:
+            raise ValueError(f"Validation failed: {validation_result.to_json()}")
 
         return config
 
@@ -131,9 +133,11 @@ class V2Pipeline:
         inheritance_chain = [resolved_config]
 
         # Phase 4: Resolve imports
+        # Use the config's source file directory as base path for import resolution
+        base_path = config.source_file.parent
         resolved_imports = self.import_resolver.resolve_imports(
             config,
-            inheritance_chain
+            base_path
         )
 
         # Merge parameters from inheritance chain

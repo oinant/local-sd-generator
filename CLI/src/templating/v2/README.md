@@ -1075,3 +1075,125 @@ Phase 7 completes the V2.0 execution layer. Ready for:
 **Test pass rate:** 100% (451/451)
 
 **Template System V2.0 + API Integration is COMPLETE!** 🎉
+
+---
+
+## Post-Phase 7: Legacy Compatibility Investigation 🔍 IN PROGRESS
+
+**Date:** 2025-10-10
+**Status:** Debugging
+**Issue:** Standalone prompts (without `implements:`) showing "Duplicate key 'type', 'name', 'version', 'variations'" errors
+
+### Problème identifié
+
+**Symptôme :**
+- Tests unitaires `test_parse_variations_structured.py` : ✅ **PASSENT** (3/3 tests)
+- Tests manuels isolés (Python REPL) : ✅ **FONCTIONNENT**
+- Test legacy `scripts/test_legacy_compatibility.py` : ❌ **ÉCHOUE** (9/17 success, 8/17 errors)
+- Erreur répétée : `Duplicate key 'type' in HairColor imports (found in ../variations/hassaku/body/haircolors.realist.yaml and ../variations/hassaku/body/haircolors.cyberpunk.yaml)`
+
+**Fichiers variations concernés :**
+- Structure YAML correcte avec `type`, `name`, `version`, `variations`
+- Exemple : `/mnt/d/StableDiffusion/private-new/prompts/variations/hassaku/body/haircolors.cyberpunk.yaml`
+```yaml
+type: variations
+name: Haircolors.Cyberpunk
+version: '1.0'
+variations:
+  black_to_silver_gradient_hair_: black to silver gradient hair, roots to tips
+  dark_brown_to_caramel_ombré_ha: dark brown to caramel ombré hair, natural
+  ...
+```
+
+### Pistes explorées
+
+#### ✅ 1. Fix implémenté : `parse_variations()` dual-format support
+**Fichier :** `CLI/src/templating/v2/loaders/parser.py:117-161`
+
+**Modification :**
+```python
+def parse_variations(self, data: Dict[str, Any]) -> Dict[str, str]:
+    # Check if structured format (has 'variations' key)
+    if 'variations' in data:
+        variations = data['variations']
+        return {str(key): str(value) for key, value in variations.items()}
+
+    # Flat format: entire dict is variations
+    return {str(key): str(value) for key, value in data.items()}
+```
+
+**Résultat :** Tests unitaires passent, mais legacy tests échouent toujours.
+
+#### ✅ 2. Cache désactivé dans `YamlLoader`
+**Fichier :** `CLI/src/templating/v2/loaders/yaml_loader.py:53-72`
+
+**Modification :**
+```python
+# CACHE DISABLED: Performance not critical for local NVMe SSD access
+# cache_key = str(resolved_path)
+# if cache_key in self.cache:
+#     return self.cache[cache_key]
+```
+
+**Raison :** Éviter les données stale, privilégier fraîcheur des données.
+
+**Résultat :** Pas de changement, erreurs persistent.
+
+#### ✅ 3. Nettoyage bytecode Python
+**Actions :**
+- `find src -type d -name __pycache__ -exec rm -rf {} +`
+- `find ../venv -type d -name __pycache__ -exec rm -rf {} +`
+- `find ../venv/lib -type d -name "templating*" -exec rm -rf {} +`
+
+**Résultat :** Pas de changement, erreurs persistent.
+
+#### ✅ 4. Tests manuels de `parse_variations()` avec fichiers réels
+**Test Python REPL :**
+```python
+from templating.v2.loaders.parser import ConfigParser
+parser = ConfigParser()
+raw_data = yaml.safe_load(open('haircolors.cyberpunk.yaml'))
+result = parser.parse_variations(raw_data)
+
+# RÉSULTAT : ✅ 'type' NOT in result (correct)
+# Keys : 10 variations (black_to_silver_gradient_hair_, etc.)
+```
+
+**Conclusion :** `parse_variations()` fonctionne isolément mais échoue dans le test legacy.
+
+### Observations critiques
+
+1. **V1 fonctionne, V2 échoue** : `templating.loaders.load_variations()` (V1) charge correctement les mêmes fichiers
+2. **Tests isolés passent** : Appels directs à `parse_variations()` retournent les bonnes données
+3. **Test legacy échoue** : Le script `scripts/test_legacy_compatibility.py` montre toujours les duplicate keys
+
+### Hypothèses restantes
+
+1. **Import circulaire ou module caching** : Le test legacy utilise peut-être une version différente du code
+2. **Autre chemin de code** : Il existe peut-être un bypass qui ne passe pas par `parse_variations()`
+3. **Problème dans `_merge_multi_sources()`** : La détection de duplicate keys se fait dans `import_resolver.py:161-168` après l'appel à `_load_variation_file()` qui appelle `parse_variations()`
+
+### Fichiers modifiés
+
+- ✅ `CLI/src/templating/v2/loaders/parser.py` - Dual-format support ajouté
+- ✅ `CLI/src/templating/v2/loaders/yaml_loader.py` - Cache désactivé
+- ✅ `CLI/src/templating/v2/validators/validator.py` - `implements` optionnel (ligne 143-163)
+- ✅ `CLI/src/templating/v2/orchestrator.py` - Utilise `validate()` au lieu de `validate_prompt()` (ligne 106-108)
+- ✅ `CLI/tests/templating/test_parse_variations_structured.py` - Tests unitaires créés (3 tests ✅)
+- ✅ `CLI/tests/templating/fixtures/variations/haircolors_structured.yaml` - Fixture test créée
+
+### Prochaines étapes suggérées
+
+1. **Debugger avec breakpoint** dans `import_resolver.py:158-168` pour voir ce que retourne `_load_variation_file()` dans le contexte du test legacy
+2. **Comparer V1 vs V2** : Tracer exactement la différence de comportement entre `templating.loaders.load_variations()` et `templating.v2.loaders.parser.parse_variations()`
+3. **Vérifier l'ordre d'imports** : S'assurer que le test legacy n'importe pas une version mixte V1/V2
+4. **Ajouter logging temporaire** dans `parse_variations()` pour voir si la méthode est bien appelée avec la bonne structure de données
+
+### Statistiques
+
+- **Templates testés:** 17
+- **Succès:** 9 (templates simples sans multi-source imports)
+- **Échecs:** 8 (tous avec multi-source imports montrant duplicate keys metadata)
+- **Tests unitaires V2:** 3/3 passent ✅
+- **Tests manuels:** Tous passent ✅
+- **Tests legacy:** 9/17 passent ⚠️

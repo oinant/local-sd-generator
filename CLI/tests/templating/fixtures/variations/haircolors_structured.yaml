@@ -1,0 +1,9 @@
+type: variations
+name: HairColors Test
+version: '1.0'
+description: Test fixture for structured variation format
+variations:
+  BobCut: bob cut hair, chin-length
+  LongHair: long flowing hair, waist-length
+  PixieCut: short pixie cut, edgy
+  Braided: braided hair, intricate

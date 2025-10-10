@@ -36,14 +36,20 @@ class ConfigValidator:
     # Reserved placeholders that have special meaning
     RESERVED_PLACEHOLDERS = {'prompt', 'negprompt', 'loras'}
 
-    def __init__(self, loader):
+    def __init__(self, loader, parser=None):
         """
         Initialize the validator.
 
         Args:
             loader: YamlLoader instance for loading files during validation
+            parser: ConfigParser instance for parsing variations (optional, will create if None)
         """
         self.loader = loader
+        self.parser = parser
+        # Lazy import to avoid circular dependency
+        if self.parser is None:
+            from ..loaders.parser import ConfigParser
+            self.parser = ConfigParser()
         self.errors: List[ValidationError] = []
 
     def validate(
@@ -141,17 +147,12 @@ class ConfigValidator:
                 ))
 
         elif isinstance(config, PromptConfig):
-            # Prompt requires: name, implements, generation, template
+            # Prompt requires: name, generation, template
+            # Note: implements is optional (standalone prompts don't need it)
             if not config.name:
                 self.errors.append(ValidationError(
                     type='structure',
                     message='Missing required field: name',
-                    file=config.source_file
-                ))
-            if not config.implements:
-                self.errors.append(ValidationError(
-                    type='structure',
-                    message='Missing required field: implements',
                     file=config.source_file
                 ))
             if not config.generation:
@@ -230,12 +231,14 @@ class ConfigValidator:
             elif isinstance(import_value, list):
                 # Multi-source import (files + inline strings)
                 for item in import_value:
-                    # Skip inline strings (they start with quotes or are pure strings)
+                    # Skip inline strings (not file paths)
                     if isinstance(item, str):
-                        # Inline strings don't need file validation
-                        if item.startswith('"') or item.startswith("'"):
+                        # Inline strings: start with quotes OR don't end with .yaml
+                        if item.strip().startswith('"') or item.strip().startswith("'"):
                             continue
-                        # Could be a file path
+                        if not item.strip().endswith('.yaml'):
+                            continue  # Skip inline strings like "frontview"
+                        # It's a file path
                         self._validate_import_file(
                             item,
                             import_name,
@@ -384,26 +387,16 @@ class ConfigValidator:
         """
         Phase 4: Validate import merge rules.
 
-        Checks:
-        - No duplicate keys when merging multiple sources
-
-        Note: This phase requires loading variation files, so it may
-        discover additional file errors beyond Phase 2.
+        Note: Duplicate key validation is now handled by ImportResolver
+        with automatic prefixing, so this phase is currently a no-op.
+        Kept for future validation rules if needed.
 
         Args:
             config: Configuration to validate
         """
-        base_path = config.source_file.parent
-
-        for import_name, import_value in config.imports.items():
-            if isinstance(import_value, list):
-                # Multi-source import - check for duplicate keys
-                self._validate_multi_source_import(
-                    import_name,
-                    import_value,
-                    base_path,
-                    config.source_file
-                )
+        # Duplicate keys are now handled by ImportResolver with auto-prefixing
+        # No validation needed here
+        pass
 
     def _validate_multi_source_import(
         self,
@@ -448,8 +441,17 @@ class ConfigValidator:
                     # Invalid format, but not our concern in this phase
                     continue
 
-                # Check each key for duplicates
-                for key in data.keys():
+                # Parse variations to extract only the variation keys (not metadata)
+                # This handles both structured format (with type/name/version/variations keys)
+                # and flat format (direct key-value pairs)
+                try:
+                    variations = self.parser.parse_variations(data)
+                except Exception:
+                    # Parse error - skip this file (will be caught elsewhere)
+                    continue
+
+                # Check each variation key for duplicates
+                for key in variations.keys():
                     if key in seen_keys:
                         # Duplicate key found!
                         self.errors.append(ValidationError(

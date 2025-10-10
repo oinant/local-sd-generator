@@ -50,10 +50,12 @@ class YamlLoader:
         # Allow absolute paths for entry points (direct load_file calls)
         resolved_path = self.resolve_path(path, base_path, allow_absolute=True)
 
-        # Check cache
-        cache_key = str(resolved_path)
-        if cache_key in self.cache:
-            return self.cache[cache_key]
+        # CACHE DISABLED: Performance not critical for local NVMe SSD access
+        # Cache in RAM for session duration only if needed, but disabled for now
+        # to avoid stale data issues during development/testing
+        # cache_key = str(resolved_path)
+        # if cache_key in self.cache:
+        #     return self.cache[cache_key]
 
         # Check file exists
         if not resolved_path.exists():
@@ -66,8 +68,8 @@ class YamlLoader:
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Failed to parse YAML in {resolved_path}: {e}")
 
-        # Cache the result
-        self.cache[cache_key] = data
+        # CACHE DISABLED: See comment above
+        # self.cache[cache_key] = data
         return data
 
     def resolve_path(self, path: Path | str, base_path: Optional[Path] = None,

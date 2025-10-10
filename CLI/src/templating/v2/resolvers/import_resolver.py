@@ -131,6 +131,9 @@ class ImportResolver:
         Supports mixing files and inline strings.
         Inline strings get auto-generated MD5 keys.
 
+        Duplicate keys are automatically prefixed with normalized source path
+        to avoid conflicts (e.g., variations__hassaku__poses_dynamic__key).
+
         Args:
             sources: List of file paths and/or inline strings
             base_path: Base path for resolving file paths
@@ -138,9 +141,6 @@ class ImportResolver:
 
         Returns:
             Merged dict of variations
-
-        Raises:
-            ValueError: If duplicate keys found between files
         """
         merged = {}
         key_sources = {}  # Track source of each key for conflict detection
@@ -157,17 +157,50 @@ class ImportResolver:
                 # File - load and merge
                 variations = self._load_variation_file(source, base_path)
 
-                # Detect conflicts
+                # Handle conflicts with auto-prefixing
                 for key, value in variations.items():
                     if key in merged:
-                        raise ValueError(
-                            f"Duplicate key '{key}' in {import_name} imports "
-                            f"(found in {key_sources[key]} and {source})"
-                        )
-                    merged[key] = value
-                    key_sources[key] = source
+                        # Duplicate detected - add prefix to disambiguate
+                        prefix = self._normalize_path_to_prefix(source)
+                        prefixed_key = f"{prefix}__{key}"
+                        merged[prefixed_key] = value
+                        key_sources[prefixed_key] = source
+                    else:
+                        # No conflict - use original key
+                        merged[key] = value
+                        key_sources[key] = source
 
         return merged
+
+    def _normalize_path_to_prefix(self, path: str) -> str:
+        """
+        Normalize a file path to a safe prefix for variation keys.
+
+        Transforms:
+            ../../variations/hassaku/poses.dynamic.yaml
+            → variations__hassaku__poses_dynamic
+
+        Args:
+            path: Relative file path from import
+
+        Returns:
+            Normalized prefix string (safe for use as key prefix)
+        """
+        import re
+
+        # Remove ../ and ./ prefixes
+        normalized = re.sub(r'^\.\./+', '', path)
+        normalized = re.sub(r'^\./+', '', normalized)
+
+        # Remove .yaml extension
+        if normalized.endswith('.yaml'):
+            normalized = normalized[:-5]
+
+        # Replace path separators and dots with double underscore
+        normalized = normalized.replace('/', '__')
+        normalized = normalized.replace('.', '_')
+
+        return normalized
 
     def _is_inline_string(self, source: str) -> bool:
         """

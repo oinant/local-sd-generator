@@ -80,6 +80,10 @@ class ConfigParser:
         """
         Parse a .prompt.yaml file.
 
+        Supports both:
+        - Standalone prompts (no implements field)
+        - Inherited prompts (with implements field)
+
         Args:
             data: Raw YAML dictionary
             source_file: Absolute path to the source YAML file
@@ -102,7 +106,7 @@ class ConfigParser:
         return PromptConfig(
             version=data.get('version', '1.0.0'),
             name=data['name'],
-            implements=data['implements'],
+            implements=data.get('implements'),  # Optional: supports standalone prompts
             generation=generation,
             template=data['template'],
             source_file=source_file,
@@ -114,11 +118,22 @@ class ConfigParser:
         """
         Parse a variations file (.yaml).
 
-        V2.0 format: Simple YAML dictionary
-        {
-            "BobCut": "bob cut, chin-length hair",
-            "LongHair": "long flowing hair"
-        }
+        V2.0 format supports two structures:
+        1. Structured (with metadata):
+           {
+               "type": "variations",
+               "name": "HairColors",
+               "version": "1.0",
+               "variations": {
+                   "BobCut": "bob cut, chin-length hair",
+                   "LongHair": "long flowing hair"
+               }
+           }
+        2. Flat (direct dictionary):
+           {
+               "BobCut": "bob cut, chin-length hair",
+               "LongHair": "long flowing hair"
+           }
 
         Args:
             data: Raw YAML dictionary
@@ -127,10 +142,20 @@ class ConfigParser:
             Dictionary mapping keys to prompt strings
 
         Raises:
-            ValueError: If data is not a dictionary
+            ValueError: If data is not a dictionary or variations key is missing
         """
         if not isinstance(data, dict):
             raise ValueError("Variations file must be a YAML dictionary")
 
+        # Check if structured format (has 'variations' key)
+        if 'variations' in data:
+            variations = data['variations']
+            if not isinstance(variations, dict):
+                raise ValueError(
+                    f"'variations' field must be a dictionary, got {type(variations).__name__}"
+                )
+            return {str(key): str(value) for key, value in variations.items()}
+
+        # Flat format: entire dict is variations
         # Ensure all values are strings
         return {str(key): str(value) for key, value in data.items()}
