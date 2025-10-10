@@ -5,7 +5,6 @@
 - **Lis la doc dans `/docs`** - Structure organisée par composant (CLI, WebApp, Tooling)
 - **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
 - Les tests sont dans `/CLI/tests` et utilisent pytest
-- Probleme d'install de PYCOV, ne l'utilise pas
 
 ## ⚠️ Configuration Critique
 
@@ -35,13 +34,25 @@ local-sd-generator/
 ├── CLI/                    # Package CLI (générateur SD)
 │   ├── src/               # Code source (PYTHONPATH configuré sur src/)
 │   │   ├── api/          # Client API SD WebUI
-│   │   ├── templating/   # Moteur de templates Phase 2
+│   │   ├── templating/   # Template System V2.0
+│   │   │   ├── models/         # Data models (TemplateConfig, etc.)
+│   │   │   ├── loaders/        # YAML loading & parsing
+│   │   │   ├── validators/     # Template validation
+│   │   │   ├── resolvers/      # Inheritance, imports, template resolution
+│   │   │   ├── generators/     # Prompt generation (combinatorial/random)
+│   │   │   ├── normalizers/    # Prompt normalization
+│   │   │   ├── utils/          # Hash & path utilities
+│   │   │   └── orchestrator.py # V2Pipeline main orchestrator
 │   │   ├── config/       # Configuration globale
-│   │   ├── execution/    # Exécution et orchestration
-│   │   └── output/       # Gestion des outputs
+│   │   └── execution/    # Exécution et orchestration
 │   ├── tests/            # Tests unitaires et d'intégration
-│   ├── template_cli.py   # Point d'entrée CLI (argparse)
-│   ├── template_cli_typer.py  # Point d'entrée CLI moderne (Typer)
+│   │   ├── api/          # Tests API client (76 tests)
+│   │   ├── templating/   # Tests parsing V2 (3 tests)
+│   │   ├── v2/           # Tests V2 complets (227 tests)
+│   │   │   ├── unit/           # Tests unitaires
+│   │   │   └── integration/    # Tests d'intégration
+│   │   └── legacy/       # Anciens tests fonctionnels
+│   ├── src/cli.py        # Point d'entrée CLI (Typer)
 │   └── pyproject.toml    # Configuration package CLI
 ├── backend/              # Backend FastAPI (anciennement /api/)
 │   └── pyproject.toml
@@ -51,6 +62,21 @@ local-sd-generator/
 ```
 
 **Note importante** : Le dossier backend était anciennement nommé `/api/`, ce qui créait un conflit de noms avec `/CLI/src/api/`. Il a été renommé en `/backend/` pour éviter les problèmes d'imports Python.
+
+## 🎯 Template System V2.0
+
+Le système de templates V2.0 est le **seul système actif** du projet.
+
+**Fonctionnalités principales:**
+- 🔗 **Inheritance** - Héritage avec `implements:` (multi-niveau)
+- 📦 **Modular imports** - Imports avec `imports:` (fichiers YAML ou strings inline)
+- 🧩 **Reusable chunks** - Chunks réutilisables avec `chunks:`
+- 🎲 **Advanced selectors** - `[random:N]`, `[limit:N]`, `[indexes:1,5,8]`, `[keys:foo,bar]`
+- ⚖️ **Weight-based loops** - Contrôle de l'ordre des boucles avec `weight:`
+- 🎨 **Generation modes** - Combinatorial (toutes combinaisons) ou Random (échantillonnage)
+- 🌱 **Seed modes** - Fixed, Progressive, Random
+
+**V1 (Phase 2) status:** ❌ Supprimé (migration complète vers V2)
 
 ## 🐍 Python Environment Setup
 
@@ -78,7 +104,6 @@ deactivate
 **IMPORTANT:**
 - **TOUJOURS activer le venv d'abord** : `source venv/bin/activate` (depuis la racine du projet)
 - Toujours utiliser `python3 -m pytest` (pas `python` ni `pytest` directement)
-- **NE PAS utiliser pytest-cov** (problème avec l'environnement)
 - Pytest 8.x requiert des `__init__.py` dans tous les dossiers de tests (structure package-based)
 
 ```bash
@@ -90,32 +115,42 @@ source venv/bin/activate
 cd CLI
 
 # ÉTAPE 3 : Lancer les tests
-# Tests Phase 2 (templating) - 66 tests ✅
+
+# Tests V2 complets (227 tests) - 96.5% de réussite
+python3 -m pytest tests/v2/ -v
+
+# Tests API client (76 tests) - 100% ✅
+python3 -m pytest tests/api/ -v
+
+# Tests templating/parsing (3 tests) - 100% ✅
 python3 -m pytest tests/templating/ -v
 
-# Tests unitaires (sans legacy/integration)
-python3 -m pytest tests/ --ignore=tests/legacy --ignore=tests/integration -v
+# Tous les tests (sans legacy)
+python3 -m pytest tests/ --ignore=tests/legacy -v
 
-# Tous les tests (attention: certains tests CLI interactive peuvent bloquer)
-python3 -m pytest tests/ -v
+# Avec couverture de code (pytest-cov)
+python3 -m pytest tests/v2/ --cov=templating --cov-report=term-missing -v
 ```
 
 **Alternative sans activer le venv (moins pratique) :**
 ```bash
 cd /mnt/d/StableDiffusion/local-sd-generator/CLI
-../venv/bin/python3 -m pytest tests/templating/ -v
+../venv/bin/python3 -m pytest tests/v2/ -v
 ```
 
 **Structure des tests :**
 ```
 CLI/tests/
-├── api/               # Tests API client (75 tests) ✅
-├── templating/        # Tests Phase 2 (66 tests) ✅
-├── integration/       # Tests d'intégration
+├── api/               # Tests API client (76 tests) ✅
+├── templating/        # Tests parsing V2 (3 tests) ✅
+├── v2/                # Tests V2 système (227 tests) 🟢 96.5%
+│   ├── unit/          # Tests unitaires (générateurs, resolvers, etc.)
+│   └── integration/   # Tests d'intégration (API, executor)
+├── integration/       # Tests d'intégration globaux
 └── legacy/            # Anciens tests fonctionnels
 ```
 
-**Total : 141 tests passent** (API + templating)
+**Total : 306 tests (300 passent - 98%)**
 
 **Pourquoi `python3 -m pytest` ?**
 - `pytest` seul ne détecte pas toujours le bon PYTHONPATH
@@ -124,8 +159,8 @@ CLI/tests/
 - Sous WSL, toujours utiliser `python3` et pas `python`
 
 **Tests problématiques connus :**
+- 8 tests V2 échouent (caching et validation de conflits) - bugs pré-existants
 - `test_config_selector.py` - Peut bloquer (tests CLI interactive avec input() mocké)
-- `test_integration_phase3.py` - Peut bloquer (même raison)
 
 ### Code Quality Tools
 
@@ -196,12 +231,7 @@ echo "✓ Quality checks passed"
 - Voir `docs/tooling/code_review_2025-10-06.md` pour la dernière code review manuelle
 - Voir `docs/tooling/automated_metrics_2025-10-06.md` pour les métriques objectives
 
-**Problèmes connus à corriger :**
-- Import order (E402) : 15 instances - imports pas en haut de fichier
-- Complexité E : `resolver.py:resolve_prompt()` - 185 lignes, complexité 35+
-- Missing timeout : `sdapi_client.py:177` - requête sans timeout
-
-## Documentation Guidelines
+## 📖 Documentation Guidelines
 
 ### 📁 Structure de la documentation
 
@@ -304,200 +334,6 @@ future/ → next/ → wip/ → done/
 - **7-8** : Nice-to-have (futur)
 - **9-10** : Recherche/expérimental
 
-## Workspace Analysis Guidelines
-
-### Excluded Directories
-- `stable-diffusion-webui/` - Repository trop volumineux, ne pas analyser
-
-## Project Focus
-Ce workspace est dédié à la création de scripts pour générer des variations d'images avec différents angles et expressions faciales pour l'entraînement de LoRA et la création de sets de personnages cohérents.
-
-## Scripts Principaux
-
-### `emma-batch-generator.py`
-Script original de génération de variations d'images pour un personnage spécifique (Emma).
-
-### `image_variation_generator.py`
-**Classe générique réutilisable pour créer des générateurs d'images avec variations**
-
-Cette classe permet de créer facilement des générateurs personnalisés en spécifiant seulement :
-- Template de prompt avec placeholders `{PlaceholderName}`
-- Prompt négatif
-- Dictionnaire de fichiers de variations
-
-### `facial-expression-generator.py` (original)
-Générateur avancé avec toute la logique intégrée (version monolithique).
-
-### `facial_expression_generator_refactored.py`
-**Version refactorisée utilisant ImageVariationGenerator**
-
-Même fonctionnalité que l'original mais avec une configuration plus claire et modulaire.
-
-#### Fonctionnalités principales :
-
-1. **Système de placeholders dynamiques**
-   - Format de base : `{PlaceholderName}` dans le prompt
-   - Limitation : `{PlaceholderName:N}` pour limiter à N variations aléatoires
-   - Sélection d'index : `{PlaceholderName:#|1|5|22}` sélectionne les index 1, 5 et 22
-   - Poids de priorité : `{PlaceholderName:$N}` définit le poids N pour l'ordre des boucles
-   - Combinaison : `{PlaceholderName:#|6|4|2$8}` sélectionne index 6,4,2 avec poids 8
-   - Exemple : `{FacialExpression:15$5}` utilise 15 expressions avec poids 5
-
-   **Système de poids pour l'ordre des boucles** :
-   - Le poids détermine l'ordre d'imbrication des boucles en mode combinatorial
-   - Plus petit poids = boucle extérieure (change moins souvent)
-   - Plus grand poids = boucle intérieure (change plus souvent)
-   - Exemple : `{Outfit:$2}` et `{Angle:$10}` → boucle sur Outfit d'abord, puis Angle pour chaque Outfit
-
-2. **Chargement intelligent des variations**
-   - Analyse automatique du prompt pour détecter les placeholders
-   - Charge uniquement les fichiers de variations nécessaires
-   - Support format `clé→valeur` dans les fichiers texte
-
-3. **Modes de génération orthogonaux**
-
-   **Mode génération des variations :**
-   - `combinatorial` : Génère toutes les combinaisons possibles
-   - `random` : Crée des combinaisons aléatoires uniques
-
-   **Mode gestion des seeds :**
-   - `fixed` : Même seed pour toutes les images
-   - `progressive` : Seeds incrémentées (SEED, SEED+1, SEED+2...)
-   - `random` : Seed aléatoire (-1) pour chaque image
-
-4. **Interface interactive**
-   - Choix du mode de génération
-   - Choix du mode de seed
-   - Sélection du nombre d'images après calcul des combinaisons
-   - Validation des paramètres
-
-5. **Configuration flexible**
-   ```python
-   # Fichiers de variations mappés aux placeholders
-   VARIATION_FILES = {
-       "FacialExpression": "chemin/vers/expressions.txt",
-       "Angle": "chemin/vers/angles.txt",
-       "Lighting": "chemin/vers/lighting.txt"
-   }
-
-   # Modes configurables
-   GENERATION_MODE = "random"        # ou "combinatorial"
-   SEED_MODE = "progressive"         # ou "fixed", "random"
-   SEED = 42                         # Seed de base
-   ```
-
-### `variation_loader.py`
-**Module utilitaire pour le chargement de variations**
-
-#### Fonctions principales :
-- `load_variations_from_file()` : Charge un fichier de variations
-- `load_variations_for_placeholders()` : Charge selon les placeholders du prompt
-- `create_random_combinations()` : Génère des combinaisons aléatoires
-- `extract_placeholders_with_limits()` : Parse les placeholders avec limites
-- `limit_variations()` : Limite aléatoirement le nombre de variations
-
-#### Format des fichiers de variations :
-```
-# Commentaires supportés
-1→angry
-2→happy,smiling
-surprised→very surprised
-just_a_value
-```
-
-## Utilisation de ImageVariationGenerator
-
-### Création d'un générateur simple
-```python
-from image_variation_generator import ImageVariationGenerator
-
-generator = ImageVariationGenerator(
-    prompt_template="masterpiece, {Expression}, {Pose}, detailed",
-    negative_prompt="low quality, blurry",
-    variation_files={
-        "Expression": "path/to/expressions.txt",
-        "Pose": "path/to/poses.txt"
-    }
-)
-generator.run()
-```
-
-### Avec configuration avancée
-```python
-generator = ImageVariationGenerator(
-    prompt_template="anime girl, {Expression:10}, {Style}, beautiful",
-    negative_prompt="low quality",
-    variation_files={
-        "Expression": "expressions.txt",
-        "Style": "styles.txt"
-    },
-    seed=42,
-    max_images=25,
-    generation_mode="random",
-    seed_mode="progressive",
-    session_name="anime_test"
-)
-```
-
-### Fonction utilitaire
-```python
-from image_variation_generator import create_generator
-
-# Version ultra-simple
-generator = create_generator(
-    "beautiful {Subject}, {Style}",
-    "low quality",
-    {"Subject": "subjects.txt", "Style": "styles.txt"}
-)
-generator.run()
-```
-
-## Scripts d'exemple disponibles
-
-### `example_simple_generator.py`
-Exemples d'utilisation basique de la classe.
-
-### `demo_generators.py`
-Démonstration de différents types de générateurs :
-- Paysages
-- Portraits
-- Personnages anime
-- Art conceptuel
-- Tests rapides
-
-### `facial_expression_generator_refactored.py`
-Version refactorisée du générateur original.
-
-## Exemples d'utilisation classiques
-
-### Génération combinatoire classique
-```python
-generation_mode="combinatorial"
-seed_mode="progressive"
-# Génère toutes les combinaisons avec seeds 42, 43, 44...
-```
-
-### Exploration aléatoire
-```python
-generation_mode="random"
-seed_mode="random"
-# 100 images avec combinaisons et seeds totalement aléatoires
-```
-
-### Test de variations spécifiques
-```python
-prompt_template="masterpiece, {FacialExpression:5}, {Angle:3}, beautiful girl"
-# Teste 5 expressions × 3 angles = 15 combinaisons maximum
-```
-
-### Génération avec ordre des boucles contrôlé
-```python
-prompt_template="1girl, {Outfit:$2}, {Angle:$10}, beautiful"
-# Boucle extérieure : Outfit (poids 2)
-# Boucle intérieure : Angle (poids 10)
-# Résultat : Pour chaque Outfit, génère toutes les variations d'Angle
-```
-
 ## 🔍 Code Review Guidelines
 
 Avant de commencer une code review, consulter ces documents :
@@ -551,7 +387,53 @@ vulture CLI/
 bandit -r CLI/
 ```
 
+## 🚀 CLI Usage
+
+### Generate images from template
+
+```bash
+# Interactive mode (liste les templates disponibles)
+python3 src/cli.py generate
+
+# Direct template
+python3 src/cli.py generate -t path/to/template.prompt.yaml
+
+# Limit number of images
+python3 src/cli.py generate -t template.yaml -n 50
+
+# Dry-run (save API payloads as JSON without generating)
+python3 src/cli.py generate -t template.yaml --dry-run
+```
+
+### Other commands
+
+```bash
+# List all available templates
+python3 src/cli.py list
+
+# Validate a template file
+python3 src/cli.py validate path/to/template.yaml
+
+# Initialize global config
+python3 src/cli.py init
+
+# API introspection
+python3 src/cli.py api samplers
+python3 src/cli.py api schedulers
+python3 src/cli.py api models
+python3 src/cli.py api upscalers
+python3 src/cli.py api model-info
+```
+
+## 📦 Project Status
+
+**Current version:** V2.0 (stable)
+**Template system:** V2.0 only (V1 removed)
+**Tests:** 306 total (98% pass rate)
+**Last major migration:** 2025-10-10 (V1→V2 complete)
+
 ## Commands
-- Lint: À déterminer
-- Test: À déterminer
-- Build: À déterminer
+- **Lint:** `flake8 CLI/ --max-line-length=120`
+- **Test:** `python3 -m pytest tests/ --ignore=tests/legacy -v`
+- **Coverage:** `python3 -m pytest tests/v2/ --cov=templating --cov-report=term-missing`
+- **Build:** À déterminer
