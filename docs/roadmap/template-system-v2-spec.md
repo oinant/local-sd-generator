@@ -1,8 +1,8 @@
 # Template System V2.0 - Spécification Technique Formelle
 
 **Version:** 2.0.0
-**Date:** 2025-10-09
-**Status:** Draft - Ready for Implementation
+**Date:** 2025-10-10
+**Status:** ✅ Implemented & Active (V1 legacy removed)
 
 ---
 
@@ -25,9 +25,9 @@ Le Template System V2.0 introduit un système de templates hiérarchique, modula
 - **Prompt** (`.prompt.yaml`) : Configuration finale avec imports de variations et template spécifique
 - **Variations** (`.yaml`) : Dictionnaire de variations (ex: coiffures, poses, tenues)
 
-### 1.3 Différences majeures avec V1.x
+### 1.3 Différences majeures avec le système legacy
 
-| Feature | V1.x | V2.0 |
+| Feature | Ancien système | V2.0 |
 |---------|------|------|
 | Héritage | ❌ Non | ✅ `implements:` multi-niveaux |
 | Chunks réutilisables | ❌ Non | ✅ Avec `@Chunk` syntax |
@@ -36,6 +36,8 @@ Le Template System V2.0 introduit un système de templates hiérarchique, modula
 | Validation | Partial | ✅ 5 phases, toutes erreurs collectées |
 | Format variations | Liste `key→value` | ✅ Dict YAML simple |
 | Injection de chunks | ❌ Non | ✅ `@{Chunk with Param:{Var}}` |
+
+> **Note:** Le système V1 legacy a été complètement supprimé. V2.0 est le seul système actif.
 
 ---
 
@@ -979,23 +981,25 @@ template: |
 
 ---
 
-## 12. Rétrocompatibilité
+## 12. Structure du code
 
-### 12.1 Détection de version
+### 12.1 Organisation actuelle
 
-**Règle :**
-- Si `version:` commence par `1.` → Système V1.x (legacy)
-- Si `version:` commence par `2.` → Système V2.0 (nouveau)
-- Si pas de `version:` → **Assume V1.0** + Warning
+Après la migration complète V1→V2 (2025-10-10), le codebase utilise **uniquement V2.0** :
 
-### 12.2 Cohabitation V1/V2
+```
+CLI/src/templating/
+├── models/         # Data models (TemplateConfig, etc.)
+├── loaders/        # YAML loading & parsing
+├── validators/     # Template validation
+├── resolvers/      # Inheritance, imports, template resolution
+├── generators/     # Prompt generation (combinatorial/random)
+├── normalizers/    # Prompt normalization
+├── utils/          # Hash & path utilities
+└── orchestrator.py # V2Pipeline main orchestrator
+```
 
-Les deux systèmes coexistent dans le codebase :
-- `CLI/src/templating/v1/` : Ancien système (resolver.py actuel)
-- `CLI/src/templating/v2/` : Nouveau système
-- `CLI/src/templating/version_router.py` : Point d'entrée unifié
-
-**Voir `template-system-v2-retrocompat.md` pour détails**
+**Note:** Le système V1 legacy et le version_router ont été supprimés.
 
 ---
 
@@ -1024,4 +1028,5 @@ Pour éviter de recharger les mêmes fichiers :
 
 **Fin de la spécification technique V2.0**
 
-**Prochaine étape :** Voir `template-system-v2-architecture.md` pour le plan d'implémentation détaillé
+**Status :** ✅ Implémentation complète (306 tests, 98% pass rate)
+**Dernière mise à jour :** 2025-10-10

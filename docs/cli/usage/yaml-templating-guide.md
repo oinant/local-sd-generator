@@ -1,6 +1,6 @@
 # Guide du Système de Templating YAML
 
-**Guide utilisateur complet pour créer des prompts avec le système de templating Phase 2**
+**Guide utilisateur complet pour créer des prompts avec le système de templating V2.0**
 
 ---
 
@@ -402,10 +402,9 @@ Vous avez un setup technique que vous aimez (résolution, steps, sampler, etc.) 
 ### Template de base
 
 ```yaml
-# base_portrait.prompt.yaml
+# base_portrait.template.yaml
 version: '2.0'
 name: 'Base Portrait Setup'
-base_path: ../..
 
 imports:
   HairColor: variations/haircolors.yaml
@@ -428,14 +427,13 @@ parameters:
   denoising_strength: 0.4
 ```
 
-### Templates enfants
+### Prompts utilisant le template
 
 ```yaml
 # portrait_smiling.prompt.yaml
 version: '2.0'
 name: 'Portrait Souriant'
-extends: base_portrait.prompt.yaml
-extends_mode: append
+implements: ../templates/base_portrait.template.yaml
 
 template: |
   smiling, happy, looking at viewer
@@ -454,8 +452,7 @@ output:
 # portrait_action.prompt.yaml
 version: '2.0'
 name: 'Portrait Action'
-extends: base_portrait.prompt.yaml
-extends_mode: append
+implements: ../templates/base_portrait.template.yaml
 
 template: |
   dynamic pose, action shot, motion blur
@@ -489,7 +486,9 @@ graph TB
     style Child3 fill:#c8e6c9,stroke:#333,stroke-width:2px,color:#000
 ```
 
-### Modes d'extension
+### Fusion des templates
+
+En V2.0, le template du prompt **remplace** celui du parent template. Les `parameters` et `imports` sont **mergés**.
 
 ```mermaid
 graph TB
@@ -497,33 +496,18 @@ graph TB
         BT["masterpiece, beautiful woman,<br/>{Outfit}"]
     end
 
-    subgraph "Child Template"
+    subgraph "Prompt Template"
         CT[smiling, looking at viewer]
     end
 
-    subgraph "extends_mode: append (défaut)"
-        A["masterpiece, beautiful woman, {Outfit}<br/>smiling, looking at viewer"]
+    subgraph "Résultat (template du prompt remplace)"
+        R["smiling, looking at viewer<br/>(parameters et imports hérités)"]
     end
 
-    subgraph "extends_mode: prepend"
-        P["smiling, looking at viewer<br/>masterpiece, beautiful woman, {Outfit}"]
-    end
-
-    subgraph "extends_mode: replace"
-        R[smiling, looking at viewer]
-    end
-
-    BT -.-> A
-    CT -.-> A
-
-    BT -.-> P
-    CT -.-> P
-
+    BT -.-> R
     CT -.-> R
 
-    style A fill:#c8e6c9,stroke:#333,stroke-width:2px,color:#000
-    style P fill:#fff9c4,stroke:#333,stroke-width:2px,color:#000
-    style R fill:#f8bbd0,stroke:#333,stroke-width:2px,color:#000
+    style R fill:#c8e6c9,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ---
@@ -698,7 +682,7 @@ generation:
 ```yaml
 version: '2.0'
 name: 'Approved Concept Variants'
-extends: base_approved_concept.prompt.yaml
+implements: ../templates/base_approved_concept.template.yaml
 
 template: |
   [concept de base déjà approuvé]
@@ -815,15 +799,23 @@ description: |
   - Lighting dramatique
 ```
 
-### 5. Réutiliser avec extends
+### 5. Réutiliser avec implements
 
-Au lieu de copier-coller, extend !
+Au lieu de copier-coller, utiliser l'héritage !
 
 ```yaml
 # Nouveau prompt
-extends: ../templates/base_portrait.prompt.yaml
+version: '2.0'
+name: 'My Custom Prompt'
+implements: ../templates/base_portrait.template.yaml
 template: |
   [juste les modifications spécifiques]
+
+generation:
+  mode: random
+  seed: 42
+  seed_mode: progressive
+  max_images: 50
 ```
 
 ---
@@ -908,12 +900,20 @@ generation:
 # portrait1.prompt.yaml, portrait2.prompt.yaml, portrait3.prompt.yaml
 
 # Créer une base:
-# base_portrait.prompt.yaml
+# base_portrait.template.yaml
 
-# Puis extend:
-extends: base_portrait.prompt.yaml
+# Puis implements dans chaque prompt:
+version: '2.0'
+name: 'Portrait Variant'
+implements: ../templates/base_portrait.template.yaml
 template: |
   [juste ce qui change]
+
+generation:
+  mode: random
+  seed: 42
+  seed_mode: progressive
+  max_images: 10
 ```
 
 ---
@@ -928,8 +928,7 @@ template: |
 | Noms | `{Nom[key1,key2]}` | `{Expression[happy,sad]}` |
 | Range | `{Nom[#0-N]}` | `{Expression[#0-10]}` |
 | Liste imports | Liste YAML | `HairColor:\n  - file1.yaml\n  - file2.yaml` |
-| Héritage | `extends: base.yaml` | `extends: base_portrait.prompt.yaml` |
-| Mode extend | `extends_mode: append` | `append / prepend / replace` |
+| Héritage | `implements: base.yaml` | `implements: ../templates/base.template.yaml` |
 
 ---
 
@@ -953,7 +952,7 @@ graph LR
 2. **Testez** avec `max_images: 5`
 3. **Itérez** : ajoutez des variations, affinez
 4. **Créez un template de base** réutilisable
-5. **Utilisez `extends`** pour éviter la duplication
+5. **Utilisez `implements`** pour éviter la duplication
 6. **Explorez les sélecteurs** pour plus de contrôle
 
 ---
@@ -962,9 +961,9 @@ graph LR
 
 - **[Exemples de templates](../../../CLI/src/examples/prompts/)** - Templates prêts à l'emploi
 - **[Exemples de variations](../../../CLI/src/examples/variations/)** - Fichiers de variations
-- **[Architecture technique](../technical/phase2-templating-engine.md)** - Documentation technique détaillée
+- **[Architecture technique](../technical/architecture.md)** - Documentation technique détaillée
 
 ---
 
-**Dernière mise à jour:** 2025-10-06
-**Version du système:** Phase 2 avec extends + list imports
+**Dernière mise à jour:** 2025-10-10
+**Version du système:** V2.0 (système unique après migration)

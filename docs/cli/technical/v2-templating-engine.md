@@ -1,6 +1,10 @@
-# Phase 2 Templating Engine
+# V2 Templating Engine
 
-**Architecture et flux de données du moteur de templating YAML Phase 2**
+**⚠️ DEPRECATED - Cette documentation décrit l'ancien système Phase 2**
+
+> **Note:** Ce document est conservé pour référence historique. Le système actif est maintenant **V2.0** avec une architecture complètement refactorisée. Voir `/docs/roadmap/template-system-v2-spec.md` pour la spécification V2.0.
+
+**Architecture et flux de données du moteur de templating YAML (ancien système)**
 
 ---
 
@@ -592,5 +596,6 @@ flowchart LR
 
 ---
 
-**Status:** Phase 2 complete avec imports list + extends ✅
-**Dernière mise à jour:** 2025-10-06
+**Status:** ⚠️ DEPRECATED - Remplacé par V2.0
+**Dernière mise à jour:** 2025-10-10 (marqué deprecated)
+**Documentation actuelle:** `/docs/roadmap/template-system-v2-spec.md`
