@@ -1,0 +1,186 @@
+{
+  "success": [
+    {
+      "status": "success",
+      "file": "Hassaku_Catwalk_Manga_all_outfits.prompt.yaml",
+      "count": 250,
+      "first_variations": {
+        "Angle": "(tilted low-angle side shot:1.4), (one hip thrust out:1.3), (leg elongated:1.2), (face in shadow:1.1), (cinematic tension:1.1)",
+        "HairCut": "tight coils in an afro style voluminous and full",
+        "HairColor": "dark roots with platinum blonde ends, grown-out",
+        "EyeColor": "emerald green eyes, vibrant",
+        "Outfit": "zip-up hoodie open, leggings torn at crotch, pussy spread, clit erect",
+        "Pose": "leaning back on elbows, one hand behind head, other hand on lower abdomen, legs slightly open, relaxed expression"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Chloé.prompt.yaml",
+      "count": 500,
+      "first_variations": {
+        "HairColor": "white hair, snowy",
+        "HairCut": "a messy bun on top of the head, (loose tendrils:1.2), (textured hair:1.1), (no perfect symmetry:1.1)",
+        "Outfit": "casual kimono with jeans and geta sandals"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Chloé_Fucking.prompt.yaml",
+      "count": 500,
+      "first_variations": {
+        "HerPose": "front view, lying on stomach, legs spread",
+        "HairColor": "rainbow streaks on dark base, vibrant",
+        "HairCut": "a side braid with loose romantic strands",
+        "Outfit": "sleeveless black latex catsuit",
+        "Him": "(1man, naked, fat, big penis, erect penis, penis between her ass cheeks, squatting, grabbing her neck), (cumshot on her back, lot of cum on the floor, pussy juice)"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Chloé_OralSex.prompt.yaml",
+      "count": 500,
+      "first_variations": {
+        "HairColor": "silver hair, metallic sheen",
+        "HairCut": "a messy bun on top of the head, (loose tendrils:1.2), (textured hair:1.1), (no perfect symmetry:1.1)",
+        "Outfit": "vintage band tee with leather skirt and fishnets",
+        "Him": "(feral werewolf, wolf-man hybrid, human body with wolf head, matted fur, elongated snout, razor-sharp fangs, piercing golden eyes, hunched posture, howling:1.2), (clawed hands:1.3), bloodstained muzzle, primal intensity, moonlit fur, , big penis)",
+        "SexScene": "the girl twists the man's nipple between her fingers, his body reacting to the sensation"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Chloé_portrait.prompt.yaml",
+      "count": 20,
+      "first_variations": {
+        "HairCut": "a sleek bob cut with a natural parting, (sharp edges framing face:1.1), (realistic hair strands:1.2)"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Luxury_Manga_all_outfits.prompt.yaml",
+      "count": 1000,
+      "first_variations": {
+        "Angle": "top-down side angle, bent leg, hip/thigh emphasis",
+        "Pose": "stretching upwards, graceful",
+        "HairCut": "long layered cut, no bangs, subtle highlights, flowing",
+        "HairColor": "blue to teal gradient hair, ocean waves, bioluminescent, sleek",
+        "EyeColor": "hazel eyes, golden flecks, detailed",
+        "Outfit": "worn-edge leather jacket, riding-up mini, run stockings, no bra"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Manga_Girls_sexyoutfits_fullbody.prompt.yaml",
+      "count": 20,
+      "first_variations": {
+        "HairColor": "bubblegum pink and blue split, playful",
+        "HairCut": "an asymmetrical bob with one side longer than the other",
+        "OutfitNSFW": "polished loafers, unbuttoned blazer, silk cami (clinging nipples:1.1), pencil skirt (hiked, ass cheeks exposed:1.1), no panties, pussy outline (visible:1.1)",
+        "PoseNSFW": "lying on back with arched spine, hands above her head",
+        "View": "backview"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Portrait.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_PortraitFullBody_realist.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_PortraitFullBody_realist_sexy.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Portrait_OPTIMIZED.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Portrait_realist.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Realist_Girls_sexyoutfits_fullbody_realist.prompt.yaml",
+      "count": 200,
+      "first_variations": {
+        "HairColor": "auburn hair, (deep red undertones:1.2), (sun-kissed highlights:1.1)",
+        "HairCut": "a tall spiked mohawk with shaved sides, (textured spikes:1.1), (no neon:1.3), (matte hair gel effect:1.1)",
+        "OutfitNSFW": "blouse tied at the waist like a crop top, exposing her midriff and belly button, pencil skirt unzipped at the back to reveal her ass cheeks, (no panties:1.1)",
+        "Hands": "Hand to mouth",
+        "View": "backview"
+      },
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "Hassaku_Scene1Test copy.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "CyberRealisticPony_FacialExpression-nolora.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "CyberRealisticPony_FacialExpression.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    },
+    {
+      "status": "success",
+      "file": "CyberRealisticPony_Scene1Test.prompt.yaml",
+      "count": 1,
+      "first_variations": {},
+      "has_negative": true,
+      "parameters": []
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}

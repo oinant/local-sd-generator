@@ -11,11 +11,11 @@ Tests cover:
 
 import pytest
 from pathlib import Path
-from templating.v2.resolvers.import_resolver import ImportResolver
-from templating.v2.loaders.yaml_loader import YamlLoader
-from templating.v2.loaders.parser import ConfigParser
-from templating.v2.models.config_models import PromptConfig, GenerationConfig
-from templating.v2.utils.hash_utils import md5_short
+from templating.resolvers.import_resolver import ImportResolver
+from templating.loaders.yaml_loader import YamlLoader
+from templating.loaders.parser import ConfigParser
+from templating.models.config_models import PromptConfig, GenerationConfig
+from templating.utils.hash_utils import md5_short
 
 
 @pytest.fixture

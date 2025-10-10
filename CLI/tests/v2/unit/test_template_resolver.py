@@ -10,7 +10,7 @@ Tests:
 """
 
 import pytest
-from templating.v2.resolvers.template_resolver import TemplateResolver, Selector
+from templating.resolvers.template_resolver import TemplateResolver, Selector
 
 
 class TestSelectorParsing:

@@ -9,12 +9,12 @@ import random
 import itertools
 from typing import Dict, List, Any, Tuple, Optional
 
-from templating.v2.models.config_models import (
+from templating.models.config_models import (
     GenerationConfig,
     ResolvedContext
 )
-from templating.v2.resolvers.template_resolver import TemplateResolver
-from templating.v2.normalizers.normalizer import PromptNormalizer
+from templating.resolvers.template_resolver import TemplateResolver
+from templating.normalizers.normalizer import PromptNormalizer
 
 
 class PromptGenerator:

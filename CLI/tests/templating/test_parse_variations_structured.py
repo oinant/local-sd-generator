@@ -7,8 +7,8 @@ This test verifies the fix for the duplicate keys bug where metadata fields
 
 import pytest
 from pathlib import Path
-from templating.v2.loaders.yaml_loader import YamlLoader
-from templating.v2.loaders.parser import ConfigParser
+from templating.loaders.yaml_loader import YamlLoader
+from templating.loaders.parser import ConfigParser
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "variations"

@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from tempfile import TemporaryDirectory
 
-from templating.v2.executor import V2Executor
+from templating.executor import V2Executor
 from api.sdapi_client import SDAPIClient, PromptConfig, GenerationConfig
 
 

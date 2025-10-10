@@ -6,8 +6,8 @@ Tests parsing of YAML dictionaries into config model objects.
 
 import pytest
 from pathlib import Path
-from templating.v2.loaders.parser import ConfigParser
-from templating.v2.models.config_models import (
+from templating.loaders.parser import ConfigParser
+from templating.models.config_models import (
     TemplateConfig,
     ChunkConfig,
     PromptConfig,

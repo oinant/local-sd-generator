@@ -1,0 +1,72 @@
+[
+  {
+    "prompt": "s1_dram, masterpiece, best quality, ultra-HD, 8k, nsfw,\n\n1girl, 22, supermodel, slim curvy, large breasts, waist-to-hip 0.7, toned thighs,\n70-degree canted angle, falling sensation, ground shoulder, disorienting effect, leaning forward, intense,\nstrict bun, no loose hair, polished, professional, anime-inspired teal hair, reflective water shine, silky smooth, gray-blue eyes, stormy eyes, detailed eyes, detailed skin, subtle makeup,\ndetailed background, dark luxury modern living room, white sofa, modern wall art frames,\nopen cropped jacket, removed bandeau, nipples poking through,\n\nnight chiaroscuro, moonlight glow, dramatic shadows, light particles,\nsemi-realistic, black outline, sharp focus, bokeh, depth of field,\n\n<lora:Dramatic Lighting Slider:2.5> <lora:Eyes_for_Illustrious_Lora_Perfect_anime_eyes:0.6>",
+    "negative_prompt": "3d, worst quality, low quality, displeasing, text, watermark, bad anatomy, text, artist name, signature, hearts, deformed hands, missing finger, shiny skin, child, children, bad anatomy, deformed, disfigured, poorly drawn, amateur, jpeg artifacts",
+    "seed": -1,
+    "variations": {
+      "Angle": "70-degree canted angle, falling sensation, ground shoulder, disorienting effect",
+      "Pose": "leaning forward, intense",
+      "HairCut": "strict bun, no loose hair, polished, professional",
+      "HairColor": "anime-inspired teal hair, reflective water shine, silky smooth",
+      "EyeColor": "gray-blue eyes, stormy",
+      "Outfit": "open cropped jacket, removed bandeau, nipples poking through"
+    },
+    "parameters": {}
+  },
+  {
+    "prompt": "s1_dram, masterpiece, best quality, ultra-HD, 8k, nsfw,\n\n1girl, 22, supermodel, slim curvy, large breasts, waist-to-hip 0.7, toned thighs,\ntilted low-angle side, thrust hip, cinematic tension, dynamic lines, one hand on a robot companion, futuristic,\nblunt long cut, natural parting, textured ends, healthy shine, vibrant electric blue hair, crackling energy, luminous, otherworldly, deep ocean blue eyes, gemstone-like eyes, detailed eyes, detailed skin, subtle makeup,\ndetailed background, dark luxury modern living room, white sofa, modern wall art frames,\noversized denim jacket, bandeau, no-panties skirt,\n\nnight chiaroscuro, moonlight glow, dramatic shadows, light particles,\nsemi-realistic, black outline, sharp focus, bokeh, depth of field,\n\n<lora:Dramatic Lighting Slider:2.5> <lora:Eyes_for_Illustrious_Lora_Perfect_anime_eyes:0.6>",
+    "negative_prompt": "3d, worst quality, low quality, displeasing, text, watermark, bad anatomy, text, artist name, signature, hearts, deformed hands, missing finger, shiny skin, child, children, bad anatomy, deformed, disfigured, poorly drawn, amateur, jpeg artifacts",
+    "seed": -1,
+    "variations": {
+      "Angle": "tilted low-angle side, thrust hip, cinematic tension, dynamic lines",
+      "Pose": "one hand on a robot companion, futuristic",
+      "HairCut": "blunt long cut, natural parting, textured ends, healthy shine",
+      "HairColor": "vibrant electric blue hair, crackling energy, luminous, otherworldly",
+      "EyeColor": "deep ocean blue eyes, gemstone-like",
+      "Outfit": "oversized denim jacket, bandeau, no-panties skirt"
+    },
+    "parameters": {}
+  },
+  {
+    "prompt": "s1_dram, masterpiece, best quality, ultra-HD, 8k, nsfw,\n\n1girl, 22, supermodel, slim curvy, large breasts, waist-to-hip 0.7, toned thighs,\nextreme low-angle side, hip/waist emphasis, cinematic depth, balancing on a floating platform, sci-fi,\n(long herringbone braid, textured strands, loose tendrils, --no fantasy), purple to silver galaxy hair, starry effect, cosmic shimmer, holographic, hazel eyes, golden flecks, detailed eyes, detailed eyes, detailed skin, subtle makeup,\ndetailed background, dark luxury modern living room, white sofa, modern wall art frames,\nfloral sheer, nothing underneath, subtle body contour,\n\nnight chiaroscuro, moonlight glow, dramatic shadows, light particles,\nsemi-realistic, black outline, sharp focus, bokeh, depth of field,\n\n<lora:Dramatic Lighting Slider:2.5> <lora:Eyes_for_Illustrious_Lora_Perfect_anime_eyes:0.6>",
+    "negative_prompt": "3d, worst quality, low quality, displeasing, text, watermark, bad anatomy, text, artist name, signature, hearts, deformed hands, missing finger, shiny skin, child, children, bad anatomy, deformed, disfigured, poorly drawn, amateur, jpeg artifacts",
+    "seed": -1,
+    "variations": {
+      "Angle": "extreme low-angle side, hip/waist emphasis, cinematic depth",
+      "Pose": "balancing on a floating platform, sci-fi",
+      "HairCut": "(long herringbone braid, textured strands, loose tendrils, --no fantasy)",
+      "HairColor": "purple to silver galaxy hair, starry effect, cosmic shimmer, holographic",
+      "EyeColor": "hazel eyes, golden flecks, detailed",
+      "Outfit": "floral sheer, nothing underneath, subtle body contour"
+    },
+    "parameters": {}
+  },
+  {
+    "prompt": "s1_dram, masterpiece, best quality, ultra-HD, 8k, nsfw,\n\n1girl, 22, supermodel, slim curvy, large breasts, waist-to-hip 0.7, toned thighs,\n45-degree tilted low-angle, upward chest, asymmetrical cleavage, forward leg, unstable heroic, crouched in a cyberpunk alley, alert,\nmessy pigtails, safety pins, ripped ribbons, rebellious, DIY, deep mystical violet hair, enchanting, iridescent sheen, magical depth, ice gray eyes, piercing eyes, detailed eyes, detailed skin, subtle makeup,\ndetailed background, dark luxury modern living room, white sofa, modern wall art frames,\nhiked knit dress, no panties, peekaboo pussy,\n\nnight chiaroscuro, moonlight glow, dramatic shadows, light particles,\nsemi-realistic, black outline, sharp focus, bokeh, depth of field,\n\n<lora:Dramatic Lighting Slider:2.5> <lora:Eyes_for_Illustrious_Lora_Perfect_anime_eyes:0.6>",
+    "negative_prompt": "3d, worst quality, low quality, displeasing, text, watermark, bad anatomy, text, artist name, signature, hearts, deformed hands, missing finger, shiny skin, child, children, bad anatomy, deformed, disfigured, poorly drawn, amateur, jpeg artifacts",
+    "seed": -1,
+    "variations": {
+      "Angle": "45-degree tilted low-angle, upward chest, asymmetrical cleavage, forward leg, unstable heroic",
+      "Pose": "crouched in a cyberpunk alley, alert",
+      "HairCut": "messy pigtails, safety pins, ripped ribbons, rebellious, DIY",
+      "HairColor": "deep mystical violet hair, enchanting, iridescent sheen, magical depth",
+      "EyeColor": "ice gray eyes, piercing",
+      "Outfit": "hiked knit dress, no panties, peekaboo pussy"
+    },
+    "parameters": {}
+  },
+  {
+    "prompt": "s1_dram, masterpiece, best quality, ultra-HD, 8k, nsfw,\n\n1girl, 22, supermodel, slim curvy, large breasts, waist-to-hip 0.7, toned thighs,\nlow-angle back, ass/thighs focal point, downward hair cascade, kneeling in a forest, mystical,\nbraided headband, delicate intricacy, feminine, whimsical, auburn hair, deep red undertones, burnt copper, sunlit red highlights, golden amber eyes, warm eyes, detailed eyes, detailed skin, subtle makeup,\ndetailed background, dark luxury modern living room, white sofa, modern wall art frames,\nfrayed plaid mini, thigh-high socks, visible pussy lips,\n\nnight chiaroscuro, moonlight glow, dramatic shadows, light particles,\nsemi-realistic, black outline, sharp focus, bokeh, depth of field,\n\n<lora:Dramatic Lighting Slider:2.5> <lora:Eyes_for_Illustrious_Lora_Perfect_anime_eyes:0.6>",
+    "negative_prompt": "3d, worst quality, low quality, displeasing, text, watermark, bad anatomy, text, artist name, signature, hearts, deformed hands, missing finger, shiny skin, child, children, bad anatomy, deformed, disfigured, poorly drawn, amateur, jpeg artifacts",
+    "seed": -1,
+    "variations": {
+      "Angle": "low-angle back, ass/thighs focal point, downward hair cascade",
+      "Pose": "kneeling in a forest, mystical",
+      "HairCut": "braided headband, delicate intricacy, feminine, whimsical",
+      "HairColor": "auburn hair, deep red undertones, burnt copper, sunlit red highlights",
+      "EyeColor": "golden amber eyes, warm",
+      "Outfit": "frayed plaid mini, thigh-high socks, visible pussy lips"
+    },
+    "parameters": {}
+  }
+]

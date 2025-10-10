@@ -14,11 +14,11 @@ from pathlib import Path
 import tempfile
 import yaml
 
-from templating.v2.loaders.yaml_loader import YamlLoader
-from templating.v2.loaders.parser import ConfigParser
-from templating.v2.validators.validator import ConfigValidator
-from templating.v2.validators.validation_error import ValidationResult
-from templating.v2.models.config_models import (
+from templating.loaders.yaml_loader import YamlLoader
+from templating.loaders.parser import ConfigParser
+from templating.validators.validator import ConfigValidator
+from templating.validators.validation_error import ValidationResult
+from templating.models.config_models import (
     TemplateConfig, ChunkConfig, PromptConfig, GenerationConfig
 )
 

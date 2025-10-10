@@ -29,7 +29,6 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from config.global_config import load_global_config, ensure_global_config
-from templating import load_prompt_config, resolve_prompt
 
 
 def normalize_prompt(prompt: str) -> str:
@@ -93,178 +92,7 @@ def find_yaml_templates(configs_dir: Path) -> list[Path]:
     return templates
 
 
-def _generate_with_v1(
-    template_path: Path,
-    global_config: Any,
-    count: Optional[int],
-    api_url: str,
-    dry_run: bool,
-    console: Console
-):
-    """
-    Generate images using Template System V1 (Phase 2).
-
-    Args:
-        template_path: Path to template file
-        global_config: Global configuration object
-        count: Maximum number of images to generate
-        api_url: SD API URL
-        dry_run: Dry-run mode flag
-        console: Rich console for output
-    """
-    from templating import load_prompt_config, resolve_prompt
-    from api import SDAPIClient, BatchGenerator, SessionManager, ImageWriter, ProgressReporter
-    from api import GenerationConfig, PromptConfig
-
-    try:
-        # Load template config
-        config = load_prompt_config(template_path)
-
-        # Override max_images if specified
-        if count is not None:
-            config.max_images = count
-
-        # Resolve variations
-        base_path = template_path.parent
-        console.print(f"[cyan]Resolving template:[/cyan] {config.name}")
-        console.print(f"[cyan]Base path:[/cyan] {base_path}")
-
-        variations = resolve_prompt(config, base_path=base_path)
-        console.print(f"[green]✓ Generated {len(variations)} variations[/green]\n")
-
-        # Session setup
-        session_name = config.name.lower().replace(" ", "_").replace("-", "_")
-        output_base_dir = Path(global_config.output_dir)
-
-        # Initialize components
-        api_client = SDAPIClient(api_url=api_url)
-        session_manager = SessionManager(
-            base_output_dir=str(output_base_dir),
-            session_name=session_name,
-            dry_run=dry_run
-        )
-        image_writer = ImageWriter(session_manager.output_dir)
-        progress_reporter = ProgressReporter(
-            total_images=len(variations),
-            output_dir=session_manager.output_dir,
-            verbose=True
-        )
-
-        # Create batch generator
-        generator = BatchGenerator(
-            api_client=api_client,
-            session_manager=session_manager,
-            image_writer=image_writer,
-            progress_reporter=progress_reporter,
-            dry_run=dry_run
-        )
-
-        session_dir = Path(session_manager.output_dir)
-
-        console.print(Panel(
-            f"[bold]Output:[/bold] {session_dir}",
-            title="Starting Image Generation",
-            border_style="green"
-        ))
-
-        # Create output directory
-        session_manager.create_session_dir()
-
-        # Save JSON manifest with variations
-        manifest_path = session_dir / f"{session_name}_manifest.json"
-        manifest = {
-            "session_name": session_name,
-            "template_source": str(template_path),
-            "generated_at": datetime.now().isoformat(),
-            "total_variations": len(variations),
-            "templating_system": "phase2",
-            "variations": []
-        }
-
-        for var in variations:
-            # Normalize newlines in prompts for manifest
-            normalized_prompt = normalize_prompt(var.final_prompt)
-            normalized_negative = normalize_prompt(var.negative_prompt)
-
-            manifest["variations"].append({
-                "index": var.index,
-                "prompt": normalized_prompt,
-                "negative_prompt": normalized_negative,
-                "seed": var.seed,
-                "placeholders": var.placeholders
-            })
-
-        with open(manifest_path, 'w', encoding='utf-8') as f:
-            json.dump(manifest, f, indent=2, ensure_ascii=False)
-
-        console.print(f"[green]✓ Manifest saved:[/green] {manifest_path}\n")
-
-        # Test connection if not in dry-run mode
-        if not dry_run:
-            console.print(f"[cyan]Connecting to SD API:[/cyan] {api_url}")
-            if not api_client.test_connection():
-                console.print("[red]✗ Failed to connect to SD API[/red]")
-                console.print("   [yellow]Make sure Stable Diffusion WebUI is running[/yellow]")
-                raise typer.Exit(code=1)
-            console.print("[green]✓ Connected to SD API[/green]\n")
-
-        # Configure generation parameters from YAML config
-        gen_config = GenerationConfig(
-            width=config.width,
-            height=config.height,
-            steps=config.steps,
-            cfg_scale=config.cfg_scale,
-            sampler_name=config.sampler,
-            scheduler=config.scheduler,
-            batch_size=config.batch_size,
-            n_iter=config.batch_count,
-            enable_hr=config.enable_hr,
-            hr_scale=config.hr_scale,
-            hr_upscaler=config.hr_upscaler,
-            denoising_strength=config.denoising_strength,
-            hr_second_pass_steps=config.hr_second_pass_steps
-        )
-        api_client.generation_config = gen_config
-
-        # Convert Phase 2 variations to PromptConfig list
-        prompt_configs = []
-        for idx, var in enumerate(variations):
-            prompt_cfg = PromptConfig(
-                prompt=var.final_prompt,
-                negative_prompt=var.negative_prompt,
-                seed=var.seed,
-                filename=f"{session_name}_{idx:04d}.png"
-            )
-            prompt_configs.append(prompt_cfg)
-
-        # Generate images using BatchGenerator
-        success_count, total_count = generator.generate_batch(
-            prompt_configs=prompt_configs,
-            delay_between_images=2.0
-        )
-
-        fail_count = total_count - success_count
-
-        # Display final summary with Rich panel
-        summary = f"""[bold]Total images:[/bold] {total_count}
-[bold green]Success:[/bold green] {success_count}
-[bold red]Failed:[/bold red] {fail_count}"""
-
-        if dry_run:
-            summary += f"\n\n[yellow]Dry-run mode: API requests saved to:[/yellow]\n  {session_dir}"
-        else:
-            summary += f"\n\n[green]Images saved to:[/green]\n  {session_dir}"
-
-        console.print(Panel(summary, title="✓ Generation Complete", border_style="green"))
-
-    except Exception as e:
-        console.print(f"\n[red]✗ V1 Pipeline error:[/red] {e}")
-        import traceback
-        console.print(f"[dim]{traceback.format_exc()}[/dim]")
-        raise typer.Exit(code=1)
-
-
-def _generate_with_v2(
+def _generate(
     template_path: Path,
     global_config: Any,
     count: Optional[int],
@@ -275,6 +103,12 @@ def _generate_with_v2(
     """
     Generate images using Template System V2.0.
 
+    Supports:
+    - Template inheritance with implements:
+    - Modular imports with imports:
+    - Reusable chunks
+    - Advanced selectors and weights
+
     Args:
         template_path: Path to template file
         global_config: Global configuration object
@@ -283,7 +117,7 @@ def _generate_with_v2(
         dry_run: Dry-run mode flag
         console: Rich console for output
     """
-    from templating.v2.orchestrator import V2Pipeline
+    from templating.orchestrator import V2Pipeline
     from api import SDAPIClient, BatchGenerator, SessionManager, ImageWriter, ProgressReporter
     from api import PromptConfig
 
@@ -462,7 +296,9 @@ def select_template_interactive(configs_dir: Path) -> Path:
 
     for idx, template_path in enumerate(templates, 1):
         try:
-            config = load_prompt_config(template_path)
+            from templating.orchestrator import V2Pipeline
+            pipeline = V2Pipeline()
+            config = pipeline.load(str(template_path))
             name = config.name
             rel_path = str(template_path.relative_to(configs_dir))
         except Exception:
@@ -521,26 +357,22 @@ def generate_images(
         "--dry-run",
         help="Save API requests as JSON instead of generating images",
     ),
-    use_v2: bool = typer.Option(
-        False,
-        "--v2",
-        help="Use Template System V2.0 (new YAML format with inheritance)",
-    ),
 ):
     """
-    Generate images from YAML template.
+    Generate images from YAML template using V2.0 Template System.
 
     If no template is specified, enters interactive mode.
 
-    Supports both V1 (Phase 2) and V2.0 template systems:
-    - V1: Default, uses variations: and multi-field syntax
-    - V2: Use --v2 flag, supports inheritance, imports:, and chunks
+    V2.0 features:
+    - Inheritance with implements:
+    - Modular imports with imports:
+    - Reusable chunks
+    - Advanced selectors and weights
 
     Examples:
         python3 template_cli_typer.py generate
         python3 template_cli_typer.py generate -t portrait.yaml
         python3 template_cli_typer.py generate -t test.yaml -n 10 --dry-run
-        python3 template_cli_typer.py generate -t v2_template.yaml --v2
     """
     try:
         # Load global configuration
@@ -585,33 +417,20 @@ def generate_images(
                 raise typer.Exit(code=1)
 
         # Processing header
-        system_version = "V2.0" if use_v2 else "V1 (Phase 2)"
         console.print(Panel(
-            f"[bold]Template:[/bold] {template_path.name}\n"
-            f"[bold]System:[/bold] {system_version}",
-            title="Processing Template",
+            f"[bold]Template:[/bold] {template_path.name}",
+            title="Processing Template (V2.0)",
             border_style="cyan"
         ))
 
-        # Route to V2 or V1 based on flag
-        if use_v2:
-            _generate_with_v2(
-                template_path=template_path,
-                global_config=global_config,
-                count=count,
-                api_url=api_url,
-                dry_run=dry_run,
-                console=console
-            )
-        else:
-            _generate_with_v1(
-                template_path=template_path,
-                global_config=global_config,
-                count=count,
-                api_url=api_url,
-                dry_run=dry_run,
-                console=console
-            )
+        _generate(
+            template_path=template_path,
+            global_config=global_config,
+            count=count,
+            api_url=api_url,
+            dry_run=dry_run,
+            console=console
+        )
 
     except typer.Exit:
         raise
@@ -657,7 +476,9 @@ def list_templates(
 
         for idx, template_path in enumerate(templates, 1):
             try:
-                config = load_prompt_config(template_path)
+                from templating.orchestrator import V2Pipeline
+                pipeline = V2Pipeline()
+                config = pipeline.load(str(template_path))
                 name = config.name
             except Exception:
                 name = template_path.stem
@@ -704,159 +525,76 @@ def validate_template(
         help="Path to template file to validate",
         exists=True,
     ),
-    use_v2: bool = typer.Option(
-        False,
-        "--v2",
-        help="Validate as Template System V2.0 format",
-    ),
 ):
     """
-    Validate a YAML template file.
+    Validate a YAML template file using V2.0 Template System.
 
-    Checks syntax, required fields, and variation files.
-
-    Supports both V1 (Phase 2) and V2.0 template systems.
+    Checks syntax, required fields, and import files.
 
     Examples:
         python3 template_cli_typer.py validate portrait.yaml
         python3 template_cli_typer.py validate path/to/config.prompt.yaml
-        python3 template_cli_typer.py validate v2_template.yaml --v2
     """
     try:
-        system_version = "V2.0" if use_v2 else "V1 (Phase 2)"
-        console.print(f"[cyan]Validating template:[/cyan] {template}")
-        console.print(f"[cyan]System:[/cyan] {system_version}\n")
+        console.print(f"[cyan]Validating template (V2.0):[/cyan] {template}\n")
 
-        if use_v2:
-            # V2 validation
-            from templating.v2.orchestrator import V2Pipeline
+        from templating.orchestrator import V2Pipeline
 
-            pipeline = V2Pipeline()
-            config = pipeline.load(str(template))
+        pipeline = V2Pipeline()
+        config = pipeline.load(str(template))
 
-            console.print(f"[green]✓ Template is valid (V2.0):[/green] {config.name}\n")
+        console.print(f"[green]✓ Template is valid (V2.0):[/green] {config.name}\n")
 
-            # Show V2-specific summary
-            table = Table(title="Template Summary (V2.0)", show_header=False)
-            table.add_column("Property", style="cyan")
-            table.add_column("Value", style="green")
-
-            table.add_row("Name", config.name)
-            table.add_row("Type", config.type)
-            table.add_row("Version", config.version)
-
-            if config.implements:
-                table.add_row("Implements", config.implements)
-
-            if config.template:
-                template_preview = config.template[:60] + "..." if len(config.template) > 60 else config.template
-                table.add_row("Template", template_preview)
-
-            if hasattr(config, 'imports') and config.imports:
-                table.add_row("Imports", str(len(config.imports)))
-
-            if hasattr(config, 'chunks') and config.chunks:
-                table.add_row("Chunks", str(len(config.chunks)))
-
-            if hasattr(config, 'parameters') and config.parameters:
-                param_keys = ', '.join(list(config.parameters.keys())[:5])
-                if len(config.parameters) > 5:
-                    param_keys += f", ... ({len(config.parameters)} total)"
-                table.add_row("Parameters", param_keys)
-
-            console.print(table)
-
-            # Validate import files exist
-            console.print(f"\n[cyan]Checking import files:[/cyan]")
-            all_files_exist = True
-
-            if hasattr(config, 'imports') and config.imports:
-                base_path = template.parent
-                for key, file_path in config.imports.items():
-                    import_path = base_path / file_path
-                    if import_path.exists():
-                        console.print(f"  [green]✓[/green] {key}: {file_path}")
-                    else:
-                        console.print(f"  [red]✗[/red] {key}: {file_path} [yellow](not found)[/yellow]")
-                        all_files_exist = False
-            else:
-                console.print("  [dim]No import files defined[/dim]")
-
-            if all_files_exist:
-                console.print("\n[green]✓ All V2 validation checks passed[/green]")
-            else:
-                console.print("\n[yellow]⚠ Some import files are missing[/yellow]")
-                raise typer.Exit(code=1)
-
-            return
-
-        # V1 validation below
-        # Load config (will raise if invalid)
-        config = load_prompt_config(template)
-
-        console.print(f"[green]✓ Template is valid:[/green] {config.name}\n")
-
-        # Show summary
-        table = Table(title="Template Summary", show_header=False)
+        # Show V2 summary
+        table = Table(title="Template Summary (V2.0)", show_header=False)
         table.add_column("Property", style="cyan")
         table.add_column("Value", style="green")
 
         table.add_row("Name", config.name)
-        table.add_row("Dimensions", f"{config.width}x{config.height}")
-        table.add_row("Steps", str(config.steps))
-        table.add_row("CFG Scale", str(config.cfg_scale))
-        table.add_row("Sampler", config.sampler)
-        table.add_row("Scheduler", config.scheduler or "auto")
+        table.add_row("Type", config.type)
+        table.add_row("Version", config.version)
 
-        # Handle both Phase 1 (variations) and Phase 2 (imports)
-        if hasattr(config, 'variations') and config.variations:
-            table.add_row("Variations", str(len(config.variations)))
-        elif hasattr(config, 'imports') and config.imports:
+        if config.implements:
+            table.add_row("Implements", config.implements)
+
+        if config.template:
+            template_preview = config.template[:60] + "..." if len(config.template) > 60 else config.template
+            table.add_row("Template", template_preview)
+
+        if hasattr(config, 'imports') and config.imports:
             table.add_row("Imports", str(len(config.imports)))
 
-        table.add_row("Max Images", str(config.max_images or "unlimited"))
+        if hasattr(config, 'chunks') and config.chunks:
+            table.add_row("Chunks", str(len(config.chunks)))
 
-        if config.enable_hr:
-            table.add_row("Hires Fix", f"Enabled ({config.hr_scale}x, {config.hr_upscaler})")
+        if hasattr(config, 'parameters') and config.parameters:
+            param_keys = ', '.join(list(config.parameters.keys())[:5])
+            if len(config.parameters) > 5:
+                param_keys += f", ... ({len(config.parameters)} total)"
+            table.add_row("Parameters", param_keys)
 
         console.print(table)
 
-        # Validate variation/import files exist
-        base_path = template.parent
-        if hasattr(config, 'base_path') and config.base_path:
-            # Phase 2 can have custom base_path
-            base_path = template.parent / config.base_path
-
-        console.print(f"\n[cyan]Checking variation files:[/cyan]")
-
+        # Validate import files exist
+        console.print(f"\n[cyan]Checking import files:[/cyan]")
         all_files_exist = True
 
-        # Phase 1: variations
-        if hasattr(config, 'variations') and config.variations:
-            for var in config.variations:
-                var_path = base_path / var.file
-                if var_path.exists():
-                    console.print(f"  [green]✓[/green] {var.file}")
-                else:
-                    console.print(f"  [red]✗[/red] {var.file} [yellow](not found)[/yellow]")
-                    all_files_exist = False
-
-        # Phase 2: imports
-        elif hasattr(config, 'imports') and config.imports:
+        if hasattr(config, 'imports') and config.imports:
+            base_path = template.parent
             for key, file_path in config.imports.items():
-                var_path = base_path / file_path
-                if var_path.exists():
+                import_path = base_path / file_path
+                if import_path.exists():
                     console.print(f"  [green]✓[/green] {key}: {file_path}")
                 else:
                     console.print(f"  [red]✗[/red] {key}: {file_path} [yellow](not found)[/yellow]")
                     all_files_exist = False
         else:
-            console.print("  [yellow]No variation files defined[/yellow]")
+            console.print("  [dim]No import files defined[/dim]")
 
         if all_files_exist:
             console.print("\n[green]✓ All validation checks passed[/green]")
         else:
-            console.print("\n[yellow]⚠ Some variation files are missing[/yellow]")
+            console.print("\n[yellow]⚠ Some import files are missing[/yellow]")
             raise typer.Exit(code=1)
 
     except Exception as e:

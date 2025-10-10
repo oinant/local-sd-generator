@@ -15,15 +15,15 @@ This module provides the main orchestrator that coordinates all V2 components:
 from pathlib import Path
 from typing import List, Dict, Any
 
-from templating.v2.loaders.yaml_loader import YamlLoader
-from templating.v2.loaders.parser import ConfigParser
-from templating.v2.validators.validator import ConfigValidator
-from templating.v2.resolvers.inheritance_resolver import InheritanceResolver
-from templating.v2.resolvers.import_resolver import ImportResolver
-from templating.v2.resolvers.template_resolver import TemplateResolver
-from templating.v2.normalizers.normalizer import PromptNormalizer
-from templating.v2.generators.generator import PromptGenerator
-from templating.v2.models.config_models import (
+from templating.loaders.yaml_loader import YamlLoader
+from templating.loaders.parser import ConfigParser
+from templating.validators.validator import ConfigValidator
+from templating.resolvers.inheritance_resolver import InheritanceResolver
+from templating.resolvers.import_resolver import ImportResolver
+from templating.resolvers.template_resolver import TemplateResolver
+from templating.normalizers.normalizer import PromptNormalizer
+from templating.generators.generator import PromptGenerator
+from templating.models.config_models import (
     PromptConfig,
     TemplateConfig,
     ChunkConfig,

@@ -11,8 +11,8 @@ Tests the full pipeline integration:
 import pytest
 import tempfile
 from pathlib import Path
-from templating.v2.orchestrator import V2Pipeline
-from templating.v2.models.config_models import (
+from templating.orchestrator import V2Pipeline
+from templating.models.config_models import (
     PromptConfig,
     GenerationConfig,
     ResolvedContext
@@ -307,7 +307,7 @@ class TestV2Pipeline:
     def test_merge_parameters(self):
         """Test merging parameters from inheritance chain."""
         # Create mock Template configs (they have parameters field)
-        from templating.v2.models.config_models import TemplateConfig
+        from templating.models.config_models import TemplateConfig
 
         base = TemplateConfig(
             version='2.0',

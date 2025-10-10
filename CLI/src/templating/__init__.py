@@ -1,37 +1,28 @@
 """
-Next-Gen Templating System for Stable Diffusion Prompt Generation
+Template System V2.0 for Stable Diffusion Prompt Generation
 
-This module provides a hierarchical templating system with:
-- YAML-based variation files with backward compatibility for .txt files
-- Advanced variation selectors ([happy,sad], [random:5], [range:1-10])
-- Prompt configuration files (.prompt.yaml)
-- Combinatorial and random generation modes
-- Reusable text chunks with multi-field expansion (Phase 2)
+This module provides an advanced hierarchical templating system with:
+- Template inheritance with implements:
+- Modular imports with imports:
+- Reusable chunks with multi-field expansion
+- Advanced variation selectors and weights
+- YAML-based configuration
 """
 
-from .loaders import load_variations
-from .prompt_config import load_prompt_config, PromptConfig
-from .resolver import resolve_prompt, ResolvedVariation
-from .chunk import load_chunk_template, load_chunk, resolve_chunk_fields, render_chunk
-from .multi_field import (
-    is_multi_field_variation,
-    load_multi_field_variations,
-    expand_multi_field,
-    merge_multi_field_into_chunk,
+from .orchestrator import V2Pipeline
+from .models.config_models import (
+    TemplateConfig,
+    ChunkConfig,
+    PromptConfig,
+    GenerationConfig,
+    ResolvedContext
 )
 
 __all__ = [
-    'load_variations',
-    'load_prompt_config',
+    'V2Pipeline',
+    'TemplateConfig',
+    'ChunkConfig',
     'PromptConfig',
-    'resolve_prompt',
-    'ResolvedVariation',
-    'load_chunk_template',
-    'load_chunk',
-    'resolve_chunk_fields',
-    'render_chunk',
-    'is_multi_field_variation',
-    'load_multi_field_variations',
-    'expand_multi_field',
-    'merge_multi_field_into_chunk',
+    'GenerationConfig',
+    'ResolvedContext',
 ]

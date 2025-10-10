@@ -7,7 +7,7 @@ Tests YAML file loading, caching, and path resolution.
 import pytest
 import yaml
 from pathlib import Path
-from templating.v2.loaders.yaml_loader import YamlLoader
+from templating.loaders.yaml_loader import YamlLoader
 
 
 class TestYamlLoaderPathResolution:

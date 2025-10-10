@@ -17,10 +17,10 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 import logging
 
-from templating.v2.resolvers.inheritance_resolver import InheritanceResolver
-from templating.v2.loaders.yaml_loader import YamlLoader
-from templating.v2.loaders.parser import ConfigParser
-from templating.v2.models.config_models import (
+from templating.resolvers.inheritance_resolver import InheritanceResolver
+from templating.loaders.yaml_loader import YamlLoader
+from templating.loaders.parser import ConfigParser
+from templating.models.config_models import (
     TemplateConfig,
     ChunkConfig,
     PromptConfig,

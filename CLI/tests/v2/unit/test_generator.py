@@ -10,10 +10,10 @@ Tests combinatorial and random generation modes with:
 
 import pytest
 from pathlib import Path
-from templating.v2.generators.generator import PromptGenerator
-from templating.v2.models.config_models import GenerationConfig, ResolvedContext
-from templating.v2.resolvers.template_resolver import TemplateResolver
-from templating.v2.normalizers.normalizer import PromptNormalizer
+from templating.generators.generator import PromptGenerator
+from templating.models.config_models import GenerationConfig, ResolvedContext
+from templating.resolvers.template_resolver import TemplateResolver
+from templating.normalizers.normalizer import PromptNormalizer
 
 
 class TestPromptGenerator:

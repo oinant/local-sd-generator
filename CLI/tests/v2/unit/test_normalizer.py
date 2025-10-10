@@ -10,7 +10,7 @@ Tests the 5 normalization rules from spec section 8.1:
 """
 
 import pytest
-from templating.v2.normalizers.normalizer import PromptNormalizer
+from templating.normalizers.normalizer import PromptNormalizer
 
 
 class TestPromptNormalizer:

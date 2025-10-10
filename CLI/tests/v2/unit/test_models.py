@@ -6,14 +6,14 @@ Tests dataclass instantiation and basic properties.
 
 import pytest
 from pathlib import Path
-from templating.v2.models.config_models import (
+from templating.models.config_models import (
     TemplateConfig,
     ChunkConfig,
     GenerationConfig,
     PromptConfig,
     ResolvedContext
 )
-from templating.v2.validators.validation_error import ValidationError, ValidationResult
+from templating.validators.validation_error import ValidationError, ValidationResult
 
 
 class TestTemplateConfig:
