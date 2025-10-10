@@ -106,11 +106,12 @@ class ConfigParser:
         return PromptConfig(
             version=data.get('version', '1.0.0'),
             name=data['name'],
-            implements=data.get('implements'),  # Optional: supports standalone prompts
             generation=generation,
             template=data['template'],
             source_file=source_file,
+            implements=data.get('implements'),  # Optional: supports standalone prompts
             imports=data.get('imports') or {},
+            parameters=data.get('parameters') or {},  # Parse SD WebUI parameters
             negative_prompt=data.get('negative_prompt')
         )
 

@@ -214,8 +214,11 @@ class InheritanceResolver:
 
         # --- MERGE RULES ---
 
-        # 1. parameters: MERGE (TemplateConfig only)
+        # 1. parameters: MERGE (TemplateConfig and PromptConfig)
         if isinstance(child, TemplateConfig) and isinstance(parent, TemplateConfig):
+            merged.parameters = {**parent.parameters, **child.parameters}
+        elif isinstance(child, PromptConfig) and isinstance(parent, (TemplateConfig, PromptConfig)):
+            # PromptConfig can inherit from TemplateConfig or PromptConfig
             merged.parameters = {**parent.parameters, **child.parameters}
 
         # 2. imports: MERGE (all config types)

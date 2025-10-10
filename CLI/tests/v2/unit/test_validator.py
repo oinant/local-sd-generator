@@ -125,8 +125,8 @@ class TestPhase1Structure:
         assert result.errors[0].type == 'structure'
         assert 'template' in result.errors[0].message.lower()
 
-    def test_prompt_missing_implements(self, temp_dir, validator):
-        """Test that missing implements field in prompt is caught."""
+    def test_prompt_implements_optional(self, temp_dir, validator):
+        """Test that implements field is optional in prompts (standalone prompts)."""
         gen_config = GenerationConfig(
             mode='random',
             seed=42,
@@ -136,16 +136,15 @@ class TestPhase1Structure:
         config = PromptConfig(
             version='2.0',
             name='TestPrompt',
-            implements='',  # Missing
+            implements=None,  # Optional for standalone prompts
             generation=gen_config,
             template='test',
             source_file=temp_dir / 'test.yaml'
         )
         result = validator.validate(config)
-        assert not result.is_valid
-        assert len(result.errors) == 1
-        assert result.errors[0].type == 'structure'
-        assert 'implements' in result.errors[0].message.lower()
+        # Should be valid (implements is optional)
+        structure_errors = [e for e in result.errors if e.type == 'structure']
+        assert len(structure_errors) == 0
 
     def test_prompt_missing_generation(self, temp_dir, validator):
         """Test that missing generation field in prompt is caught."""

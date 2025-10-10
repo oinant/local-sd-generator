@@ -61,14 +61,16 @@ class TestV2Pipeline:
     def create_prompt_file(
         self,
         name: str,
-        implements: str,
         template: str,
         generation: dict,
+        implements: str = None,
         **kwargs
     ) -> Path:
         """Create a prompt file in temp directory."""
         path = Path(self.temp_dir) / f"{name}.prompt.yaml"
-        content = f"version: '2.0'\nname: {name}\nimplements: {implements}\n"
+        content = f"version: '2.0'\nname: {name}\n"
+        if implements:
+            content += f"implements: {implements}\n"
         content += f"template: '{template}'\n"
         content += "generation:\n"
         for key, value in generation.items():
@@ -81,38 +83,40 @@ class TestV2Pipeline:
                 content += "imports:\n"
                 for ik, iv in value.items():
                     content += f"  {ik}: {iv}\n"
+            elif key == 'parameters':
+                content += "parameters:\n"
+                for pk, pv in value.items():
+                    content += f"  {pk}: {pv}\n"
         path.write_text(content)
         return path
 
     # ===== Load Tests =====
 
     def test_load_valid_prompt(self):
-        """Test loading a valid prompt config."""
-        # Create minimal prompt file
+        """Test loading a valid standalone prompt config (no implements)."""
+        # Create minimal standalone prompt file
         prompt_path = self.create_prompt_file(
             'test',
-            'base',
             '{Color}',
             {
                 'mode': 'combinatorial',
                 'seed': 42,
                 'seed_mode': 'fixed',
                 'max_images': 5
-            }
+            },
+            parameters={'steps': 20, 'cfg_scale': 7.0}
         )
-
-        # Mock the validator to avoid needing full inheritance chain
-        self.pipeline.validator.validate_prompt = lambda x: None
 
         # Load
         config = self.pipeline.load(str(prompt_path))
 
         # Verify
         assert config.name == 'test'
-        assert config.implements == 'base'
+        assert config.implements is None  # Standalone prompt
         assert config.template == '{Color}'
         assert config.generation.mode == 'combinatorial'
         assert config.generation.seed == 42
+        assert config.parameters == {'steps': 20, 'cfg_scale': 7.0}
 
     def test_load_nonexistent_file(self):
         """Test loading nonexistent file raises error."""
