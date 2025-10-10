@@ -131,7 +131,7 @@ class TestPromptConfig:
             name='TestPrompt',
             implements='../base.template.yaml',
             generation=gen_config,
-            template='1girl, beautiful',
+            prompt='1girl, beautiful',  # V2.0 Corrected: 'prompt' not 'template'
             source_file=Path('/test/prompt.yaml')
         )
 
@@ -139,7 +139,7 @@ class TestPromptConfig:
         assert config.name == 'TestPrompt'
         assert config.implements == '../base.template.yaml'
         assert config.generation == gen_config
-        assert config.template == '1girl, beautiful'
+        assert config.prompt == '1girl, beautiful'  # V2.0 Corrected
         assert config.source_file == Path('/test/prompt.yaml')
         assert config.imports == {}
         assert config.negative_prompt is None
@@ -158,7 +158,7 @@ class TestPromptConfig:
             name='FullPrompt',
             implements='../base.template.yaml',
             generation=gen_config,
-            template='@Character, {Place}',
+            prompt='@Character, {Place}',  # V2.0 Corrected: 'prompt' not 'template'
             source_file=Path('/test/prompt.yaml'),
             imports={'Place': ['room', 'garden']},
             negative_prompt='bad quality'

@@ -147,7 +147,7 @@ class ConfigValidator:
                 ))
 
         elif isinstance(config, PromptConfig):
-            # Prompt requires: name, generation, template
+            # Prompt requires: name, generation, prompt (V2.0 Corrected)
             # Note: implements is optional (standalone prompts don't need it)
             if not config.name:
                 self.errors.append(ValidationError(
@@ -161,10 +161,10 @@ class ConfigValidator:
                     message='Missing required field: generation',
                     file=config.source_file
                 ))
-            if not config.template:
+            if not config.prompt:  # V2.0 Corrected: check 'prompt' not 'template'
                 self.errors.append(ValidationError(
                     type='structure',
-                    message='Missing required field: template',
+                    message='Missing required field: prompt',
                     file=config.source_file
                 ))
 

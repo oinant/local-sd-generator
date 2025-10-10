@@ -69,8 +69,18 @@ class InheritanceResolver:
             FileNotFoundError: If a parent file doesn't exist
             ValueError: If inheritance creates a type mismatch (chunks only)
         """
-        # If no inheritance, return as-is
+        # If no inheritance, handle standalone configs
         if not config.implements:
+            # For standalone PromptConfig: copy prompt → template
+            if isinstance(config, PromptConfig):
+                resolved = deepcopy(config)
+                resolved.template = config.prompt
+                logger.debug(
+                    f"Standalone prompt {config.source_file.name}: "
+                    f"using prompt as template"
+                )
+                return resolved
+            # For Template/Chunk: return as-is
             return config
 
         # Check cache (keyed by absolute path)
@@ -149,8 +159,9 @@ class InheritanceResolver:
         """
         Validate type compatibility for chunk inheritance.
 
-        Rules:
+        Rules (V2.0 Corrected):
         - Child chunk can only implement parent chunk with same type
+        - Maximum 1 level of inheritance (definition → implementation only)
         - If parent has no type → WARNING (assume child type)
         - If types mismatch → ERROR
 
@@ -159,13 +170,23 @@ class InheritanceResolver:
             parent: Parent config (should be ChunkConfig)
 
         Raises:
-            ValueError: If types are incompatible
+            ValueError: If types are incompatible or inheritance depth exceeds 1 level
         """
         # Parent must be a chunk too
         if not isinstance(parent, ChunkConfig):
             raise ValueError(
                 f"Chunk {child.source_file.name} cannot implement "
                 f"non-chunk {parent.source_file.name}"
+            )
+
+        # NEW: Validate max 1 level of inheritance
+        # If parent has implements, child cannot implement parent (max 1 level)
+        if parent.implements:
+            raise ValueError(
+                f"Chunk inheritance limited to 1 level: "
+                f"{child.source_file.name} cannot implement {parent.source_file.name} "
+                f"(which already implements {parent.implements}). "
+                f"Chunks can only have definition → implementation (1 level)."
             )
 
         # Check type compatibility
@@ -191,13 +212,13 @@ class InheritanceResolver:
         """
         Merge parent and child configs according to V2.0 merge rules.
 
-        Merge Rules:
+        Merge Rules (V2.0 Corrected - Template Method Pattern):
         - parameters: MERGE (child keys override parent keys)
         - imports: MERGE (child keys override parent keys)
         - chunks: MERGE (child keys override parent keys)
         - defaults: MERGE (child keys override parent keys)
-        - template: REPLACE (child replaces parent, logs WARNING if parent had template)
-        - negative_prompt: REPLACE (child replaces if provided)
+        - template: INJECTION (child injected into parent's {prompt} placeholder)
+        - negative_prompt: INJECTION (child injected into parent's {negprompt} placeholder)
 
         Args:
             parent: Resolved parent config
@@ -229,22 +250,76 @@ class InheritanceResolver:
             merged.chunks = {**parent.chunks, **child.chunks}
             merged.defaults = {**parent.defaults, **child.defaults}
 
-        # 4. template: REPLACE with WARNING
-        # Note: child.template always replaces parent.template
-        # We log a warning only if parent had a non-empty template
-        if parent.template and parent.template.strip():
-            if child.template != parent.template:
-                logger.warning(
-                    f"Overriding parent template in {child.source_file.name}. "
-                    f"Consider creating a new base config instead of overriding."
+        # 4. template: INJECTION (Template Method Pattern)
+        # If parent has {prompt} placeholder → inject child content
+        # Otherwise → replace with warning
+        if isinstance(child, PromptConfig):
+            # PromptConfig has 'prompt' field, not 'template'
+            # Inject child.prompt into parent.template's {prompt}
+            if parent.template and '{prompt}' in parent.template:
+                merged.template = parent.template.replace('{prompt}', child.prompt)
+                logger.debug(
+                    f"Injected prompt from {child.source_file.name} into "
+                    f"{parent.source_file.name}'s {{prompt}} placeholder"
                 )
+            else:
+                # Parent has no {prompt} - this should not happen if validation worked
+                logger.error(
+                    f"Parent template {parent.source_file.name} does not contain {{prompt}} placeholder. "
+                    f"Cannot inject child prompt."
+                )
+                # Keep parent template as-is (validation should have caught this)
+                merged.template = parent.template
 
-        # 5. negative_prompt: REPLACE (TemplateConfig and PromptConfig)
-        # Child's negative_prompt is already set, but we inherit if child didn't specify
+        elif isinstance(child, TemplateConfig) and isinstance(parent, TemplateConfig):
+            # Both are templates: inject child.template into parent.template's {prompt}
+            if '{prompt}' in parent.template:
+                merged.template = parent.template.replace('{prompt}', child.template)
+                logger.debug(
+                    f"Injected template from {child.source_file.name} into "
+                    f"{parent.source_file.name}'s {{prompt}} placeholder"
+                )
+            else:
+                # Parent has no {prompt} → REPLACE with warning
+                logger.warning(
+                    f"Parent {parent.source_file.name} has no {{prompt}} placeholder. "
+                    f"Template from {child.source_file.name} will replace parent template completely. "
+                    f"Consider adding {{prompt}} placeholder to parent template."
+                )
+                merged.template = child.template
+
+        elif isinstance(child, ChunkConfig) and isinstance(parent, ChunkConfig):
+            # Chunks: inject if parent has {prompt} (rare), otherwise replace
+            if '{prompt}' in parent.template:
+                merged.template = parent.template.replace('{prompt}', child.template)
+                logger.debug(
+                    f"Injected chunk template from {child.source_file.name} into "
+                    f"{parent.source_file.name}'s {{prompt}} placeholder"
+                )
+            else:
+                # No {prompt} → standard replace (chunks rarely use inheritance)
+                if parent.template and parent.template.strip():
+                    if child.template != parent.template:
+                        logger.debug(
+                            f"Child chunk {child.source_file.name} overrides parent template"
+                        )
+                merged.template = child.template
+
+        # 5. negative_prompt: INJECTION (if {negprompt} present)
         if hasattr(parent, 'negative_prompt') and hasattr(child, 'negative_prompt'):
-            # If child explicitly provided negative_prompt, use it (already in child)
-            # If child didn't provide (empty or None), inherit from parent
-            if not child.negative_prompt:
+            if parent.negative_prompt and '{negprompt}' in parent.negative_prompt:
+                # Inject child negative_prompt into {negprompt}
+                child_neg = child.negative_prompt if child.negative_prompt else ''
+                merged.negative_prompt = parent.negative_prompt.replace('{negprompt}', child_neg)
+                logger.debug(
+                    f"Injected negative_prompt from {child.source_file.name} into "
+                    f"{{negprompt}} placeholder"
+                )
+            elif child.negative_prompt:
+                # No {negprompt} in parent → child overrides
+                merged.negative_prompt = child.negative_prompt
+            else:
+                # Child has no negative_prompt → inherit from parent
                 merged.negative_prompt = parent.negative_prompt
 
         return merged

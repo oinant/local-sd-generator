@@ -86,7 +86,7 @@ class TestConfigParserTemplate:
         data = {
             # No 'version' field
             'name': 'NoVersion',
-            'template': 'test'
+            'template': '{prompt}'  # V2.0 Corrected: templates must have {prompt}
         }
         source_file = Path('/test/noversion.yaml')
 
@@ -221,7 +221,7 @@ class TestConfigParserPrompt:
                 'seed_mode': 'progressive',
                 'max_images': 10
             },
-            'template': '1girl, beautiful'
+            'prompt': '1girl, beautiful'  # V2.0 Corrected: uses 'prompt' not 'template'
         }
         source_file = Path('/test/prompt.yaml')
 
@@ -231,7 +231,7 @@ class TestConfigParserPrompt:
         assert config.version == '2.0'
         assert config.name == 'MinimalPrompt'
         assert config.implements == '../base.template.yaml'
-        assert config.template == '1girl, beautiful'
+        assert config.prompt == '1girl, beautiful'  # V2.0 Corrected: 'prompt' field
         assert config.source_file == source_file
 
         # Check generation config
@@ -261,7 +261,7 @@ class TestConfigParserPrompt:
                 'Character': '../chunks/character.chunk.yaml',
                 'Place': ['room', 'garden']
             },
-            'template': '@Character, {Place}',
+            'prompt': '@Character, {Place}',  # V2.0 Corrected: 'prompt' not 'template'
             'negative_prompt': 'bad quality'
         }
         source_file = Path('/test/full_prompt.yaml')
@@ -282,7 +282,7 @@ class TestConfigParserPrompt:
             'name': 'NoGen',
             'implements': '../base.template.yaml',
             # Missing 'generation' field
-            'template': 'test'
+            'prompt': 'test'  # V2.0 Corrected: 'prompt' not 'template'
         }
         source_file = Path('/test/nogen.yaml')
 
@@ -301,15 +301,15 @@ class TestConfigParserPrompt:
                 'seed': 42
                 # Missing 'seed_mode' and 'max_images'
             },
-            'template': 'test'
+            'prompt': 'test'  # V2.0 Corrected: 'prompt' not 'template'
         }
         source_file = Path('/test/incomplete_gen.yaml')
 
         with pytest.raises(KeyError):
             parser.parse_prompt(data, source_file)
 
-    def test_parse_prompt_with_dict_template_raises_error(self):
-        """Test that prompt template field as dict raises helpful ValueError."""
+    def test_parse_prompt_with_dict_raises_error(self):
+        """Test that prompt field as dict raises helpful ValueError."""
         parser = ConfigParser()
         data = {
             'version': '2.0',
@@ -320,7 +320,7 @@ class TestConfigParserPrompt:
                 'seed_mode': 'progressive',
                 'max_images': 10
             },
-            'template': {'Angle': None}  # Dict instead of string
+            'prompt': {'Angle': None}  # Dict instead of string
         }
         source_file = Path('/test/badprompt.yaml')
 
@@ -397,7 +397,7 @@ class TestConfigParserEdgeCases:
         data = {
             'version': '2.0',
             'name': 'Test',
-            'template': 'test',
+            'template': '{prompt}',  # V2.0 Corrected: templates must have {prompt}
             'implements': None,
             'parameters': None,
             'imports': None,
@@ -428,3 +428,140 @@ class TestConfigParserEdgeCases:
         # Empty strings should be preserved
         assert config.type == ''
         assert config.template == ''
+
+
+class TestV2ValidationRules:
+    """Tests for V2.0 corrected validation rules (Template Method Pattern)."""
+
+    def test_template_requires_prompt_placeholder(self):
+        """Test that templates must contain {prompt} placeholder."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'BadTemplate',
+            'template': 'masterpiece, detailed'  # Missing {prompt}
+        }
+        source_file = Path('/test/template.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_template(data, source_file)
+
+        assert 'must contain {prompt} placeholder' in str(exc_info.value)
+
+    def test_template_with_prompt_placeholder_passes(self):
+        """Test that template with {prompt} placeholder parses correctly."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'GoodTemplate',
+            'template': 'masterpiece, {prompt}, detailed'
+        }
+        source_file = Path('/test/template.yaml')
+
+        config = parser.parse_template(data, source_file)
+
+        assert config.template == 'masterpiece, {prompt}, detailed'
+
+    def test_chunk_rejects_reserved_placeholder_prompt(self):
+        """Test that chunks cannot use {prompt} placeholder."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'type': 'character',
+            'template': '1girl, {prompt}, beautiful'  # Reserved placeholder
+        }
+        source_file = Path('/test/chunk.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_chunk(data, source_file)
+
+        assert 'cannot use reserved placeholders' in str(exc_info.value)
+        assert '{prompt}' in str(exc_info.value)
+
+    def test_chunk_rejects_reserved_placeholder_negprompt(self):
+        """Test that chunks cannot use {negprompt} placeholder."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'type': 'character',
+            'template': '1girl, {negprompt}'  # Reserved placeholder
+        }
+        source_file = Path('/test/chunk.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_chunk(data, source_file)
+
+        assert 'cannot use reserved placeholders' in str(exc_info.value)
+        assert '{negprompt}' in str(exc_info.value)
+
+    def test_chunk_rejects_reserved_placeholder_loras(self):
+        """Test that chunks cannot use {loras} placeholder."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'type': 'character',
+            'template': '1girl, {loras}'  # Reserved placeholder
+        }
+        source_file = Path('/test/chunk.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_chunk(data, source_file)
+
+        assert 'cannot use reserved placeholders' in str(exc_info.value)
+        assert '{loras}' in str(exc_info.value)
+
+    def test_chunk_allows_custom_placeholders(self):
+        """Test that chunks can use custom (non-reserved) placeholders."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'type': 'character',
+            'template': '1girl, {Age}, {HairColor}, {Expression}'
+        }
+        source_file = Path('/test/chunk.yaml')
+
+        config = parser.parse_chunk(data, source_file)
+
+        assert config.template == '1girl, {Age}, {HairColor}, {Expression}'
+
+    def test_prompt_rejects_template_field(self):
+        """Test that 'template:' field is rejected in prompt files."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'TestPrompt',
+            'generation': {
+                'mode': 'random',
+                'seed': 42,
+                'seed_mode': 'progressive',
+                'max_images': 10
+            },
+            'template': 'should be prompt'  # Wrong field
+        }
+        source_file = Path('/test/prompt.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_prompt(data, source_file)
+
+        assert "must use 'prompt:' field, not 'template:'" in str(exc_info.value)
+
+    def test_prompt_with_prompt_field_passes(self):
+        """Test parsing with correct 'prompt:' field."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'TestPrompt',
+            'generation': {
+                'mode': 'random',
+                'seed': 42,
+                'seed_mode': 'progressive',
+                'max_images': 10
+            },
+            'prompt': '1girl, beautiful'  # Correct field
+        }
+        source_file = Path('/test/prompt.yaml')
+
+        config = parser.parse_prompt(data, source_file)
+
+        assert config.prompt == '1girl, beautiful'
+        assert hasattr(config, 'template')  # Should have optional template field for resolved result

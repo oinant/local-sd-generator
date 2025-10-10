@@ -109,7 +109,7 @@ class V2Pipeline:
 
         return config
 
-    def resolve(self, config: PromptConfig) -> ResolvedContext:
+    def resolve(self, config: PromptConfig) -> tuple[PromptConfig, ResolvedContext]:
         """
         Resolve inheritance, imports, and templates.
 
@@ -122,7 +122,9 @@ class V2Pipeline:
             config: Parsed PromptConfig
 
         Returns:
-            ResolvedContext with all imports and chunks loaded
+            Tuple of (resolved_config, context)
+            - resolved_config: PromptConfig with template field populated after injection
+            - context: ResolvedContext with all imports and chunks loaded
 
         Raises:
             ValueError: If resolution fails
@@ -150,7 +152,7 @@ class V2Pipeline:
             parameters=merged_params
         )
 
-        return context
+        return resolved_config, context
 
     def generate(
         self,
@@ -215,10 +217,10 @@ class V2Pipeline:
         config = self.load(config_path)
 
         # Resolve inheritance and imports
-        context = self.resolve(config)
+        resolved_config, context = self.resolve(config)
 
-        # Generate prompts
-        prompts = self.generate(config, context)
+        # Generate prompts (use resolved_config with template field populated)
+        prompts = self.generate(resolved_config, context)
 
         return prompts
 

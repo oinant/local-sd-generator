@@ -54,6 +54,17 @@ class ConfigParser:
                 f"               {{prompt}}"
             )
 
+        # Validate {prompt} placeholder is present (Template Method Pattern)
+        if '{prompt}' not in template:
+            raise ValueError(
+                f"Invalid template in {source_file.name}: "
+                f"Template files must contain {{prompt}} placeholder. "
+                f"This is the injection point for child content (Template Method Pattern).\n"
+                f"Example:\n"
+                f"  template: |\n"
+                f"    masterpiece, {{prompt}}, detailed"
+            )
+
         return TemplateConfig(
             version=data.get('version', '1.0.0'),  # Default to 1.0.0 for backward compat
             name=data['name'],
@@ -93,6 +104,17 @@ class ConfigParser:
                 f"               {{Expression}}"
             )
 
+        # Validate reserved placeholders are NOT used in chunks
+        reserved_placeholders = ['{prompt}', '{negprompt}', '{loras}']
+        found_reserved = [p for p in reserved_placeholders if p in template]
+        if found_reserved:
+            raise ValueError(
+                f"Invalid template in {source_file.name}: "
+                f"Chunks cannot use reserved placeholders: {', '.join(found_reserved)}. "
+                f"Reserved placeholders are only allowed in template files.\n"
+                f"Chunks are reusable blocks composed into templates, not templates themselves."
+            )
+
         return ChunkConfig(
             version=data.get('version', '1.0.0'),
             type=data['type'],
@@ -121,18 +143,26 @@ class ConfigParser:
 
         Raises:
             KeyError: If required fields are missing
-            ValueError: If template field is not a string
+            ValueError: If prompt field is not a string or template field is used
         """
-        # Validate template field type
-        template = data['template']
-        if not isinstance(template, str):
+        # Validation: prompt.yaml files use 'prompt:' not 'template:'
+        if 'template' in data:
             raise ValueError(
-                f"Invalid 'template' field in {source_file.name}: "
-                f"Expected string, got {type(template).__name__}.\n"
+                f"Invalid field in {source_file.name}: "
+                f"Prompt files must use 'prompt:' field, not 'template:'. "
+                f"Please rename 'template:' to 'prompt:' in your file."
+            )
+
+        # Validate prompt field type
+        prompt = data['prompt']
+        if not isinstance(prompt, str):
+            raise ValueError(
+                f"Invalid 'prompt' field in {source_file.name}: "
+                f"Expected string, got {type(prompt).__name__}.\n"
                 f"Hint: If you're using placeholders like {{Angle}}, you need to quote them:\n"
-                f"  ✗ Wrong:   template: {{Angle}}\n"
-                f"  ✓ Correct: template: \"{{Angle}}\"\n"
-                f"  ✓ Or use:  template: |\n"
+                f"  ✗ Wrong:   prompt: {{Angle}}\n"
+                f"  ✓ Correct: prompt: \"{{Angle}}\"\n"
+                f"  ✓ Or use:  prompt: |\n"
                 f"               {{Angle}}"
             )
 
@@ -149,7 +179,7 @@ class ConfigParser:
             version=data.get('version', '1.0.0'),
             name=data['name'],
             generation=generation,
-            template=template,
+            prompt=prompt,
             source_file=source_file,
             implements=data.get('implements'),  # Optional: supports standalone prompts
             imports=data.get('imports') or {},

@@ -74,20 +74,23 @@ class PromptConfig:
     A prompt is the final configuration that combines a template with specific
     variations and generation settings to produce images.
 
-    Required fields: version, name, generation, template
+    Required fields: version, name, generation, prompt
     Optional fields: implements, imports, parameters, negative_prompt
 
     Note: implements is optional to support standalone prompts.
+    Note: The 'prompt' field contains the content to inject into the parent template's {prompt} placeholder.
     """
     version: str
     name: str
     generation: GenerationConfig
-    template: str
+    prompt: str
     source_file: Path
     implements: Optional[str] = None
     imports: Dict[str, Any] = field(default_factory=dict)
     parameters: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: Optional[str] = None
+    # After inheritance resolution, template will contain the fully resolved template
+    template: Optional[str] = None
 
 
 @dataclass
