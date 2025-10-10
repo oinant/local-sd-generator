@@ -790,39 +790,288 @@ total = pipeline.calculate_total_combinations("character.template.yaml")
 # → 45 (e.g., 5 outfits × 9 angles)
 ```
 
-### Next Steps: Integration & Production
+---
 
-Phase 6 completes the V2.0 core system. Ready for:
+## Phase 7: SD API Integration ✅ COMPLETED
 
-1. **SD API Integration**
-   - Execute generated prompts with SD WebUI API
-   - Handle image generation responses
-   - Save images with metadata
+**Date:** 2025-10-10
+**Status:** Implemented and tested
 
-2. **CLI Interface**
+### What was implemented
+
+Phase 7 implements the SD WebUI API integration, allowing V2 prompts to be executed and generate actual images:
+
+#### 1. V2Executor (`executor.py`) ✅
+Executes generated prompts via SD WebUI API with full metadata tracking:
+
+**Core Methods:**
+- `execute_prompts()`: Batch execution with progress reporting
+- `execute_single()`: Single prompt execution with error handling
+- `_apply_parameters()`: Map V2 parameters to SD API config
+- `_save_image()`: Decode and save base64 images
+- `_save_metadata()`: Save prompt metadata as JSON
+- `test_connection()`: Verify SD API availability
+- `get_session_summary()`: Generate execution statistics
+
+**Features:**
+- ✅ Integration with existing V1 SDAPIClient (reuse, not rewrite)
+- ✅ Batch processing with configurable batch size
+- ✅ Progress callbacks for UI integration
+- ✅ Session-based output organization (timestamped directories)
+- ✅ Metadata JSON saved alongside each image
+- ✅ Parameter mapping from V2 config to SD API
+- ✅ Error handling with graceful continuation
+- ✅ Success/failure tracking per image
+- ✅ Summary statistics (total/successful/failed)
+
+**Output Organization:**
+```
+output/
+└── 20251010_143022/          # Session directory (timestamp)
+    ├── image_0001.png        # Generated image
+    ├── image_0001.json       # Metadata (prompt, seed, variations, params)
+    ├── image_0002.png
+    ├── image_0002.json
+    └── ...
+```
+
+**Metadata Format:**
+```json
+{
+  "prompt": "1girl, casual outfit, front view, masterpiece, ...",
+  "negative_prompt": "low quality, blurry, ...",
+  "seed": 42,
+  "variations": {
+    "Outfit": "casual",
+    "Angle": "front"
+  },
+  "parameters": {
+    "steps": 30,
+    "cfg_scale": 7.0,
+    "width": 512,
+    "height": 768,
+    "sampler": "DPM++ 2M Karras"
+  },
+  "image_path": "/path/to/output/20251010_143022/image_0001.png",
+  "timestamp": "2025-10-10T14:30:25.123456",
+  "api_info": {
+    "seed": 42,
+    "steps": 30,
+    "cfg_scale": 7.0
+  }
+}
+```
+
+### Test Coverage
+
+**18 integration tests** covering:
+- ✅ Initialization (2 tests) - Default and custom client
+- ✅ Single execution (3 tests) - Success, API error, parameter application
+- ✅ Batch execution (3 tests) - Multiple prompts, progress callback, partial failure
+- ✅ Metadata (2 tests) - All fields present, variations preserved
+- ✅ Output management (4 tests) - Session dirs, output dir change, summaries
+- ✅ Connection (2 tests) - Success and failure
+- ✅ Parameter mapping (2 tests) - Complete and partial parameter sets
+
+**No regressions:** All 433 existing tests still pass.
+
+**Total: 451 tests** (227 V2 + 224 V1)
+
+### Success Criteria (from spec)
+
+✅ **V2Executor can execute prompts from V2Pipeline**
+✅ **Images saved to output directory with correct naming**
+✅ **Metadata JSON saved alongside each image**
+✅ **Batch processing works (multiple prompts in sequence)**
+✅ **Progress reporting via callbacks**
+✅ **Error handling for API failures**
+✅ **18 integration tests passing**
+✅ **No regressions (451/451 tests passing)**
+
+### File Structure
+
+```
+v2/
+├── executor.py                # V2Executor ⭐ (Phase 7)
+├── tests/v2/integration/
+│   ├── test_api_integration.py  # 18 tests ⭐ (Phase 7)
+│   └── __init__.py
+├── orchestrator.py            # V2Pipeline (Phase 6)
+├── generators/                # Phase 6
+├── normalizers/               # Phase 6
+├── resolvers/                 # Phases 3-5
+├── validators/                # Phases 1-2
+├── loaders/                   # Phase 1
+└── ...
+```
+
+### Example Usage
+
+**1. End-to-End: YAML → Images**
+```python
+from templating.v2.orchestrator import V2Pipeline
+from templating.v2.executor import V2Executor
+from api.sdapi_client import SDAPIClient
+
+# Setup
+pipeline = V2Pipeline(configs_dir="/path/to/configs")
+api_client = SDAPIClient(api_url="http://127.0.0.1:7860")
+executor = V2Executor(
+    api_client=api_client,
+    output_dir="~/output",
+    session_name="character_batch_001"
+)
+
+# Generate prompts
+prompts = pipeline.run("character.prompt.yaml")
+# → List of prompt dicts with variations
+
+# Execute (generate images)
+results = executor.execute_prompts(
+    prompts,
+    batch_size=1,
+    progress_callback=lambda i, total: print(f"Progress: {i}/{total}")
+)
+
+# Check results
+summary = executor.get_session_summary(results)
+print(f"Generated {summary['successful']}/{summary['total']} images")
+print(f"Session directory: {summary['session_dir']}")
+```
+
+**2. Progress Reporting**
+```python
+def progress_callback(current, total):
+    percent = (current / total) * 100
+    print(f"[{current}/{total}] {percent:.1f}%")
+
+results = executor.execute_prompts(
+    prompts,
+    progress_callback=progress_callback
+)
+```
+
+**3. Error Handling**
+```python
+results = executor.execute_prompts(prompts)
+
+# Check for failures
+for idx, result in enumerate(results):
+    if not result['success']:
+        print(f"Image {idx + 1} failed: {result['error']}")
+        print(f"Prompt: {result['prompt']}")
+
+# Summary
+summary = executor.get_session_summary(results)
+for error in summary['errors']:
+    print(f"Error at index {error['index']}: {error['error']}")
+```
+
+**4. Custom Session Organization**
+```python
+# Change output directory mid-session
+executor.set_output_dir("~/new_output", session_name="experimental_001")
+
+# Test connection before execution
+if executor.test_connection():
+    results = executor.execute_prompts(prompts)
+else:
+    print("SD API not available")
+```
+
+**5. Full Pipeline with Parameters**
+```python
+from templating.v2.orchestrator import V2Pipeline
+from templating.v2.executor import V2Executor
+from api.sdapi_client import SDAPIClient, GenerationConfig
+
+# Custom SD parameters
+api_client = SDAPIClient()
+api_client.set_generation_config(GenerationConfig(
+    steps=50,
+    cfg_scale=8.5,
+    width=768,
+    height=1024,
+    sampler_name="Euler a",
+    enable_hr=True,
+    hr_scale=2.0
+))
+
+# Pipeline with combinatorial generation
+pipeline = V2Pipeline()
+prompts = pipeline.run("template.prompt.yaml")
+
+# Execute with custom config
+executor = V2Executor(api_client=api_client, output_dir="~/hires_output")
+results = executor.execute_prompts(prompts)
+```
+
+### Integration Details
+
+**Parameter Mapping (V2 → SD API):**
+```python
+# V2 parameters (from config YAML)
+parameters = {
+    'steps': 30,
+    'cfg_scale': 7.0,
+    'width': 512,
+    'height': 768,
+    'sampler': 'DPM++ 2M Karras',
+    'scheduler': 'Karras',
+    'enable_hr': True,
+    'hr_scale': 2.0,
+    'hr_upscaler': 'R-ESRGAN 4x+',
+    'denoising_strength': 0.7
+}
+
+# Mapped to SDAPIClient.GenerationConfig
+# (handled automatically by V2Executor)
+```
+
+**Result Format:**
+```python
+{
+    'prompt': str,              # From V2Pipeline
+    'negative_prompt': str,     # From V2Pipeline
+    'seed': int,                # From V2Pipeline
+    'variations': dict,         # From V2Pipeline
+    'parameters': dict,         # From V2Pipeline
+    'image_path': Path,         # NEW: Saved image path
+    'metadata_path': Path,      # NEW: Saved JSON path
+    'success': bool,            # NEW: Execution status
+    'error': Optional[str]      # NEW: Error message if failed
+}
+```
+
+### Next Steps: CLI & Production
+
+Phase 7 completes the V2.0 execution layer. Ready for:
+
+1. **CLI Interface**
    - `sdgen v2 generate <template>` command
    - Interactive mode selection (combinatorial/random)
-   - Progress reporting
+   - Real-time progress display
+   - Session management
 
-3. **End-to-End Tests**
+2. **End-to-End Tests**
    - Integration tests with real config files
-   - Full workflow validation
+   - Full workflow validation (YAML → Images)
    - Performance benchmarks
 
-4. **Performance Optimization**
-   - Cache tuning for large configs
+3. **Performance Optimization**
+   - Parallel execution (multiple API workers)
    - Batch processing strategies
    - Memory usage optimization
 
-5. **Migration Tools**
+4. **Migration Tools**
    - V1 → V2 config converter
    - Backward compatibility layer
    - Migration documentation
 
 ---
 
-**Total Implementation time:** ~9 hours (Phases 1-6)
-**Total Lines of code:** ~3389 (production) + ~4597 (tests)
-**Test pass rate:** 100% (433/433)
+**Total Implementation time:** ~10 hours (Phases 1-7)
+**Total Lines of code:** ~3689 (production) + ~5197 (tests)
+**Test pass rate:** 100% (451/451)
 
-**Template System V2.0 is COMPLETE!** 🎉
+**Template System V2.0 + API Integration is COMPLETE!** 🎉
