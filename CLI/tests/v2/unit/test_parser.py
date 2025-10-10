@@ -94,6 +94,25 @@ class TestConfigParserTemplate:
 
         assert config.version == '1.0.0'
 
+    def test_parse_template_with_dict_raises_error(self):
+        """Test that template field as dict raises helpful ValueError."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'BadTemplate',
+            'template': {'prompt': None}  # Dict instead of string
+        }
+        source_file = Path('/test/badtemplate.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_template(data, source_file)
+
+        # Check error message contains helpful hint
+        error_msg = str(exc_info.value)
+        assert 'Expected string, got dict' in error_msg
+        assert 'quote them' in error_msg
+        assert '{prompt}' in error_msg
+
 
 class TestConfigParserChunk:
     """Tests for parsing .chunk.yaml files."""
@@ -165,6 +184,25 @@ class TestConfigParserChunk:
 
         with pytest.raises(KeyError):
             parser.parse_chunk(data, source_file)
+
+    def test_parse_chunk_with_dict_template_raises_error(self):
+        """Test that chunk template field as dict raises helpful ValueError."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'type': 'character',
+            'template': {'Expression': None}  # Dict instead of string
+        }
+        source_file = Path('/test/badchunk.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_chunk(data, source_file)
+
+        # Check error message contains helpful hint
+        error_msg = str(exc_info.value)
+        assert 'Expected string, got dict' in error_msg
+        assert 'quote them' in error_msg
+        assert '{Expression}' in error_msg
 
 
 class TestConfigParserPrompt:
@@ -269,6 +307,31 @@ class TestConfigParserPrompt:
 
         with pytest.raises(KeyError):
             parser.parse_prompt(data, source_file)
+
+    def test_parse_prompt_with_dict_template_raises_error(self):
+        """Test that prompt template field as dict raises helpful ValueError."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'BadPrompt',
+            'generation': {
+                'mode': 'random',
+                'seed': 42,
+                'seed_mode': 'progressive',
+                'max_images': 10
+            },
+            'template': {'Angle': None}  # Dict instead of string
+        }
+        source_file = Path('/test/badprompt.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_prompt(data, source_file)
+
+        # Check error message contains helpful hint
+        error_msg = str(exc_info.value)
+        assert 'Expected string, got dict' in error_msg
+        assert 'quote them' in error_msg
+        assert '{Angle}' in error_msg
 
 
 class TestConfigParserVariations:

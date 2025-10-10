@@ -39,11 +39,25 @@ class ConfigParser:
 
         Raises:
             KeyError: If required fields are missing
+            ValueError: If template field is not a string
         """
+        # Validate template field type
+        template = data['template']
+        if not isinstance(template, str):
+            raise ValueError(
+                f"Invalid 'template' field in {source_file.name}: "
+                f"Expected string, got {type(template).__name__}.\n"
+                f"Hint: If you're using placeholders like {{prompt}}, you need to quote them:\n"
+                f"  ✗ Wrong:   template: {{prompt}}\n"
+                f"  ✓ Correct: template: \"{{prompt}}\"\n"
+                f"  ✓ Or use:  template: |\n"
+                f"               {{prompt}}"
+            )
+
         return TemplateConfig(
             version=data.get('version', '1.0.0'),  # Default to 1.0.0 for backward compat
             name=data['name'],
-            template=data['template'],
+            template=template,
             source_file=source_file,
             implements=data.get('implements'),
             parameters=data.get('parameters') or {},  # Handle None explicitly
@@ -64,11 +78,25 @@ class ConfigParser:
 
         Raises:
             KeyError: If required fields are missing
+            ValueError: If template field is not a string
         """
+        # Validate template field type
+        template = data['template']
+        if not isinstance(template, str):
+            raise ValueError(
+                f"Invalid 'template' field in {source_file.name}: "
+                f"Expected string, got {type(template).__name__}.\n"
+                f"Hint: If you're using placeholders like {{Expression}}, you need to quote them:\n"
+                f"  ✗ Wrong:   template: {{Expression}}\n"
+                f"  ✓ Correct: template: \"{{Expression}}\"\n"
+                f"  ✓ Or use:  template: |\n"
+                f"               {{Expression}}"
+            )
+
         return ChunkConfig(
             version=data.get('version', '1.0.0'),
             type=data['type'],
-            template=data['template'],
+            template=template,
             source_file=source_file,
             implements=data.get('implements'),
             imports=data.get('imports') or {},
@@ -93,7 +121,21 @@ class ConfigParser:
 
         Raises:
             KeyError: If required fields are missing
+            ValueError: If template field is not a string
         """
+        # Validate template field type
+        template = data['template']
+        if not isinstance(template, str):
+            raise ValueError(
+                f"Invalid 'template' field in {source_file.name}: "
+                f"Expected string, got {type(template).__name__}.\n"
+                f"Hint: If you're using placeholders like {{Angle}}, you need to quote them:\n"
+                f"  ✗ Wrong:   template: {{Angle}}\n"
+                f"  ✓ Correct: template: \"{{Angle}}\"\n"
+                f"  ✓ Or use:  template: |\n"
+                f"               {{Angle}}"
+            )
+
         # Parse generation config
         gen_data = data['generation']
         generation = GenerationConfig(
@@ -107,7 +149,7 @@ class ConfigParser:
             version=data.get('version', '1.0.0'),
             name=data['name'],
             generation=generation,
-            template=data['template'],
+            template=template,
             source_file=source_file,
             implements=data.get('implements'),  # Optional: supports standalone prompts
             imports=data.get('imports') or {},
