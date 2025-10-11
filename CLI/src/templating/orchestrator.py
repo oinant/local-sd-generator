@@ -117,6 +117,7 @@ class V2Pipeline:
         1. Inheritance resolution (implements: chain)
         2. Import resolution (imports: declarations)
         3. Parameter merging from inheritance chain
+        4. Phase 1 chunk injection (structural only, preserving placeholders)
 
         Args:
             config: Parsed PromptConfig
@@ -152,7 +153,25 @@ class V2Pipeline:
             parameters=merged_params
         )
 
-        return resolved_config, context
+        # Phase 1: Inject chunks structurally (preserving placeholders)
+        # This replaces @Chunk and @{Chunk with params} with the chunk's template text
+        # but leaves all placeholders like {HairCut}, {HairColor} unresolved
+        from copy import deepcopy
+        resolved_config_with_chunks = deepcopy(resolved_config)
+
+        # Call template resolver in Phase 1 mode (inject chunks only, no placeholder resolution)
+        template_with_chunks = self.template_resolver._inject_all_chunks_phase1(
+            resolved_config.template,
+            {
+                'imports': context.imports,
+                'chunks': context.chunks,
+                'defaults': {}
+            }
+        )
+
+        resolved_config_with_chunks.template = template_with_chunks
+
+        return resolved_config_with_chunks, context
 
     def generate(
         self,

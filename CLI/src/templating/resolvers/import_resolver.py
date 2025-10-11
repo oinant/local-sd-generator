@@ -100,16 +100,20 @@ class ImportResolver:
         self,
         path: str,
         base_path: Path
-    ) -> Dict[str, str]:
+    ) -> Union[Dict[str, str], Dict[str, Any]]:
         """
         Load variations from a single file.
+
+        If file is a .chunk.yaml, returns full chunk config dict.
+        Otherwise, returns variations dict.
 
         Args:
             path: Relative path to variation file
             base_path: Base path for resolution
 
         Returns:
-            Dict of variations {key: value}
+            Dict of variations {key: value} OR
+            Dict of chunk config {template: str, imports: dict, defaults: dict, base_path: Path}
 
         Raises:
             FileNotFoundError: If file not found
@@ -117,6 +121,24 @@ class ImportResolver:
         """
         resolved_path = self.loader.resolve_path(path, base_path)
         data = self.loader.load_file(resolved_path, base_path)
+
+        # Check if this is a chunk file by extension (.chunk.yaml or .chunk.yml)
+        is_chunk = (
+            resolved_path.name.endswith('.chunk.yaml') or
+            resolved_path.name.endswith('.chunk.yml')
+        )
+
+        if is_chunk:
+            # Parse as ChunkConfig and return full config
+            chunk_config = self.parser.parse_chunk(data, resolved_path)
+            return {
+                'template': chunk_config.template,
+                'imports': chunk_config.imports,
+                'defaults': chunk_config.defaults,
+                'base_path': resolved_path.parent  # Store base path for import resolution
+            }
+
+        # Regular variation file - parse variations
         return self.parser.parse_variations(data)
 
     def _merge_multi_sources(

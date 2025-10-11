@@ -190,14 +190,15 @@ class PromptGenerator:
         Returns:
             List with single prompt dict
         """
-        # Resolve template
+        # Resolve template (skip chunk injection - already done in Phase 1)
         resolved = self.resolver.resolve_template(
             template,
             {
                 'imports': context.imports,
                 'chunks': context.chunks,
                 'defaults': {}
-            }
+            },
+            skip_chunk_injection=True
         )
 
         # Normalize
@@ -281,8 +282,8 @@ class PromptGenerator:
                 'defaults': {}
             }
 
-            # Resolve template
-            resolved = self.resolver.resolve_template(template, prompt_context)
+            # Resolve template (skip chunk injection - already done in Phase 1)
+            resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
 
             # Normalize
             normalized = self.normalizer.normalize_prompt(resolved)
@@ -349,8 +350,8 @@ class PromptGenerator:
                 'defaults': {}
             }
 
-            # Resolve template
-            resolved = self.resolver.resolve_template(template, prompt_context)
+            # Resolve template (skip chunk injection - already done in Phase 1)
+            resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
 
             # Normalize
             normalized = self.normalizer.normalize_prompt(resolved)
