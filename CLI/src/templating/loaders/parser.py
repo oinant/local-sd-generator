@@ -153,6 +153,21 @@ class ConfigParser:
                 f"Please rename 'template:' to 'prompt:' in your file."
             )
 
+        # Validation: V2.0 uses 'imports:' not 'variations:'
+        if 'variations' in data:
+            raise ValueError(
+                f"Invalid field in {source_file.name}: "
+                f"V2.0 Template System uses 'imports:' field, not 'variations:'. "
+                f"Please rename 'variations:' to 'imports:' in your YAML file.\n"
+                f"Example:\n"
+                f"  ✗ Wrong:\n"
+                f"    variations:\n"
+                f"      HairCut: path/to/haircuts.yaml\n"
+                f"  ✓ Correct:\n"
+                f"    imports:\n"
+                f"      HairCut: path/to/haircuts.yaml"
+            )
+
         # Validate prompt field type
         prompt = data['prompt']
         if not isinstance(prompt, str):

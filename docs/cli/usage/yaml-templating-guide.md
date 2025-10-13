@@ -857,7 +857,109 @@ variations:
 
 ---
 
+## Validation et Statistiques (Nouveau !)
+
+### Affichage des variations détectées
+
+**Depuis 2025-10-13**, le CLI affiche automatiquement les statistiques de variations avant de générer :
+
+```
+╭─────────────────────── Detected Variations ───────────────────────╮
+│   HairCut: 40 variations                                           │
+│   HairColor: 87 variations (4 files merged)                        │
+│   EyeColor: 12 variations                                          │
+│   Outfit: 156 variations (8 files merged)                          │
+│                                                                    │
+│   Total combinations: 6,518,400                                    │
+│   Generation mode: random                                          │
+│   Will generate: 20 images                                         │
+╰────────────────────────────────────────────────────────────────────╯
+```
+
+**Ce que cela vous indique :**
+- ✅ Tous les placeholders ont des variations chargées
+- 📊 Nombre exact de variations par placeholder
+- 🔀 Indication des imports multi-fichiers
+- 🎲 Total des combinaisons possibles
+- ⚙️ Mode de génération utilisé
+
+### Erreurs courantes détectées automatiquement
+
+#### 1. Placeholder non résolu
+
+**Erreur :**
+```
+ValueError: Unresolved placeholders in template: EyeColor
+These placeholders are used in the prompt/template but have no
+corresponding variations defined in 'imports:' section.
+Available variations: HairCut, HairColor, Outfit
+```
+
+**Solution :** Ajoutez l'import manquant :
+```yaml
+imports:
+  EyeColor: ../../variations/eyecolors.yaml  # ← Ajouter ceci
+```
+
+#### 2. Utilisation de `variations:` au lieu de `imports:`
+
+**Erreur :**
+```
+ValueError: Invalid field in my_prompt.prompt.yaml:
+V2.0 Template System uses 'imports:' field, not 'variations:'.
+Please rename 'variations:' to 'imports:' in your YAML file.
+```
+
+**Solution :** Remplacer `variations:` par `imports:`
+```yaml
+# ✗ Ancien (V1)
+variations:
+  HairCut: path/to/haircuts.yaml
+
+# ✓ Nouveau (V2.0)
+imports:
+  HairCut: path/to/haircuts.yaml
+```
+
+### Visualisation du workflow de validation
+
+```mermaid
+graph TB
+    Load[Charger template] --> Parse[Parser YAML]
+    Parse --> Validate[Valider structure]
+    Validate --> CheckImports{Tous les imports<br/>existent ?}
+
+    CheckImports -->|Non| Error1[❌ Erreur :<br/>Fichier manquant]
+    CheckImports -->|Oui| Resolve[Résoudre template]
+
+    Resolve --> CheckPlaceholders{Tous les placeholders<br/>ont des variations ?}
+
+    CheckPlaceholders -->|Non| Error2[❌ Erreur :<br/>Placeholder non résolu]
+    CheckPlaceholders -->|Oui| ShowStats[✅ Afficher statistiques]
+
+    ShowStats --> Generate[Générer images]
+
+    style Error1 fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
+    style Error2 fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
+    style ShowStats fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    style Generate fill:#e1f5ff,stroke:#0288d1,stroke-width:2px,color:#000
+```
+
+**Avantages :**
+- 🚫 Plus de génération silencieuse d'une seule image
+- 💡 Erreurs claires avec exemples de correction
+- 📊 Visibilité complète sur ce qui va être généré
+- ⚡ Détection précoce des problèmes
+
+---
+
 ## Dépannage courant
+
+### Problème : Une seule image générée au lieu de 20
+
+**Cause :** Placeholder utilisé sans variations définies (détecté automatiquement depuis 2025-10-13)
+
+**Solution :** Vérifier le panel "Detected Variations" - si un placeholder a 0 variations, l'ajouter dans `imports:`
 
 ### Problème : Trop d'images générées
 
@@ -962,8 +1064,9 @@ graph LR
 - **[Exemples de templates](../../../CLI/src/examples/prompts/)** - Templates prêts à l'emploi
 - **[Exemples de variations](../../../CLI/src/examples/variations/)** - Fichiers de variations
 - **[Architecture technique](../technical/architecture.md)** - Documentation technique détaillée
+- **[Error Handling & Validation](../technical/error-handling-validation.md)** - Guide complet des validations et erreurs (nouveau !)
 
 ---
 
-**Dernière mise à jour:** 2025-10-10
+**Dernière mise à jour:** 2025-10-13
 **Version du système:** V2.0 (système unique après migration)

@@ -25,9 +25,9 @@ User guides and how-to articles:
 ### Technical Documentation
 Architecture and implementation details:
 - [Architecture Overview](./technical/architecture.md) - System design
-- [Phase 2 Templating Engine](./technical/phase2-templating-engine.md) - YAML template system
+- [V2.0 Templating Engine](./technical/v2-templating-engine.md) - Current template system architecture
+- [Error Handling & Validation](./technical/error-handling-validation.md) - Validation system and error messages ✨ New!
 - [Output System](./technical/output-system.md) - File naming & metadata
-- [Variation Loader](./technical/variation-loader.md) - Placeholder system
 - [Design Decisions](./technical/design-decisions.md) - Why we made certain choices
 
 ## Quick Start
@@ -46,16 +46,19 @@ python3 template_cli.py --template test.yaml --dry-run
 python3 template_cli.py --list
 ```
 
-## Current Features (Phase 2)
+## Current Features (V2.0)
 
-✅ **YAML Templates**: `.prompt.yaml` format with schema validation
+✅ **YAML Templates**: `.prompt.yaml` format with comprehensive validation
 ✅ **Placeholder System**: `{Expression}`, `{Angle}`, inline variations
-✅ **Chunk Templates**: Reusable components with `implements` and overrides
-✅ **Multi-field Variations**: Combine multiple variation files with selectors
-✅ **Flexible Selectors**: Keys, indices, ranges, random selection (`#|1,3,5`, `:5-10`, `:random(10)`)
-✅ **Generation Modes**: Combinatorial, random
+✅ **Template Inheritance**: Extend base templates with `implements:`
+✅ **Modular Imports**: Multi-file imports with `imports:`
+✅ **Reusable Chunks**: Composable template blocks
+✅ **Advanced Selectors**: `[random:N]`, `[limit:N]`, `[indexes:1,5,8]`, `[keys:foo,bar]`
+✅ **Weight-based Loops**: Control loop ordering with `$W` syntax
+✅ **Generation Modes**: Combinatorial (all combinations), Random (sampling)
 ✅ **Seed Control**: Fixed, progressive, random
-✅ **Template Inheritance**: Extend base templates with `extends`
+✅ **Variation Statistics Display**: See detected variations before generation ✨ New!
+✅ **Comprehensive Error Messages**: Clear validation with examples ✨ New!
 ✅ **Enhanced File Naming**: Descriptive filenames with variation values
 ✅ **JSON Metadata**: Complete generation metadata export
 ✅ **Global Config**: Project-level configuration (`.sdgen_config.json`)

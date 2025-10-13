@@ -108,12 +108,18 @@ class PromptGenerator:
 
         Returns:
             Dict mapping placeholder names to variation dicts
+
+        Raises:
+            ValueError: If placeholders in template have no corresponding variations
         """
         import re
 
         # Find all placeholders in template
         placeholder_pattern = re.compile(r'\{(\w+)(?:\[[^\]]+\])?\}')
         placeholder_names = set(placeholder_pattern.findall(template))
+
+        # Track unresolved placeholders
+        unresolved = []
 
         variations = {}
         for name in placeholder_names:
@@ -122,6 +128,21 @@ class PromptGenerator:
                 import_data = context.imports[name]
                 if isinstance(import_data, dict):
                     variations[name] = import_data
+                else:
+                    # Placeholder exists but is not a variation dict
+                    unresolved.append(name)
+            else:
+                # Placeholder not found in imports
+                unresolved.append(name)
+
+        # Raise error if any placeholders are unresolved
+        if unresolved:
+            raise ValueError(
+                f"Unresolved placeholders in template: {', '.join(sorted(unresolved))}\n"
+                f"These placeholders are used in the prompt/template but have no "
+                f"corresponding variations defined in 'variations:' or 'imports:' sections.\n"
+                f"Available variations: {', '.join(sorted(context.imports.keys()))}"
+            )
 
         return variations
 

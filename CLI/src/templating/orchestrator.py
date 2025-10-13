@@ -351,3 +351,73 @@ class V2Pipeline:
             total *= len(values)
 
         return total
+
+    def get_variation_statistics(
+        self,
+        template: str,
+        context: ResolvedContext
+    ) -> dict:
+        """
+        Get detailed statistics about variations used in template.
+
+        Args:
+            template: Template string
+            context: Resolved context
+
+        Returns:
+            Dict with statistics:
+            {
+                'placeholders': {
+                    'PlaceholderName': {
+                        'count': int,
+                        'sources': int (number of files merged),
+                        'is_multi_source': bool
+                    }
+                },
+                'total_combinations': int,
+                'total_placeholders': int
+            }
+        """
+        import re
+
+        # Find all placeholders in template
+        placeholder_pattern = re.compile(r'\{(\w+)(?:\[[^\]]+\])?\}')
+        placeholder_names = set(placeholder_pattern.findall(template))
+
+        statistics = {
+            'placeholders': {},
+            'total_combinations': 1,
+            'total_placeholders': 0
+        }
+
+        for name in sorted(placeholder_names):
+            if name in context.imports:
+                import_data = context.imports[name]
+                if isinstance(import_data, dict):
+                    count = len(import_data)
+
+                    # Try to detect multi-source imports (this is approximate)
+                    # We check if the keys look like they have prefixes (source_key format)
+                    keys = list(import_data.keys())
+                    has_prefixes = any('_' in k for k in keys[:5])  # Sample first 5 keys
+
+                    # Estimate number of sources (very rough heuristic)
+                    sources = 1
+                    if has_prefixes:
+                        # Count unique prefixes
+                        prefixes = set()
+                        for key in keys:
+                            if '_' in key:
+                                prefix = key.split('_')[0]
+                                prefixes.add(prefix)
+                        sources = len(prefixes) if prefixes else 1
+
+                    statistics['placeholders'][name] = {
+                        'count': count,
+                        'sources': sources,
+                        'is_multi_source': sources > 1
+                    }
+                    statistics['total_combinations'] *= count
+                    statistics['total_placeholders'] += 1
+
+        return statistics

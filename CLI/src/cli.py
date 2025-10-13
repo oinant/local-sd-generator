@@ -128,7 +128,45 @@ def _generate(
 
         # Load and process template
         console.print(f"[cyan]Loading template:[/cyan] {template_path}")
-        prompts = pipeline.run(str(template_path))
+        config = pipeline.load(str(template_path))
+        resolved_config, context = pipeline.resolve(config)
+        prompts = pipeline.generate(resolved_config, context)
+
+        # Display variation statistics
+        stats = pipeline.get_variation_statistics(resolved_config.template, context)
+
+        if stats['total_placeholders'] > 0:
+            # Create variation statistics panel
+            stats_lines = []
+            for placeholder_name, placeholder_info in stats['placeholders'].items():
+                count_str = f"{placeholder_info['count']} variations"
+                if placeholder_info['is_multi_source']:
+                    count_str += f" ({placeholder_info['sources']} files merged)"
+                stats_lines.append(f"  [cyan]{placeholder_name}:[/cyan] {count_str}")
+
+            # Add total combinations
+            total_comb = stats['total_combinations']
+            if total_comb > 1_000_000:
+                total_str = f"{total_comb:,}"
+            else:
+                total_str = str(total_comb)
+
+            stats_lines.append("")
+            stats_lines.append(f"  [bold]Total combinations:[/bold] {total_str}")
+
+            # Add generation info
+            gen_mode = config.generation.mode if config.generation else "combinatorial"
+            max_images = len(prompts)
+            stats_lines.append(f"  [bold]Generation mode:[/bold] {gen_mode}")
+            stats_lines.append(f"  [bold]Will generate:[/bold] {max_images} images")
+
+            console.print(Panel(
+                "\n".join(stats_lines),
+                title="Detected Variations",
+                border_style="cyan"
+            ))
+        else:
+            console.print("[yellow]No placeholders detected in template[/yellow]")
 
         # Apply count limit if specified
         if count is not None and len(prompts) > count:
