@@ -8,7 +8,7 @@ no progress reporting, no session management.
 import re
 import requests
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -38,6 +38,7 @@ class PromptConfig:
     negative_prompt: str = ""
     seed: Optional[int] = None
     filename: str = ""
+    parameters: dict = field(default_factory=dict)  # Optional parameters (SD WebUI settings, extensions like ADetailer)
 
 
 class SDAPIClient:
@@ -194,6 +195,15 @@ class SDAPIClient:
             # Add second pass steps if specified
             if self.generation_config.hr_second_pass_steps is not None:
                 payload["hr_second_pass_steps"] = self.generation_config.hr_second_pass_steps
+
+        # Add ADetailer if configured in parameters
+        if prompt_config.parameters and 'adetailer' in prompt_config.parameters:
+            adetailer_config = prompt_config.parameters['adetailer']
+            # adetailer_config should be an ADetailerConfig object with to_api_dict() method
+            if hasattr(adetailer_config, 'to_api_dict'):
+                adetailer_payload = adetailer_config.to_api_dict()
+                if adetailer_payload:  # Only add if not None (i.e., enabled and has detectors)
+                    payload["alwayson_scripts"] = adetailer_payload
 
         return payload
 
