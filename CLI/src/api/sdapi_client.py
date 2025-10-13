@@ -352,3 +352,29 @@ class SDAPIClient:
             "vae": data.get("sd_vae", "auto"),
             "clip_skip": data.get("CLIP_stop_at_last_layers", 1)
         }
+
+    def get_adetailer_models(self, timeout: int = 5) -> list[str]:
+        """
+        Get list of available ADetailer detection models
+
+        Returns:
+            List of model names (str) available for ADetailer
+
+        Example:
+            [
+                "face_yolov9c.pt",
+                "face_yolov8n.pt",
+                "hand_yolov8n.pt",
+                "person_yolov8n-seg.pt",
+                "mediapipe_face_full"
+            ]
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        response = requests.get(
+            f"{self.api_url}/adetailer/v1/ad_model",
+            timeout=timeout
+        )
+        response.raise_for_status()
+        return response.json()

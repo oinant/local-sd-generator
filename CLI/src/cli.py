@@ -851,5 +851,58 @@ def show_model_info(
         raise typer.Exit(code=1)
 
 
+@api_app.command(name="adetailer-models")
+def list_adetailer_models(
+    api_url: Optional[str] = typer.Option(
+        None,
+        "--api-url",
+        help="Override API URL from global config",
+    ),
+):
+    """List available ADetailer detection models."""
+    try:
+        from api import SDAPIClient
+
+        if api_url is None:
+            global_config = load_global_config()
+            api_url = global_config.api_url
+
+        api_client = SDAPIClient(api_url=api_url)
+
+        console.print(f"[cyan]Connecting to SD API:[/cyan] {api_url}")
+        if not api_client.test_connection():
+            console.print("[red]✗ Failed to connect to SD API[/red]")
+            raise typer.Exit(code=1)
+        console.print("[green]✓ Connected[/green]\n")
+
+        models = api_client.get_adetailer_models()
+
+        table = Table(title=f"Available ADetailer Models ({len(models)} found)")
+        table.add_column("#", style="cyan", width=4)
+        table.add_column("Model Name", style="green")
+        table.add_column("Category", style="blue")
+
+        for idx, model in enumerate(models, 1):
+            # Categorize model by filename
+            if "face" in model.lower():
+                category = "Face"
+            elif "hand" in model.lower():
+                category = "Hand"
+            elif "person" in model.lower():
+                category = "Person"
+            elif "mediapipe" in model.lower():
+                category = "MediaPipe"
+            else:
+                category = "Other"
+
+            table.add_row(str(idx), model, category)
+
+        console.print(table)
+
+    except Exception as e:
+        console.print(f"[red]✗ Error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()

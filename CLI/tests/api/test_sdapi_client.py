@@ -361,6 +361,87 @@ class TestSDAPIClient:
             timeout=5
         )
 
+    @patch('requests.get')
+    def test_get_adetailer_models(self, mock_get):
+        """Test fetching ADetailer models list"""
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            "face_yolov9c.pt",
+            "face_yolov8n.pt",
+            "hand_yolov8n.pt",
+            "person_yolov8n-seg.pt",
+            "mediapipe_face_full"
+        ]
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        models = client.get_adetailer_models()
+
+        assert len(models) == 5
+        assert "face_yolov9c.pt" in models
+        assert "hand_yolov8n.pt" in models
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/adetailer/v1/ad_model",
+            timeout=5
+        )
+
+    @patch('requests.post')
+    def test_generate_image_with_adetailer(self, mock_post):
+        """Test image generation with ADetailer config"""
+        from templating.models.adetailer import ADetailerConfig, ADetailerDetector
+
+        mock_response = Mock()
+        mock_response.json.return_value = {'images': ['data']}
+        mock_response.raise_for_status = Mock()
+        mock_post.return_value = mock_response
+
+        # Create ADetailer config
+        detector = ADetailerDetector(
+            ad_model="face_yolov9c.pt",
+            ad_denoising_strength=0.5,
+            ad_steps=40,
+            ad_mask_k_largest=1
+        )
+        adetailer_config = ADetailerConfig(detectors=[detector])
+
+        client = SDAPIClient()
+        prompt_config = PromptConfig(
+            prompt="test portrait",
+            filename="test.png",
+            parameters={"adetailer": adetailer_config}
+        )
+
+        client.generate_image(prompt_config)
+
+        # Check ADetailer in payload
+        payload = mock_post.call_args[1]['json']
+        assert 'alwayson_scripts' in payload
+        assert 'ADetailer' in payload['alwayson_scripts']
+        adetailer_payload = payload['alwayson_scripts']['ADetailer']
+        assert 'args' in adetailer_payload
+        assert adetailer_payload['args'][0] is True  # ad_enable
+        assert adetailer_payload['args'][1] is False  # skip_img2img
+        # Check first detector config
+        assert adetailer_payload['args'][2] == "face_yolov9c.pt"  # ad_model
+
+    @patch('requests.post')
+    def test_generate_image_without_adetailer(self, mock_post):
+        """Test image generation without ADetailer (no alwayson_scripts)"""
+        mock_response = Mock()
+        mock_response.json.return_value = {'images': ['data']}
+        mock_response.raise_for_status = Mock()
+        mock_post.return_value = mock_response
+
+        client = SDAPIClient()
+        prompt_config = PromptConfig(prompt="test", filename="test.png")
+
+        client.generate_image(prompt_config)
+
+        # Check no alwayson_scripts in payload
+        payload = mock_post.call_args[1]['json']
+        assert 'alwayson_scripts' not in payload
+
 
 class TestGenerationConfig:
     """Test GenerationConfig dataclass"""
