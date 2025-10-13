@@ -6,15 +6,17 @@ It handles parsing of templates, chunks, prompts, and variation files.
 """
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 from ..models.config_models import (
     TemplateConfig,
     ChunkConfig,
     PromptConfig,
     GenerationConfig,
     ADetailerFileConfig,
-    ADetailerDetector
+    ADetailerDetector,
+    ADetailerConfig
 )
+import yaml
 
 
 class ConfigParser:
@@ -68,13 +70,17 @@ class ConfigParser:
                 f"    masterpiece, {{prompt}}, detailed"
             )
 
+        # Parse parameters with special handling for adetailer
+        parameters = data.get('parameters') or {}
+        parsed_parameters = self._parse_parameters(parameters, source_file.parent)
+
         return TemplateConfig(
             version=data.get('version', '1.0.0'),  # Default to 1.0.0 for backward compat
             name=data['name'],
             template=template,
             source_file=source_file,
             implements=data.get('implements'),
-            parameters=data.get('parameters') or {},  # Handle None explicitly
+            parameters=parsed_parameters,  # Use parsed parameters
             imports=data.get('imports') or {},
             negative_prompt=data.get('negative_prompt') or ''
         )
@@ -193,6 +199,10 @@ class ConfigParser:
             max_images=gen_data['max_images']
         )
 
+        # Parse parameters with special handling for adetailer
+        parameters = data.get('parameters') or {}
+        parsed_parameters = self._parse_parameters(parameters, source_file.parent)
+
         return PromptConfig(
             version=data.get('version', '1.0.0'),
             name=data['name'],
@@ -201,7 +211,7 @@ class ConfigParser:
             source_file=source_file,
             implements=data.get('implements'),  # Optional: supports standalone prompts
             imports=data.get('imports') or {},
-            parameters=data.get('parameters') or {},  # Parse SD WebUI parameters
+            parameters=parsed_parameters,  # Use parsed parameters
             negative_prompt=data.get('negative_prompt')
         )
 
@@ -330,3 +340,162 @@ class ConfigParser:
             source_file=source_file,
             description=data.get('description', '')
         )
+
+    def _parse_parameters(self, parameters: Dict[str, Any], base_path: Path) -> Dict[str, Any]:
+        """
+        Parse parameters section with special handling for adetailer.
+
+        Standard parameters are passed through as-is.
+        The 'adetailer' parameter is specially parsed into ADetailerConfig.
+
+        Args:
+            parameters: Raw parameters dict from YAML
+            base_path: Base path for resolving file paths
+
+        Returns:
+            Parsed parameters dict with adetailer as ADetailerConfig object
+
+        Raises:
+            ValueError: If adetailer parameter format invalid
+            FileNotFoundError: If adetailer file not found
+        """
+        parsed = parameters.copy()
+
+        # Special handling for adetailer parameter
+        if 'adetailer' in parsed:
+            adetailer_value = parsed['adetailer']
+            parsed['adetailer'] = self.parse_adetailer_parameter(adetailer_value, base_path)
+
+        return parsed
+
+    def parse_adetailer_parameter(
+        self,
+        adetailer_value: Any,
+        base_path: Path
+    ) -> ADetailerConfig:
+        """
+        Parse parameters.adetailer from prompt YAML.
+
+        Supports three formats:
+        1. String (single file path):
+           adetailer: "../variations/adetailer/face_hq.adetailer.yaml"
+
+        2. List (multiple detector files):
+           adetailer:
+             - "../variations/adetailer/face_hq.adetailer.yaml"
+             - "../variations/adetailer/hand_fix.adetailer.yaml"
+
+        3. Dict with import + override:
+           adetailer:
+             import: "../variations/adetailer/face_hq.adetailer.yaml"
+             override:
+               ad_prompt: "custom prompt"
+               ad_denoising_strength: 0.5
+
+        Args:
+            adetailer_value: Value from parameters.adetailer (string/list/dict)
+            base_path: Base path for resolving relative file paths
+
+        Returns:
+            ADetailerConfig with enabled=True and detectors loaded
+
+        Raises:
+            FileNotFoundError: If .adetailer.yaml file not found
+            ValueError: If format is invalid
+        """
+        detectors: List[ADetailerDetector] = []
+
+        if isinstance(adetailer_value, str):
+            # Single file import
+            detector = self._load_adetailer_file(adetailer_value, base_path)
+            detectors.append(detector)
+
+        elif isinstance(adetailer_value, list):
+            # Multi-detector import (array of paths)
+            for item in adetailer_value:
+                if not isinstance(item, str):
+                    raise ValueError(
+                        f"parameters.adetailer array must contain file paths (strings), "
+                        f"got {type(item).__name__}"
+                    )
+                detector = self._load_adetailer_file(item, base_path)
+                detectors.append(detector)
+
+        elif isinstance(adetailer_value, dict):
+            # Import with override
+            if 'import' not in adetailer_value:
+                raise ValueError(
+                    "parameters.adetailer dict must have 'import' key. "
+                    "Example:\n"
+                    "  adetailer:\n"
+                    "    import: path/to/config.adetailer.yaml\n"
+                    "    override:\n"
+                    "      ad_prompt: 'custom prompt'"
+                )
+
+            import_path = adetailer_value['import']
+            detector = self._load_adetailer_file(import_path, base_path)
+
+            # Apply overrides if present
+            if 'override' in adetailer_value:
+                overrides = adetailer_value['override']
+                if not isinstance(overrides, dict):
+                    raise ValueError(
+                        f"parameters.adetailer.override must be a dict, "
+                        f"got {type(overrides).__name__}"
+                    )
+
+                for key, value in overrides.items():
+                    if hasattr(detector, key):
+                        setattr(detector, key, value)
+                    else:
+                        raise ValueError(
+                            f"Invalid override key '{key}' in parameters.adetailer. "
+                            f"Not a valid ADetailerDetector field."
+                        )
+
+            detectors.append(detector)
+
+        else:
+            raise ValueError(
+                f"parameters.adetailer must be a string, list, or dict, "
+                f"got {type(adetailer_value).__name__}"
+            )
+
+        return ADetailerConfig(enabled=True, detectors=detectors)
+
+    def _load_adetailer_file(self, path: str, base_path: Path) -> ADetailerDetector:
+        """
+        Load a .adetailer.yaml file and return its detector.
+
+        Helper function for parse_adetailer_parameter().
+
+        Args:
+            path: Relative path to .adetailer.yaml file
+            base_path: Base path for resolving relative paths
+
+        Returns:
+            ADetailerDetector from the file
+
+        Raises:
+            FileNotFoundError: If file not found
+            ValueError: If file format invalid
+        """
+        # Resolve path relative to base_path
+        resolved_path = (base_path / path).resolve()
+
+        if not resolved_path.exists():
+            raise FileNotFoundError(
+                f"Adetailer file not found: {resolved_path}\n"
+                f"  Looked in: {base_path}\n"
+                f"  For: {path}"
+            )
+
+        # Load and parse YAML
+        with open(resolved_path, 'r') as f:
+            data = yaml.safe_load(f)
+
+        # Parse as ADetailerFileConfig
+        config = self.parse_adetailer_file(data, resolved_path)
+
+        return config.detector
