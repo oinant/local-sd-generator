@@ -1,6 +1,6 @@
 # SD Image Generator CLI (`sdgen`)
 
-**Modern command-line tool for YAML-driven Stable Diffusion image generation with advanced templating.**
+**Modern command-line tool for YAML-driven Stable Diffusion image generation with Template System V2.0.**
 
 ---
 
@@ -41,36 +41,39 @@ sdgen validate template.yaml
 # API introspection
 sdgen api samplers
 sdgen api models
+sdgen api upscalers
+sdgen api schedulers
 ```
-
-**Note:** Phase 1 JSON config system has been removed. Use YAML templates (`.prompt.yaml`) instead.
 
 ---
 
-## Features
+## ✨ Features
 
-✅ **YAML Template System**
-- Define prompts, variations, and parameters in `.prompt.yaml` files
-- Reusable chunk templates with inheritance
-- Multi-field variations and flexible selectors
-- Version control friendly
+✅ **Template System V2.0**
+- YAML-based templates (`.prompt.yaml`)
+- Placeholder system with selectors
+- Template inheritance with `implements:`
+- Reusable chunks with `@ChunkName`
+- Multi-file variation imports
+- Comprehensive validation
 
-✅ **Interactive Selection**
-- Browse available templates
-- Select from list
-- Direct path support
+✅ **Advanced Selectors**
+- Random selection: `{Hair[random:5]}`
+- Index selection: `{Hair[#1,5,8]}`
+- Key selection: `{Hair[BobCut,LongHair]}`
+- Weight-based loops: `{Hair[$10]}`
+- Exclude from combinatorial: `{Quality[$0]}`
 
-✅ **Advanced Templating**
-- Placeholder system: `{PlaceholderName}`
-- Inline variations: direct lists in YAML
-- Chunk templates: reusable components with `implements`
-- Template inheritance: `extends` for base templates
-- Flexible selectors: keys, indices, ranges, random
+✅ **Generation Modes**
+- **Combinatorial**: All possible combinations
+- **Random**: Random unique combinations
+- **Seed modes**: fixed, progressive, random
 
-✅ **Validation**
-- Comprehensive template validation
-- Clear error messages
-- Helpful suggestions
+✅ **Validation & Statistics**
+- Pre-generation validation
+- Variation count display
+- Total combinations calculation
+- Clear error messages with suggestions
 
 ✅ **Progress Reporting**
 - Real-time generation progress
@@ -106,6 +109,14 @@ sdgen list
 
 Lists all available `.prompt.yaml` templates with metadata.
 
+### Validate Template
+
+```bash
+sdgen validate path/to/template.prompt.yaml
+```
+
+Validates template syntax and structure without generating images.
+
 ### Initialize Config
 
 ```bash
@@ -114,240 +125,469 @@ sdgen init
 
 Creates `~/.sdgen_config.json` in your home directory with global settings.
 
+### API Introspection
+
+```bash
+# List available samplers
+sdgen api samplers
+
+# List available models
+sdgen api models
+
+# List upscalers
+sdgen api upscalers
+
+# List schedulers
+sdgen api schedulers
+
+# Get model info
+sdgen api model-info
+```
+
 ---
 
-## Configuration
+## 📝 Configuration
 
 ### Global Config (`.sdgen_config.json`)
 
 ```json
 {
-  "configs_dir": "./configs",
-  "output_dir": "./apioutput",
+  "configs_dir": "/path/to/your/templates",
+  "output_dir": "/path/to/output",
   "api_url": "http://127.0.0.1:7860"
 }
 ```
 
-**Important:** `sdgen` searches for `.sdgen_config.json` in the current working directory first, then in the user's home directory (`~/.sdgen_config.json`). **Always use the home directory for global config!**
-
-**WSL Users:** Use absolute WSL paths (e.g., `/mnt/d/StableDiffusion/private/results`) instead of Windows paths (e.g., `D:/StableDiffusion/private/results`).
+**Important:**
+- Always use `~/.sdgen_config.json` in your home directory for global config
+- `sdgen` searches current directory first, then home directory
+- **WSL Users:** Use absolute WSL paths (e.g., `/mnt/d/StableDiffusion/output`) instead of Windows paths
 
 **Output Directories:**
-- `generator_cli.py` (Legacy JSON): Images saved to `{output_dir}/{session_name}/`
-- `sdgen` (Phase 2 YAML): Images saved to `{output_dir}/{session_name}_{timestamp}/`
-- `sdgen --dry-run`: API requests saved as JSON in session directory
-- `generate_from_template.py`: JSON variations saved to `{output_dir}/dryrun/` (utility tool, generates JSON only)
+- Images saved to `{output_dir}/{session_name}_{timestamp}/`
+- `--dry-run`: API requests saved as JSON in session directory
 
-### Phase 2 YAML Template CLI
+---
 
-The `sdgen` provides a complete workflow for Phase 2 templates:
+## 📄 YAML Template Format (V2.0)
 
-```bash
-# Interactive template selection
-sdgen generate
+### Basic Template
 
-# Direct template execution
-sdgen generate -t /path/to/template.prompt.yaml
+```yaml
+version: '2.0'
+name: 'My Template'
+description: 'Template description'
 
-# Generate specific count (overrides template config)
-sdgen generate -t test.yaml --count 10
+imports:
+  Expression: ../variations/expressions.yaml
+  Outfit: ../variations/outfits.yaml
 
-# Dry-run mode (saves API requests as JSON, no image generation)
-sdgen generate -t test.yaml --dry-run
+prompt: |
+  masterpiece, {Expression}, {Outfit}, detailed
+
+negative_prompt: |
+  low quality, blurry
+
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 42
+  max_images: -1  # -1 = all combinations
+
+parameters:
+  width: 512
+  height: 768
+  steps: 30
+  cfg_scale: 7.0
+  sampler: DPM++ 2M Karras
+
+output:
+  session_name: my_session
+  filename_keys:
+    - Expression
+    - Outfit
 ```
 
-**Output structure:**
+### Template with Selectors
+
+```yaml
+version: '2.0'
+name: 'Advanced Template'
+
+imports:
+  Hair: ../variations/hair.yaml        # 50 variations
+  Angle: ../variations/angles.yaml     # 20 variations
+  Quality: ../variations/quality.yaml  # 10 variations
+
+prompt: |
+  portrait, {Hair[random:5]}, {Angle[#0,2,5]}, {Quality[$0]}
+
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 42
+  max_images: -1
 ```
-{output_dir}/
-└── {session_name}_{timestamp}/
-    ├── {session_name}_manifest.json    # All variations with prompts
-    ├── {session_name}_0000.png         # Generated images
-    ├── {session_name}_0001.png
-    └── ...
+
+**Selectors:**
+- `{Hair[random:5]}` - 5 random variations
+- `{Angle[#0,2,5]}` - Indices 0, 2, 5 only
+- `{Quality[$0]}` - Weight 0 (random per image, excluded from combinatorial loop)
+
+**Result:** 5 Hair × 3 Angle = 15 combinations, with Quality picked randomly for each.
+
+### Template Inheritance
+
+```yaml
+# Base template: base_portrait.template.yaml
+version: '2.0'
+name: 'Base Portrait'
+
+imports:
+  Hair: ../variations/hair.yaml
+  Outfit: ../variations/outfits.yaml
+
+parameters:
+  width: 832
+  height: 1216
+  steps: 24
+  cfg_scale: 3.0
+  sampler: DPM++ 2M Karras
 ```
 
-In `--dry-run` mode, `request_NNNN.json` files are saved instead of images.
+```yaml
+# Child template: portrait_smiling.prompt.yaml
+version: '2.0'
+name: 'Smiling Portrait'
+implements: ../templates/base_portrait.template.yaml
 
-### JSON Config Format (Legacy/Phase 1)
+prompt: |
+  smiling, happy, {Hair}, {Outfit}, looking at viewer
 
-```json
-{
-  "version": "1.0",
-  "name": "Config Name",
-  "description": "Description",
+generation:
+  mode: random
+  seed_mode: progressive
+  seed: 1000
+  max_images: 50
 
-  "prompt": {
-    "template": "prompt with {Placeholders}",
-    "negative": "negative prompt"
-  },
+output:
+  session_name: portrait_happy
+```
 
-  "variations": {
-    "Placeholder": "path/to/variations.txt"
-  },
+**Inheritance rules:**
+- `parameters` are merged (child overrides parent)
+- `imports` are merged (child adds to parent)
+- `prompt` in child replaces parent's prompt
+- `generation` and `output` can be overridden
 
-  "generation": {
-    "mode": "combinatorial",
-    "seed_mode": "progressive",
-    "seed": 42,
-    "max_images": 100
-  },
+### Loop Ordering with Weights
 
-  "parameters": {
-    "width": 512,
-    "height": 768,
-    "steps": 30,
-    "cfg_scale": 7.0,
-    "sampler": "DPM++ 2M Karras",
-    "batch_size": 1,
-    "batch_count": 1
-  },
+Control combinatorial loop nesting order with weights:
 
-  "output": {
-    "session_name": "session_name",
-    "filename_keys": ["Placeholder"]
-  }
-}
+```yaml
+prompt: |
+  {Outfit[$1]}, {Angle[$10]}, {Expression[$20]}
+```
+
+**Loop structure:**
+- Lower weight = outer loop (changes less often)
+- Higher weight = inner loop (changes more often)
+- Weight 0 = excluded from loops (random per image)
+
+**Result:**
+```
+for outfit in Outfits:         # Weight 1 (outer)
+  for angle in Angles:         # Weight 10 (middle)
+    for expression in Expressions:  # Weight 20 (inner)
+      generate_image()
+```
+
+All expressions for each angle, all angles for each outfit.
+
+---
+
+## 🔍 Validation & Statistics
+
+**Since 2025-10-13**, `sdgen` displays variation statistics before generation:
+
+```
+╭─────────────────────── Detected Variations ───────────────────────╮
+│   HairCut: 40 variations                                           │
+│   HairColor: 87 variations (4 files merged)                        │
+│   EyeColor: 12 variations                                          │
+│   Outfit: 156 variations (8 files merged)                          │
+│                                                                    │
+│   Total combinations: 6,518,400                                    │
+│   Generation mode: random                                          │
+│   Will generate: 20 images                                         │
+╰────────────────────────────────────────────────────────────────────╯
+```
+
+**Common errors are detected automatically:**
+
+### Error: Unresolved Placeholder
+
+```
+ValueError: Unresolved placeholders in template: EyeColor
+These placeholders are used in the prompt/template but have no
+corresponding variations defined in 'imports:' section.
+Available variations: HairCut, HairColor, Outfit
+```
+
+**Solution:** Add missing import:
+```yaml
+imports:
+  EyeColor: ../variations/eyecolors.yaml  # ← Add this
+```
+
+### Error: Wrong Selector Syntax
+
+If you use `:$0` instead of `[$0]`, the placeholder won't be resolved correctly.
+
+**Wrong:**
+```yaml
+prompt: |
+  {Outfit:$0}, {HairCut:$0}  # ❌ WRONG SYNTAX
+```
+
+**Correct:**
+```yaml
+prompt: |
+  {Outfit[$0]}, {HairCut[$0]}  # ✅ CORRECT SYNTAX
 ```
 
 ---
 
-## Module Structure
+## 🗂️ Module Structure
 
 ```
 CLI/
-├── generator_cli.py           # Main entry point
+├── src/
+│   ├── cli.py                 # Main CLI entry point (Typer)
+│   │
+│   ├── templating/            # Template System V2.0
+│   │   ├── models/            # Data models
+│   │   ├── loaders/           # YAML loading
+│   │   ├── validators/        # Template validation
+│   │   ├── resolvers/         # Inheritance & imports
+│   │   ├── generators/        # Prompt generation
+│   │   ├── normalizers/       # Prompt normalization
+│   │   └── orchestrator.py    # Main V2 orchestrator
+│   │
+│   ├── api/                   # SD API client
+│   │   ├── client.py
+│   │   └── models.py
+│   │
+│   ├── config/                # Config management
+│   │   └── global_config.py
+│   │
+│   └── execution/             # Execution & output
+│       ├── executor.py
+│       └── output_handler.py
 │
-├── config/                    # Config management
-│   ├── global_config.py       # Global settings
-│   ├── config_loader.py       # JSON loading/validation
-│   ├── config_schema.py       # Data structures
-│   └── config_selector.py     # Interactive selection
+├── tests/                     # Test suite
+│   ├── api/                   # API client tests (76 tests)
+│   ├── templating/            # Templating tests (3 tests)
+│   ├── v2/                    # V2 system tests (227 tests)
+│   │   ├── unit/
+│   │   └── integration/
+│   └── legacy/                # Old tests (archived)
 │
-├── execution/                 # Generation execution
-│   └── json_generator.py      # Interactive prompts & execution
-│
-├── image_variation_generator.py  # Core generator
-├── sdapi_client.py               # SD API client
-├── variation_loader.py           # Variation file loading
-│
-└── output/                    # Output handling
-    ├── output_namer.py        # Filename generation
-    └── metadata_generator.py  # Metadata JSON
+└── pyproject.toml             # Package config
 ```
 
 ---
 
-## Examples
+## 🧪 Examples
 
-### Example 1: Fixed Parameters
+### Example 1: Basic Combinatorial
 
-`configs/landscape.json`:
+```yaml
+version: '2.0'
+name: 'Portrait Variations'
 
-```json
-{
-  "version": "1.0",
-  "name": "Landscape Generation",
+imports:
+  Expression: ../variations/expressions.yaml
+  Angle: ../variations/angles.yaml
 
-  "prompt": {
-    "template": "{Style}, landscape, nature, detailed"
-  },
+prompt: |
+  masterpiece, beautiful portrait, {Expression}, {Angle}, detailed
 
-  "variations": {
-    "Style": "./variations/styles.txt"
-  },
+negative_prompt: |
+  low quality, blurry
 
-  "generation": {
-    "mode": "combinatorial",
-    "seed_mode": "progressive",
-    "seed": 42,
-    "max_images": 10
-  },
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 42
+  max_images: -1
 
-  "parameters": {
-    "width": 768,
-    "height": 512,
-    "steps": 30,
-    "cfg_scale": 7.0,
-    "sampler": "DPM++ 2M Karras"
-  }
-}
+parameters:
+  width: 512
+  height: 768
+  steps: 30
+  cfg_scale: 7.0
+  sampler: DPM++ 2M Karras
+
+output:
+  session_name: portrait_variations
+  filename_keys:
+    - Expression
+    - Angle
 ```
 
-### Example 2: Interactive Parameters
+### Example 2: Random Exploration
 
-`configs/quick_test.json`:
+```yaml
+version: '2.0'
+name: 'Creative Exploration'
 
-```json
-{
-  "version": "1.0",
-  "name": "Quick Test",
+imports:
+  Style: ../variations/styles.yaml
+  Subject: ../variations/subjects.yaml
+  Lighting: ../variations/lighting.yaml
 
-  "prompt": {
-    "template": "{Subject}, {Style}"
-  },
+prompt: |
+  concept art, {Style}, {Subject}, {Lighting}
 
-  "variations": {
-    "Subject": "./variations/subjects.txt",
-    "Style": "./variations/styles.txt"
-  },
+negative_prompt: |
+  low quality
 
-  "generation": {
-    "mode": "ask",
-    "seed_mode": "ask",
-    "seed": -1,
-    "max_images": -1
-  },
+generation:
+  mode: random
+  seed_mode: random
+  seed: -1
+  max_images: 100
 
-  "parameters": {
-    "width": 512,
-    "height": 768,
-    "steps": 30,
-    "cfg_scale": 7.0,
-    "sampler": "ask"
-  }
-}
+output:
+  session_name: creative_exploration
 ```
+
+### Example 3: Character Sheet with Weights
+
+```yaml
+version: '2.0'
+name: 'Character Sheet'
+
+imports:
+  Outfit: ../variations/outfits.yaml
+  Angle: ../variations/angles.yaml
+  Expression: ../variations/expressions.yaml
+
+prompt: |
+  1girl, character name, {Outfit[$1]}, {Angle[$10]}, {Expression[$20]}, high quality
+
+negative_prompt: |
+  low quality, bad anatomy
+
+generation:
+  mode: combinatorial
+  seed_mode: progressive
+  seed: 42
+  max_images: -1
+
+output:
+  session_name: character_sheet
+  filename_keys:
+    - Outfit
+    - Angle
+    - Expression
+```
+
+**Result:** Images organized by outfit (outer loop), then angle, then expression (inner loop).
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 - **[Getting Started](../docs/cli/usage/getting-started.md)** - First generation tutorial
-- **[JSON Config CLI](../docs/cli/usage/json-config-cli.md)** - Complete CLI guide
-- **[JSON Config System](../docs/cli/usage/json-config-system.md)** - Config format reference
+- **[YAML Templating Guide](../docs/cli/usage/yaml-templating-guide.md)** - Complete V2.0 guide
+- **[Examples](../docs/cli/usage/examples.md)** - Common use cases with correct syntax
+- **[Variation Files](../docs/cli/usage/variation-files.md)** - Variation file format
+- **[Architecture](../docs/cli/technical/architecture.md)** - Technical documentation
 
 ---
 
-## Testing
+## 🧪 Testing
+
+**IMPORTANT:** Always activate the venv first from the project root!
 
 ```bash
-# Run all tests
-python3 -m pytest tests/
+# Activate venv (from project root)
+cd /mnt/d/StableDiffusion/local-sd-generator
+source venv/bin/activate
 
-# Run specific test modules
-python3 -m pytest tests/test_config_selector.py
-python3 -m pytest tests/test_json_generator.py
-python3 -m pytest tests/test_integration_phase3.py
+# Go to CLI directory
+cd CLI
+
+# Run all tests (excluding legacy)
+python3 -m pytest tests/ --ignore=tests/legacy -v
+
+# Run specific test suites
+python3 -m pytest tests/api/ -v                    # API tests (76 tests) ✅
+python3 -m pytest tests/templating/ -v             # Templating tests (3 tests) ✅
+python3 -m pytest tests/v2/ -v                     # V2 system tests (227 tests) 🟢
+
+# With coverage
+python3 -m pytest tests/v2/ --cov=templating --cov-report=term-missing -v
+```
+
+**Test Statistics:**
+- **Total:** 306 tests
+- **Passing:** 300 tests (98%)
+- **API client:** 76 tests (100% ✅)
+- **V2 templating:** 230 tests (96.5% 🟢)
+
+---
+
+## 🔧 Requirements
+
+- **Python 3.8+** (use `python3` on WSL/Linux)
+- **Stable Diffusion WebUI** with API enabled
+- **Dependencies:** `pyyaml`, `requests`, `typer`, `rich`
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
 ```
 
 ---
 
-## Requirements
+## 🛠️ Development
 
-- Python 3.8+
-- Stable Diffusion WebUI with API enabled
-- Required packages (see `requirements.txt`)
+### Code Quality Tools
+
+```bash
+# Style checking (PEP 8)
+venv/bin/python3 -m flake8 CLI --exclude=tests,private_generators --max-line-length=120
+
+# Complexity analysis
+venv/bin/python3 -m radon cc CLI --exclude="tests,private_generators" -a -nb
+
+# Dead code detection
+cd CLI && ../venv/bin/python3 -m vulture . --min-confidence=80 2>&1 | grep -v "tests/" | grep -v "example_"
+
+# Security scanning
+venv/bin/python3 -m bandit -r CLI -ll -f txt
+```
+
+### Project Status
+
+**Current version:** V2.0 (stable)
+**Template system:** V2.0 only (V1 removed)
+**Tests:** 306 total (98% pass rate)
+**Last major migration:** 2025-10-10 (V1→V2 complete)
 
 ---
 
-## Support
+## 📞 Support
 
 For issues, questions, or feature requests:
-- Check documentation in `docs/`
-- Review examples in `configs/`
-- See roadmap in `docs/roadmap/`
+- Check documentation in `../docs/cli/`
+- Review examples in `src/examples/prompts/`
+- See roadmap in `../docs/roadmap/`
 
 ---
 
-**Version:** Phase 3 Complete
-**Last Updated:** 2025-10-01
+**Version:** V2.0 (Template System)
+**Last Updated:** 2025-10-13

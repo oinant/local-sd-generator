@@ -11,7 +11,12 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
 from datetime import datetime
 
+from rich.console import Console
+from rich.panel import Panel
+
 from api.sdapi_client import SDAPIClient, PromptConfig, GenerationConfig
+
+console = Console()
 
 
 class V2Executor:
@@ -146,6 +151,9 @@ class V2Executor:
             if 'parameters' in prompt_dict:
                 self._apply_parameters(prompt_dict['parameters'])
 
+            # Log the actual prompt being sent to API
+            self._log_prompt(api_prompt, image_number)
+
             # Call SD API
             response = self.api_client.generate_image(api_prompt)
 
@@ -202,6 +210,31 @@ class V2Executor:
                 setattr(config, config_key, parameters[param_key])
 
         self.api_client.set_generation_config(config)
+
+    def _log_prompt(self, api_prompt: PromptConfig, image_number: int):
+        """
+        Log the actual prompt being sent to API.
+
+        Args:
+            api_prompt: PromptConfig being sent to API
+            image_number: Image number for identification
+        """
+        # Build prompt display text
+        prompt_text = f"[bold cyan]Prompt #{image_number}[/bold cyan]\n\n"
+        prompt_text += f"[yellow]Positive:[/yellow]\n{api_prompt.prompt}\n\n"
+
+        if api_prompt.negative_prompt:
+            prompt_text += f"[red]Negative:[/red]\n{api_prompt.negative_prompt}\n\n"
+
+        prompt_text += f"[green]Seed:[/green] {api_prompt.seed}"
+
+        # Display in a panel
+        console.print(Panel(
+            prompt_text,
+            title=f"[bold]API Request #{image_number}[/bold]",
+            border_style="cyan",
+            expand=False
+        ))
 
     def _save_image(self, base64_data: str, image_number: int) -> Path:
         """

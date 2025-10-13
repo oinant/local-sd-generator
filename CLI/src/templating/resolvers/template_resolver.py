@@ -263,10 +263,18 @@ class TemplateResolver:
             name = match.group(1)
             selector_str = match.group(2)  # May be None
 
-            # When a selector is present, always use imports (not chunks)
+            # Check if we have a value already resolved in chunks (from generator)
+            # This happens when generator has already picked specific values
+            # (e.g., for weight 0 random selection, or combinatorial loops)
+            chunks = context.get('chunks', {})
+            if name in chunks:
+                # Value already resolved by generator - use it directly
+                return str(chunks[name])
+
+            # When a selector is present, use imports to apply selection
             # This allows chunk param overrides like {HairCut[#10,12]} to work
             if selector_str:
-                # Get from imports only (skip chunks)
+                # Get from imports only (skip chunks since we already checked above)
                 imports = context.get('imports', {})
                 if name in imports:
                     import_data = imports[name]
