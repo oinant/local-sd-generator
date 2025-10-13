@@ -565,3 +565,230 @@ class TestV2Pipeline:
         assert isinstance(prompt['seed'], int)
         assert isinstance(prompt['variations'], dict)
         assert isinstance(prompt['parameters'], dict)
+
+
+class TestVariationStatistics:
+    """Test variation statistics calculation (added in commit 8dd57e5)."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.pipeline = V2Pipeline()
+
+    def test_basic_statistics_single_placeholder(self):
+        """Test statistics for template with single placeholder."""
+        template = "{Color}"
+        context = ResolvedContext(
+            imports={
+                'Color': {'red': 'red', 'blue': 'blue', 'green': 'green'}
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Verify structure
+        assert 'placeholders' in stats
+        assert 'total_combinations' in stats
+        assert 'total_placeholders' in stats
+
+        # Verify placeholder stats
+        assert 'Color' in stats['placeholders']
+        assert stats['placeholders']['Color']['count'] == 3
+        assert stats['placeholders']['Color']['sources'] >= 1
+        assert isinstance(stats['placeholders']['Color']['is_multi_source'], bool)
+
+        # Verify totals
+        assert stats['total_combinations'] == 3
+        assert stats['total_placeholders'] == 1
+
+    def test_statistics_multiple_placeholders(self):
+        """Test statistics with multiple placeholders."""
+        template = "{Style}, {Subject}, {Quality}"
+        context = ResolvedContext(
+            imports={
+                'Style': {'anime': 'anime', 'realistic': 'realistic'},
+                'Subject': {'girl': '1girl', 'boy': '1boy'},
+                'Quality': {'high': 'masterpiece', 'medium': 'good', 'low': 'simple'}
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Verify all placeholders are listed
+        assert 'Style' in stats['placeholders']
+        assert 'Subject' in stats['placeholders']
+        assert 'Quality' in stats['placeholders']
+
+        # Verify counts
+        assert stats['placeholders']['Style']['count'] == 2
+        assert stats['placeholders']['Subject']['count'] == 2
+        assert stats['placeholders']['Quality']['count'] == 3
+
+        # Verify total combinations: 2 × 2 × 3 = 12
+        assert stats['total_combinations'] == 12
+        assert stats['total_placeholders'] == 3
+
+    def test_statistics_with_selectors(self):
+        """Test that statistics work with selectors in template."""
+        template = "{Color[BobCut,LongHair]}, {Angle[$10]}"
+        context = ResolvedContext(
+            imports={
+                'Color': {'BobCut': 'bob cut', 'LongHair': 'long hair', 'ShortHair': 'short'},
+                'Angle': {'front': 'front', 'side': 'side'}
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Verify placeholders detected (even with selectors)
+        assert 'Color' in stats['placeholders']
+        assert 'Angle' in stats['placeholders']
+
+        # Counts should reflect full variation dict (before selector application)
+        assert stats['placeholders']['Color']['count'] == 3
+        assert stats['placeholders']['Angle']['count'] == 2
+
+        # Total combinations: 3 × 2 = 6
+        assert stats['total_combinations'] == 6
+
+    def test_statistics_empty_template(self):
+        """Test statistics with no placeholders."""
+        template = "masterpiece, beautiful, detailed"
+        context = ResolvedContext(
+            imports={},
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Should have empty placeholders
+        assert stats['placeholders'] == {}
+        assert stats['total_combinations'] == 1  # Static prompt
+        assert stats['total_placeholders'] == 0
+
+    def test_statistics_placeholder_not_in_imports(self):
+        """Test statistics skips placeholders not in imports."""
+        template = "{Color}, {Missing}"
+        context = ResolvedContext(
+            imports={
+                'Color': {'red': 'red', 'blue': 'blue'}
+                # 'Missing' not defined
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Should only include 'Color'
+        assert 'Color' in stats['placeholders']
+        assert 'Missing' not in stats['placeholders']
+        assert stats['total_placeholders'] == 1
+
+    def test_statistics_multi_source_detection(self):
+        """Test heuristic detection of multi-source imports."""
+        template = "{Combined}"
+        context = ResolvedContext(
+            imports={
+                # Keys with underscores suggest multi-source merge
+                'Combined': {
+                    'file1_key1': 'value1',
+                    'file1_key2': 'value2',
+                    'file2_key1': 'value3',
+                    'file2_key2': 'value4',
+                    'file3_key1': 'value5'
+                }
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Should detect multiple sources (heuristic)
+        assert stats['placeholders']['Combined']['count'] == 5
+        assert stats['placeholders']['Combined']['sources'] >= 2  # Heuristic may estimate 3
+        assert stats['placeholders']['Combined']['is_multi_source'] is True
+
+    def test_statistics_single_source_no_underscores(self):
+        """Test that single-source imports without underscores are detected."""
+        template = "{Color}"
+        context = ResolvedContext(
+            imports={
+                'Color': {
+                    'red': 'red color',
+                    'blue': 'blue color',
+                    'green': 'green color'
+                }
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Should detect as single source
+        assert stats['placeholders']['Color']['count'] == 3
+        assert stats['placeholders']['Color']['sources'] == 1
+        assert stats['placeholders']['Color']['is_multi_source'] is False
+
+    def test_statistics_large_variations(self):
+        """Test statistics with large number of variations."""
+        template = "{LargeSet}"
+        # Create large variation dict
+        large_dict = {f'key{i}': f'value{i}' for i in range(100)}
+        context = ResolvedContext(
+            imports={'LargeSet': large_dict},
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Verify count
+        assert stats['placeholders']['LargeSet']['count'] == 100
+        assert stats['total_combinations'] == 100
+
+    def test_statistics_multiple_same_placeholder(self):
+        """Test that same placeholder used multiple times counts once."""
+        template = "{Color}, some text, {Color}"
+        context = ResolvedContext(
+            imports={
+                'Color': {'red': 'red', 'blue': 'blue'}
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Should count Color only once
+        assert len(stats['placeholders']) == 1
+        assert stats['placeholders']['Color']['count'] == 2
+        assert stats['total_placeholders'] == 1
+        assert stats['total_combinations'] == 2  # Not 2×2=4
+
+    def test_statistics_non_dict_import_ignored(self):
+        """Test that non-dict imports are ignored in statistics."""
+        template = "{Color}, {NotDict}"
+        context = ResolvedContext(
+            imports={
+                'Color': {'red': 'red', 'blue': 'blue'},
+                'NotDict': 'just a string'  # Not a dict
+            },
+            chunks={},
+            parameters={}
+        )
+
+        stats = self.pipeline.get_variation_statistics(template, context)
+
+        # Should only include 'Color'
+        assert 'Color' in stats['placeholders']
+        assert 'NotDict' not in stats['placeholders']
+        assert stats['total_placeholders'] == 1

@@ -565,3 +565,54 @@ class TestV2ValidationRules:
 
         assert config.prompt == '1girl, beautiful'
         assert hasattr(config, 'template')  # Should have optional template field for resolved result
+
+    def test_prompt_rejects_variations_field(self):
+        """Test that 'variations:' field is rejected in V2.0 (should use 'imports:')."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'TestPrompt',
+            'generation': {
+                'mode': 'random',
+                'seed': 42,
+                'seed_mode': 'progressive',
+                'max_images': 10
+            },
+            'prompt': '1girl, {HairCut}',
+            'variations': {  # Wrong field in V2.0
+                'HairCut': '../variations/haircuts.yaml'
+            }
+        }
+        source_file = Path('/test/prompt.yaml')
+
+        with pytest.raises(ValueError) as exc_info:
+            parser.parse_prompt(data, source_file)
+
+        error_msg = str(exc_info.value)
+        assert "V2.0 Template System uses 'imports:' field, not 'variations:'" in error_msg
+        assert "Please rename 'variations:' to 'imports:'" in error_msg
+        assert 'HairCut' in error_msg  # Should show example
+
+    def test_prompt_with_imports_field_passes(self):
+        """Test that 'imports:' field works correctly in V2.0."""
+        parser = ConfigParser()
+        data = {
+            'version': '2.0',
+            'name': 'TestPrompt',
+            'generation': {
+                'mode': 'random',
+                'seed': 42,
+                'seed_mode': 'progressive',
+                'max_images': 10
+            },
+            'prompt': '1girl, {HairCut}',
+            'imports': {  # Correct field in V2.0
+                'HairCut': '../variations/haircuts.yaml'
+            }
+        }
+        source_file = Path('/test/prompt.yaml')
+
+        config = parser.parse_prompt(data, source_file)
+
+        assert config.prompt == '1girl, {HairCut}'
+        assert config.imports == {'HairCut': '../variations/haircuts.yaml'}
