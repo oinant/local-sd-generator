@@ -389,7 +389,7 @@ class TestSDAPIClient:
     @patch('requests.post')
     def test_generate_image_with_adetailer(self, mock_post):
         """Test image generation with ADetailer config"""
-        from templating.models.adetailer import ADetailerConfig, ADetailerDetector
+        from templating.models.config_models import ADetailerConfig, ADetailerDetector
 
         mock_response = Mock()
         mock_response.json.return_value = {'images': ['data']}
@@ -403,7 +403,7 @@ class TestSDAPIClient:
             ad_steps=40,
             ad_mask_k_largest=1
         )
-        adetailer_config = ADetailerConfig(detectors=[detector])
+        adetailer_config = ADetailerConfig(enabled=True, detectors=[detector])
 
         client = SDAPIClient()
         prompt_config = PromptConfig(
@@ -420,10 +420,14 @@ class TestSDAPIClient:
         assert 'ADetailer' in payload['alwayson_scripts']
         adetailer_payload = payload['alwayson_scripts']['ADetailer']
         assert 'args' in adetailer_payload
-        assert adetailer_payload['args'][0] is True  # ad_enable
-        assert adetailer_payload['args'][1] is False  # skip_img2img
-        # Check first detector config
-        assert adetailer_payload['args'][2] == "face_yolov9c.pt"  # ad_model
+        # Format: [enable, skip_img2img, detector_dict]
+        assert len(adetailer_payload['args']) == 3
+        assert adetailer_payload['args'][0] is True  # Enable ADetailer
+        assert adetailer_payload['args'][1] is False  # Skip img2img
+        # Check first detector config at index 2
+        detector_dict = adetailer_payload['args'][2]
+        assert detector_dict['ad_model'] == "face_yolov9c.pt"
+        assert detector_dict['ad_denoising_strength'] == 0.5
 
     @patch('requests.post')
     def test_generate_image_without_adetailer(self, mock_post):

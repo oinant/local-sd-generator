@@ -130,27 +130,55 @@ class ADetailerDetector:
     """
     # Detection
     ad_model: str = "face_yolov8n.pt"
+    ad_model_classes: str = ""
+    ad_tab_enable: bool = True
     ad_confidence: float = 0.3
-    ad_mask_k_largest: int = 0  # 0 = all detected, 1+ = only top K largest
+    ad_mask_k_largest: int = 0  # 0 = all detected, 1+ = only top K largest (aliased to ad_mask_k in API)
 
     # Prompts (optional - uses main prompt if empty)
     ad_prompt: str = ""
     ad_negative_prompt: str = ""
 
+    # Mask filtering and processing
+    ad_mask_filter_method: str = "Area"  # "Area" or "Confidence"
+    ad_mask_min_ratio: float = 0.0
+    ad_mask_max_ratio: float = 1.0
+    ad_dilate_erode: int = 4
+    ad_x_offset: int = 0
+    ad_y_offset: int = 0
+    ad_mask_merge_invert: str = "None"
+    ad_mask_blur: int = 4
+
     # Inpainting
     ad_denoising_strength: float = 0.4
     ad_inpaint_only_masked: bool = True
     ad_inpaint_only_masked_padding: int = 32
+    ad_use_inpaint_width_height: bool = False
+    ad_inpaint_width: int = 512
+    ad_inpaint_height: int = 512
 
     # Generation overrides (optional)
-    ad_use_steps: bool = False  # Use separate step count for inpainting
-    ad_steps: int = 28  # Steps for inpainting pass (if ad_use_steps = True)
-
-    # Mask Processing
-    ad_dilate_erode: int = 4
-    ad_mask_blur: int = 4
-    ad_x_offset: int = 0
-    ad_y_offset: int = 0
+    ad_use_steps: bool = False
+    ad_steps: int = 28
+    ad_use_cfg_scale: bool = False
+    ad_cfg_scale: float = 7.0
+    ad_use_checkpoint: bool = False
+    ad_checkpoint: Optional[str] = None
+    ad_use_vae: bool = False
+    ad_vae: Optional[str] = None
+    ad_use_sampler: bool = False
+    ad_sampler: str = "DPM++ 2M Karras"
+    ad_scheduler: str = "Use same scheduler"
+    ad_use_noise_multiplier: bool = False
+    ad_noise_multiplier: float = 1.0
+    ad_use_clip_skip: bool = False
+    ad_clip_skip: int = 1
+    ad_restore_face: bool = False
+    ad_controlnet_model: str = "None"
+    ad_controlnet_module: str = "None"
+    ad_controlnet_weight: float = 1.0
+    ad_controlnet_guidance_start: float = 0.0
+    ad_controlnet_guidance_end: float = 1.0
 
     def to_api_dict(self) -> dict:
         """
@@ -161,19 +189,47 @@ class ADetailerDetector:
         """
         return {
             "ad_model": self.ad_model,
-            "ad_confidence": self.ad_confidence,
-            "ad_mask_k_largest": self.ad_mask_k_largest,
+            "ad_model_classes": self.ad_model_classes,
+            "ad_tab_enable": self.ad_tab_enable,
             "ad_prompt": self.ad_prompt,
             "ad_negative_prompt": self.ad_negative_prompt,
+            "ad_confidence": self.ad_confidence,
+            "ad_mask_filter_method": self.ad_mask_filter_method,
+            "ad_mask_k": self.ad_mask_k_largest,  # Map ad_mask_k_largest to API's ad_mask_k
+            "ad_mask_min_ratio": self.ad_mask_min_ratio,
+            "ad_mask_max_ratio": self.ad_mask_max_ratio,
+            "ad_dilate_erode": self.ad_dilate_erode,
+            "ad_x_offset": self.ad_x_offset,
+            "ad_y_offset": self.ad_y_offset,
+            "ad_mask_merge_invert": self.ad_mask_merge_invert,
+            "ad_mask_blur": self.ad_mask_blur,
             "ad_denoising_strength": self.ad_denoising_strength,
             "ad_inpaint_only_masked": self.ad_inpaint_only_masked,
             "ad_inpaint_only_masked_padding": self.ad_inpaint_only_masked_padding,
+            "ad_use_inpaint_width_height": self.ad_use_inpaint_width_height,
+            "ad_inpaint_width": self.ad_inpaint_width,
+            "ad_inpaint_height": self.ad_inpaint_height,
             "ad_use_steps": self.ad_use_steps,
             "ad_steps": self.ad_steps,
-            "ad_dilate_erode": self.ad_dilate_erode,
-            "ad_mask_blur": self.ad_mask_blur,
-            "ad_x_offset": self.ad_x_offset,
-            "ad_y_offset": self.ad_y_offset,
+            "ad_use_cfg_scale": self.ad_use_cfg_scale,
+            "ad_cfg_scale": self.ad_cfg_scale,
+            "ad_use_checkpoint": self.ad_use_checkpoint,
+            "ad_checkpoint": self.ad_checkpoint,
+            "ad_use_vae": self.ad_use_vae,
+            "ad_vae": self.ad_vae,
+            "ad_use_sampler": self.ad_use_sampler,
+            "ad_sampler": self.ad_sampler,
+            "ad_scheduler": self.ad_scheduler,
+            "ad_use_noise_multiplier": self.ad_use_noise_multiplier,
+            "ad_noise_multiplier": self.ad_noise_multiplier,
+            "ad_use_clip_skip": self.ad_use_clip_skip,
+            "ad_clip_skip": self.ad_clip_skip,
+            "ad_restore_face": self.ad_restore_face,
+            "ad_controlnet_model": self.ad_controlnet_model,
+            "ad_controlnet_module": self.ad_controlnet_module,
+            "ad_controlnet_weight": self.ad_controlnet_weight,
+            "ad_controlnet_guidance_start": self.ad_controlnet_guidance_start,
+            "ad_controlnet_guidance_end": self.ad_controlnet_guidance_end,
         }
 
 
@@ -192,6 +248,11 @@ class ADetailerConfig:
         """
         Convert to alwayson_scripts format for SD WebUI API.
 
+        The ADetailer API format requires:
+        - args[0]: bool - Enable ADetailer
+        - args[1]: bool - Skip img2img
+        - args[2+]: dict - Detector configurations
+
         Returns:
             dict with ADetailer payload, or None if disabled or no detectors
         """
@@ -200,7 +261,11 @@ class ADetailerConfig:
 
         return {
             "ADetailer": {
-                "args": [detector.to_api_dict() for detector in self.detectors]
+                "args": [
+                    True,   # Enable ADetailer
+                    False,  # Skip img2img
+                    *[detector.to_api_dict() for detector in self.detectors]
+                ]
             }
         }
 

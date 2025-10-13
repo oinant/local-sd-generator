@@ -225,13 +225,18 @@ def _generate(
         }
 
         for idx, prompt_dict in enumerate(prompts):
+            # Filter out non-JSON-serializable parameters (like ADetailerConfig objects)
+            params = prompt_dict.get('parameters', {}).copy()
+            if 'adetailer' in params:
+                params['adetailer'] = "<ADetailerConfig object>"  # Placeholder for manifest
+
             manifest["variations"].append({
                 "index": idx,
                 "prompt": prompt_dict['prompt'],
                 "negative_prompt": prompt_dict.get('negative_prompt', ''),
                 "seed": prompt_dict.get('seed', -1),
                 "variations": prompt_dict.get('variations', {}),
-                "parameters": prompt_dict.get('parameters', {})
+                "parameters": params
             })
 
         with open(manifest_path, 'w', encoding='utf-8') as f:
@@ -276,7 +281,8 @@ def _generate(
                 prompt=prompt_dict['prompt'],
                 negative_prompt=prompt_dict.get('negative_prompt', ''),
                 seed=prompt_dict.get('seed', -1),
-                filename=f"{session_name}_{idx:04d}.png"
+                filename=f"{session_name}_{idx:04d}.png",
+                parameters=prompt_dict.get('parameters', {})  # Pass parameters including adetailer
             )
             prompt_configs.append(prompt_cfg)
 
