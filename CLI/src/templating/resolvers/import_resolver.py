@@ -105,6 +105,7 @@ class ImportResolver:
         Load variations from a single file.
 
         If file is a .chunk.yaml, returns full chunk config dict.
+        If file is a .adetailer.yaml, returns detector config.
         Otherwise, returns variations dict.
 
         Args:
@@ -113,7 +114,8 @@ class ImportResolver:
 
         Returns:
             Dict of variations {key: value} OR
-            Dict of chunk config {template: str, imports: dict, defaults: dict, base_path: Path}
+            Dict of chunk config {template: str, imports: dict, defaults: dict, base_path: Path} OR
+            ADetailerDetector for .adetailer.yaml files
 
         Raises:
             FileNotFoundError: If file not found
@@ -128,6 +130,12 @@ class ImportResolver:
             resolved_path.name.endswith('.chunk.yml')
         )
 
+        # Check if this is an adetailer file by extension (.adetailer.yaml or .adetailer.yml)
+        is_adetailer = (
+            resolved_path.name.endswith('.adetailer.yaml') or
+            resolved_path.name.endswith('.adetailer.yml')
+        )
+
         if is_chunk:
             # Parse as ChunkConfig and return full config
             chunk_config = self.parser.parse_chunk(data, resolved_path)
@@ -137,6 +145,12 @@ class ImportResolver:
                 'defaults': chunk_config.defaults,
                 'base_path': resolved_path.parent  # Store base path for import resolution
             }
+
+        if is_adetailer:
+            # Parse as ADetailerFileConfig and return detector
+            adetailer_config = self.parser.parse_adetailer_file(data, resolved_path)
+            # Return detector directly (will be used in parameters parsing)
+            return adetailer_config.detector
 
         # Regular variation file - parse variations
         return self.parser.parse_variations(data)

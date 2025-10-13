@@ -11,7 +11,9 @@ from ..models.config_models import (
     TemplateConfig,
     ChunkConfig,
     PromptConfig,
-    GenerationConfig
+    GenerationConfig,
+    ADetailerFileConfig,
+    ADetailerDetector
 )
 
 
@@ -23,6 +25,7 @@ class ConfigParser:
     - .template.yaml → TemplateConfig
     - .chunk.yaml → ChunkConfig
     - .prompt.yaml → PromptConfig
+    - .adetailer.yaml → ADetailerFileConfig
     - .yaml (variations) → Dict[str, str]
     """
 
@@ -247,3 +250,83 @@ class ConfigParser:
         # Flat format: entire dict is variations
         # Ensure all values are strings
         return {str(key): str(value) for key, value in data.items()}
+
+    def parse_adetailer_file(self, data: Dict[str, Any], source_file: Path) -> ADetailerFileConfig:
+        """
+        Parse a .adetailer.yaml file.
+
+        Expected structure:
+            version: '2.0'
+            name: 'High Quality Face Refinement'
+            description: 'Optimal settings for close-up portraits'
+            detector:
+              ad_model: "face_yolov8n.pt"
+              ad_confidence: 0.3
+              ad_prompt: "detailed eyes, perfect skin"
+              ad_negative_prompt: ""
+              ad_denoising_strength: 0.4
+              ad_inpaint_only_masked: true
+              ad_inpaint_only_masked_padding: 32
+              ad_use_steps: false
+              ad_steps: 28
+              ad_mask_k_largest: 0
+              ad_dilate_erode: 4
+              ad_mask_blur: 4
+              ad_x_offset: 0
+              ad_y_offset: 0
+
+        Args:
+            data: Raw YAML dictionary
+            source_file: Absolute path to the .adetailer.yaml file
+
+        Returns:
+            ADetailerFileConfig object
+
+        Raises:
+            ValueError: If version invalid or required fields missing
+        """
+        # Validate version
+        if 'version' not in data:
+            raise ValueError(f"Missing 'version' field in {source_file.name}")
+        if data['version'] != '2.0':
+            raise ValueError(
+                f"Invalid version '{data['version']}' in {source_file.name} "
+                f"(expected '2.0')"
+            )
+
+        # Validate required 'detector' section
+        if 'detector' not in data:
+            raise ValueError(f"Missing 'detector' section in {source_file.name}")
+
+        # Parse detector config
+        detector_data = data['detector']
+        if not isinstance(detector_data, dict):
+            raise ValueError(
+                f"'detector' field must be a dictionary in {source_file.name}, "
+                f"got {type(detector_data).__name__}"
+            )
+
+        detector = ADetailerDetector(
+            ad_model=detector_data.get('ad_model', 'face_yolov8n.pt'),
+            ad_confidence=detector_data.get('ad_confidence', 0.3),
+            ad_mask_k_largest=detector_data.get('ad_mask_k_largest', 0),
+            ad_prompt=detector_data.get('ad_prompt', ''),
+            ad_negative_prompt=detector_data.get('ad_negative_prompt', ''),
+            ad_denoising_strength=detector_data.get('ad_denoising_strength', 0.4),
+            ad_inpaint_only_masked=detector_data.get('ad_inpaint_only_masked', True),
+            ad_inpaint_only_masked_padding=detector_data.get('ad_inpaint_only_masked_padding', 32),
+            ad_use_steps=detector_data.get('ad_use_steps', False),
+            ad_steps=detector_data.get('ad_steps', 28),
+            ad_dilate_erode=detector_data.get('ad_dilate_erode', 4),
+            ad_mask_blur=detector_data.get('ad_mask_blur', 4),
+            ad_x_offset=detector_data.get('ad_x_offset', 0),
+            ad_y_offset=detector_data.get('ad_y_offset', 0),
+        )
+
+        return ADetailerFileConfig(
+            version=data['version'],
+            name=data.get('name', source_file.stem),
+            detector=detector,
+            source_file=source_file,
+            description=data.get('description', '')
+        )

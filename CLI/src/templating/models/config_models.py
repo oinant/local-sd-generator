@@ -7,7 +7,7 @@ Each model corresponds to a specific YAML file type in the V2.0 system.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 
 
 @dataclass
@@ -111,3 +111,119 @@ class ResolvedContext:
     chunks: Dict[str, ChunkConfig]      # {chunk_name: ChunkConfig}
     parameters: Dict[str, Any]
     variation_state: Dict[str, str] = field(default_factory=dict)
+
+
+# ===== ADetailer Extension Support =====
+
+
+@dataclass
+class ADetailerDetector:
+    """
+    Configuration for a single ADetailer detector pass.
+
+    Each detector runs independently and can target different regions
+    (e.g., face, hands, body) with different models and prompts.
+
+    ADetailer (After Detailer) is a SD WebUI extension that detects
+    specific regions using YOLO models and applies a secondary inpainting
+    pass with customizable prompts and parameters.
+    """
+    # Detection
+    ad_model: str = "face_yolov8n.pt"
+    ad_confidence: float = 0.3
+    ad_mask_k_largest: int = 0  # 0 = all detected, 1+ = only top K largest
+
+    # Prompts (optional - uses main prompt if empty)
+    ad_prompt: str = ""
+    ad_negative_prompt: str = ""
+
+    # Inpainting
+    ad_denoising_strength: float = 0.4
+    ad_inpaint_only_masked: bool = True
+    ad_inpaint_only_masked_padding: int = 32
+
+    # Generation overrides (optional)
+    ad_use_steps: bool = False  # Use separate step count for inpainting
+    ad_steps: int = 28  # Steps for inpainting pass (if ad_use_steps = True)
+
+    # Mask Processing
+    ad_dilate_erode: int = 4
+    ad_mask_blur: int = 4
+    ad_x_offset: int = 0
+    ad_y_offset: int = 0
+
+    def to_api_dict(self) -> dict:
+        """
+        Convert to Adetailer API format.
+
+        Returns:
+            dict: API payload for this detector in alwayson_scripts format
+        """
+        return {
+            "ad_model": self.ad_model,
+            "ad_confidence": self.ad_confidence,
+            "ad_mask_k_largest": self.ad_mask_k_largest,
+            "ad_prompt": self.ad_prompt,
+            "ad_negative_prompt": self.ad_negative_prompt,
+            "ad_denoising_strength": self.ad_denoising_strength,
+            "ad_inpaint_only_masked": self.ad_inpaint_only_masked,
+            "ad_inpaint_only_masked_padding": self.ad_inpaint_only_masked_padding,
+            "ad_use_steps": self.ad_use_steps,
+            "ad_steps": self.ad_steps,
+            "ad_dilate_erode": self.ad_dilate_erode,
+            "ad_mask_blur": self.ad_mask_blur,
+            "ad_x_offset": self.ad_x_offset,
+            "ad_y_offset": self.ad_y_offset,
+        }
+
+
+@dataclass
+class ADetailerConfig:
+    """
+    Top-level ADetailer configuration.
+
+    Supports multiple detectors for multi-region refinement
+    (e.g., face + hands in single generation).
+    """
+    enabled: bool = False
+    detectors: List[ADetailerDetector] = field(default_factory=list)
+
+    def to_api_dict(self) -> Optional[dict]:
+        """
+        Convert to alwayson_scripts format for SD WebUI API.
+
+        Returns:
+            dict with ADetailer payload, or None if disabled or no detectors
+        """
+        if not self.enabled or not self.detectors:
+            return None
+
+        return {
+            "ADetailer": {
+                "args": [detector.to_api_dict() for detector in self.detectors]
+            }
+        }
+
+
+@dataclass
+class ADetailerFileConfig:
+    """
+    Configuration parsed from a .adetailer.yaml file.
+
+    This represents a reusable Adetailer preset that can be
+    imported into prompts via parameters: section.
+
+    Example file structure:
+        version: '2.0'
+        name: 'High Quality Face Refinement'
+        description: 'Optimal settings for close-up portraits'
+        detector:
+          ad_model: "face_yolov8n.pt"
+          ad_confidence: 0.3
+          ad_prompt: "detailed eyes, perfect skin"
+    """
+    version: str
+    name: str
+    detector: ADetailerDetector
+    source_file: Path
+    description: str = ''
