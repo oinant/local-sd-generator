@@ -159,8 +159,8 @@ export default {
   },
 
   async mounted() {
-    await this.loadFileTree()
-    // Ne plus charger automatiquement les images - attendre la sélection d'un dossier
+    // Charger directement toutes les images avec pagination
+    await this.loadImages()
   },
 
   methods: {
@@ -217,16 +217,19 @@ export default {
       }
     },
 
-    async loadImages(path = null) {
+    async loadImages(session = null) {
       try {
         this.loading = true
-        const images = await ApiService.getFileImages(path)
-        this.allImages = images.map(image => ({
-          ...image,
-          created: new Date(image.created * 1000), // Conversion timestamp
-          modified: new Date(image.modified * 1000),
-          // Utilise l'URL fournie par l'API
-          thumbnail: image.url // Pas de thumbnail séparée pour l'instant
+        const response = await ApiService.getImages(1, 100, session)
+        this.allImages = response.images.map(image => ({
+          id: image.path,
+          name: image.filename,
+          path: image.path,
+          session: image.path.split('/')[0], // Extract session from path
+          url: ApiService.getImageUrl(image.path, false),
+          thumbnail: image.thumbnail_path ? ApiService.getImageUrl(image.thumbnail_path, true) : ApiService.getImageUrl(image.path, false),
+          created: new Date(image.created_at),
+          metadata: image.metadata
         }))
       } catch (error) {
         console.error('Erreur lors du chargement des images:', error)
