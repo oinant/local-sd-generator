@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 
 from config import API_HOST, API_PORT
-from api import images, auth, files  # generation temporairement désactivé (imports CLI manquants)
+from api import images, auth, files, sessions  # generation temporairement désactivé (imports CLI manquants)
 from __about__ import __version__
 
 
@@ -44,6 +44,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Inclure les routeurs API
 app.include_router(auth.router)
+app.include_router(sessions.router)
 app.include_router(images.router)
 # app.include_router(generation.router)  # TODO: Via queue background jobs (Celery) pour sécurité
 app.include_router(files.router)
@@ -105,8 +106,7 @@ async def root():
             </div>
 
             <h2>🔐 Authentification</h2>
-            <p>Utilisez un token Bearer avec un GUID valide dans l'en-tête Authorization :</p>
-            <code>Authorization: Bearer 550e8400-e29b-41d4-a716-446655440000</code>
+            <p>Utilisez un token Bearer avec un GUID valide dans l'en-tête Authorization.</p>
 
             <h2>📊 Version</h2>
             <p>Version actuelle : <strong>""" + __version__ + """</strong></p>

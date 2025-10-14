@@ -56,6 +56,22 @@ class ApiService {
     return response.data
   }
 
+  // Sessions endpoints
+  async getSessions() {
+    const response = await this.client.get('/api/sessions/')
+    return response.data
+  }
+
+  async getSessionCount(sessionName) {
+    const response = await this.client.get(`/api/sessions/${sessionName}/count`)
+    return response.data
+  }
+
+  async getSessionImages(sessionName) {
+    const response = await this.client.get(`/api/sessions/${sessionName}/images`)
+    return response.data
+  }
+
   // Images endpoints
   async getImages(page = 1, pageSize = 20, session = null) {
     const params = { page, page_size: pageSize }
@@ -68,6 +84,16 @@ class ApiService {
   async getImageUrl(filename, thumbnail = false) {
     const params = thumbnail ? '?thumbnail=true' : ''
     return `${this.baseURL}/api/images/${filename}${params}`
+  }
+
+  async getImageAsBlob(filename, thumbnail = false) {
+    const params = { thumbnail }
+    const response = await this.client.get(`/api/images/${filename}`, {
+      params,
+      responseType: 'blob'
+    })
+    // Convertir le blob en data URL pour l'afficher
+    return URL.createObjectURL(response.data)
   }
 
   async getImageMetadata(filename) {

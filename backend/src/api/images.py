@@ -42,7 +42,7 @@ async def list_images(
     end_idx = start_idx + page_size
     page_files = image_files[start_idx:end_idx]
 
-    # Créer les infos d'images
+    # Créer les infos d'images (sans ouvrir les fichiers pour performance)
     images = []
     for file_path in page_files:
         try:
@@ -50,29 +50,17 @@ async def list_images(
             relative_path = file_path.relative_to(IMAGES_DIR)
             thumbnail_path = THUMBNAILS_DIR / relative_path.with_suffix(".webp")
 
-            # Obtenir les dimensions
-            with Image.open(file_path) as img:
-                dimensions = img.size
-
-            # Charger les métadonnées si disponibles
-            metadata = {}
-            try:
-                metadata_file = METADATA_DIR / f"{file_path.stem}.json"
-                if metadata_file.exists():
-                    import json
-                    with open(metadata_file, "r", encoding="utf-8") as f:
-                        metadata = json.load(f)
-            except Exception:
-                pass
+            # NE PAS ouvrir l'image - dimensions chargées à la demande
+            # NE PAS charger les métadonnées - chargées via endpoint dédié
 
             image_info = ImageInfo(
                 filename=file_path.name,
                 path=str(relative_path),
                 thumbnail_path=str(thumbnail_path.relative_to(THUMBNAILS_DIR)) if thumbnail_path.exists() else None,
-                metadata=metadata,
+                metadata=None,  # Pas de metadata dans la liste
                 created_at=datetime.fromtimestamp(file_path.stat().st_mtime),
                 file_size=file_path.stat().st_size,
-                dimensions=dimensions
+                dimensions=None  # Pas de dimensions dans la liste
             )
             images.append(image_info)
 
@@ -132,28 +120,61 @@ async def get_image(
 ):
     """Récupère une image (haute résolution ou miniature)."""
 
-    if thumbnail:
-        file_path = THUMBNAILS_DIR / filename
-        # Convertir l'extension en .webp pour les thumbnails
-        if not file_path.suffix == ".webp":
-            file_path = file_path.with_suffix(".webp")
-    else:
-        file_path = IMAGES_DIR / filename
+    # Chemin de l'image source
+    source_path = IMAGES_DIR / filename
 
-    if not file_path.exists():
+    if not source_path.exists():
         raise HTTPException(status_code=404, detail="Image non trouvée")
 
-    # Vérification de sécurité - s'assurer que le fichier est dans le bon répertoire
+    # Vérification de sécurité
     try:
-        if thumbnail:
-            file_path.resolve().relative_to(THUMBNAILS_DIR.resolve())
-        else:
-            file_path.resolve().relative_to(IMAGES_DIR.resolve())
+        source_path.resolve().relative_to(IMAGES_DIR.resolve())
     except ValueError:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
-    return FileResponse(
-        path=file_path,
-        media_type="image/webp" if thumbnail else None,
-        filename=file_path.name
-    )
+    if thumbnail:
+        # Chemin du thumbnail (même structure que source, en .webp)
+        thumbnail_path = THUMBNAILS_DIR / Path(filename).parent / (Path(filename).stem + ".webp")
+
+        # Générer le thumbnail s'il n'existe pas
+        if not thumbnail_path.exists():
+            try:
+                # Créer le dossier parent si nécessaire
+                thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Générer le thumbnail avec PIL
+                with Image.open(source_path) as img:
+                    # Convertir en RGB si nécessaire (pour RGBA)
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        background = Image.new('RGB', img.size, (255, 255, 255))
+                        if img.mode == 'P':
+                            img = img.convert('RGBA')
+                        background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                        img = background
+
+                    # Resize avec thumbnail (garde le ratio)
+                    img.thumbnail((256, 256), Image.Resampling.LANCZOS)
+
+                    # Sauvegarder en WebP
+                    img.save(thumbnail_path, 'WEBP', quality=85, method=6)
+
+            except Exception as e:
+                # Si échec, fallback sur l'image originale
+                return FileResponse(
+                    path=source_path,
+                    media_type=None,
+                    filename=source_path.name
+                )
+
+        return FileResponse(
+            path=thumbnail_path,
+            media_type="image/webp",
+            filename=thumbnail_path.name
+        )
+    else:
+        # Image full-size
+        return FileResponse(
+            path=source_path,
+            media_type=None,
+            filename=source_path.name
+        )

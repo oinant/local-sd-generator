@@ -48,10 +48,10 @@ class ImageInfo(BaseModel):
     filename: str
     path: str
     thumbnail_path: Optional[str] = None
-    metadata: Dict[str, Any]
+    metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
     file_size: int
-    dimensions: tuple[int, int]
+    dimensions: Optional[tuple[int, int]] = None
 
 
 class GenerationJob(BaseModel):

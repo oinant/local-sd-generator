@@ -1,104 +1,119 @@
 <template>
-  <v-container fluid class="pa-0">
+  <v-container fluid class="pa-0 fill-height">
     <v-row no-gutters class="fill-height">
-      <!-- Panneau latéral avec treeview -->
+      <!-- Panneau latéral avec liste des sessions -->
       <v-col cols="3" class="border-r">
-        <v-card flat height="100vh" class="overflow-auto">
-          <v-card-title>
-            <v-icon left>mdi-folder-outline</v-icon>
-            Structure des fichiers
+        <v-card flat height="100vh" class="d-flex flex-column">
+          <v-card-title class="pb-2">
+            <v-icon class="mr-2">mdi-folder-multiple</v-icon>
+            Sessions
           </v-card-title>
-          <v-card-text class="pa-2">
-            <v-progress-linear v-if="loading" indeterminate class="mb-2" />
-            <v-treeview
-              :items="[fileTree]"
-              v-model:opened="openNodes"
-              item-key="id"
-              item-title="name"
-              item-children="children"
-              density="compact"
-              :load-children="loadTreeChildren"
-            >
-              <template v-slot:prepend="{ item }">
-                <v-icon v-if="item.type === 'folder'">
-                  {{ openNodes.includes(item.id) ? 'mdi-folder-open' : 'mdi-folder' }}
-                </v-icon>
-                <v-icon v-else-if="item.type === 'root'">
-                  mdi-folder-multiple
-                </v-icon>
-              </template>
-              <template v-slot:label="{ item }">
-                <span
-                  @click.stop="onLabelClick(item)"
-                  style="cursor: pointer"
-                >
-                  {{ item.name }}
-                </span>
-                <v-chip
-                  v-if="item.imageCount"
-                  x-small
-                  class="ml-2"
-                  color="primary"
-                >
-                  {{ item.imageCount }}
-                </v-chip>
-                <v-chip
-                  v-if="item.sessionCount"
-                  x-small
-                  class="ml-2"
-                  color="info"
-                >
-                  {{ item.sessionCount }} sessions
-                </v-chip>
-              </template>
-            </v-treeview>
+
+          <v-divider />
+
+          <v-card-text class="flex-grow-1 overflow-auto pa-0">
+            <v-progress-linear v-if="loadingSessions" indeterminate />
+
+            <v-list density="compact" class="pa-0">
+              <!-- Liste des sessions -->
+              <v-list-item
+                v-for="session in sessions"
+                :key="session.name"
+                :active="selectedSession === session.name"
+                @click="selectSession(session.name)"
+                ref="sessionItems"
+                :data-session-name="session.name"
+                class="session-item"
+              >
+                <template v-slot:prepend>
+                  <v-icon>mdi-folder</v-icon>
+                </template>
+                <v-list-item-title class="text-caption">
+                  {{ session.displayName }}
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  {{ formatDate(session.date) }}
+                </v-list-item-subtitle>
+                <template v-slot:append>
+                  <v-progress-circular v-if="session.countLoading" indeterminate size="20" width="2" />
+                  <v-chip v-else-if="session.count !== null" size="small" color="info">{{ session.count }}</v-chip>
+                  <v-chip v-else size="small" color="grey" variant="outlined">?</v-chip>
+                </template>
+              </v-list-item>
+            </v-list>
           </v-card-text>
         </v-card>
       </v-col>
 
       <!-- Zone principale avec galerie -->
       <v-col cols="9">
-        <v-card flat height="100vh" class="overflow-auto">
-          <v-card-title>
-            <v-icon left>mdi-image-multiple</v-icon>
-            {{ selectedPath || 'Toutes les images' }}
+        <v-card flat height="100vh" class="d-flex flex-column">
+          <v-card-title class="pb-2">
+            <v-icon class="mr-2">mdi-image-multiple</v-icon>
+            {{ selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session' }}
             <v-spacer />
-            <v-chip color="info" outlined>
-              {{ filteredImages.length }} image{{ filteredImages.length > 1 ? 's' : '' }}
+            <v-chip v-if="selectedSession" color="primary" variant="outlined">
+              {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
             </v-chip>
           </v-card-title>
 
-          <v-card-text>
-            <!-- Zone de galerie (placeholder pour l'instant) -->
-            <div v-if="filteredImages.length === 0" class="text-center py-8">
-              <v-icon size="64" color="grey lighten-2">mdi-image-off-outline</v-icon>
-              <p class="text-h6 grey--text mt-4">
-                {{ selectedPath ? 'Aucune image dans ce dossier' : 'Aucune image générée' }}
+          <v-divider />
+
+          <v-card-text class="flex-grow-1 overflow-auto">
+            <!-- Message si aucune session sélectionnée -->
+            <div v-if="!selectedSession && !loading" class="text-center py-16">
+              <v-icon size="64" color="grey-lighten-2">mdi-folder-outline</v-icon>
+              <p class="text-h6 text-grey mt-4">
+                Sélectionnez une session dans la liste de gauche
               </p>
             </div>
 
-            <v-container v-else fluid>
+            <!-- Message si aucune image dans la session -->
+            <div v-else-if="selectedSession && allImages.length === 0 && !loading" class="text-center py-16">
+              <v-icon size="64" color="grey-lighten-2">mdi-image-off-outline</v-icon>
+              <p class="text-h6 text-grey mt-4">
+                Aucune image dans cette session
+              </p>
+            </div>
+
+            <!-- Grille d'images -->
+            <v-container v-else-if="selectedSession && allImages.length > 0" fluid>
               <v-row>
                 <v-col
                   v-for="image in filteredImages"
                   :key="image.id"
-                  cols="12" sm="6" md="4" lg="3"
+                  cols="12" sm="6" md="4" lg="3" xl="2"
                 >
-                  <v-card outlined hover class="image-card">
-                    <v-img
-                      :src="image.thumbnail || image.url"
-                      :aspect-ratio="1"
-                      cover
-                      @click="openImageDialog(image)"
-                      class="cursor-pointer"
+                  <v-card class="image-card" elevation="2">
+                    <div
+                      ref="imageRefs"
+                      :data-image-path="image.path"
+                      class="lazy-image-container"
                     >
-                      <template v-slot:placeholder>
-                        <v-row class="fill-height ma-0" align="center" justify="center">
-                          <v-progress-circular indeterminate color="grey lighten-5" />
-                        </v-row>
-                      </template>
-                    </v-img>
-                    <v-card-subtitle class="text-caption">
+                      <v-img
+                        v-if="image.thumbnail"
+                        :src="image.thumbnail"
+                        :aspect-ratio="1"
+                        cover
+                        @click="openImageDialog(image)"
+                        class="cursor-pointer"
+                      >
+                        <template v-slot:placeholder>
+                          <div class="d-flex align-center justify-center fill-height">
+                            <v-progress-circular indeterminate color="grey-lighten-2" />
+                          </div>
+                        </template>
+                      </v-img>
+                      <div
+                        v-else
+                        class="d-flex align-center justify-center fill-height bg-grey-lighten-3"
+                        style="aspect-ratio: 1"
+                      >
+                        <v-progress-circular v-if="image.thumbnailLoading" indeterminate color="primary" />
+                        <v-icon v-else size="48" color="grey-lighten-1">mdi-image-outline</v-icon>
+                      </div>
+                    </div>
+                    <v-card-subtitle class="text-caption pa-2">
                       {{ image.name }}
                     </v-card-subtitle>
                   </v-card>
@@ -110,22 +125,103 @@
       </v-col>
     </v-row>
 
-    <!-- Dialog pour agrandir l'image -->
-    <v-dialog v-model="imageDialog" max-width="90vw">
+    <!-- Dialog pour l'image avec métadonnées -->
+    <v-dialog v-model="imageDialog" max-width="95vw">
       <v-card v-if="selectedImage">
-        <v-card-title class="d-flex justify-space-between">
-          {{ selectedImage.name }}
-          <v-btn icon @click="imageDialog = false">
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span>{{ selectedImage.name }}</span>
+          <v-btn icon variant="text" @click="imageDialog = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>
-        <v-card-text class="pa-0">
-          <v-img :src="selectedImage.url" contain max-height="70vh" />
+
+        <v-divider />
+
+        <v-card-text class="pa-4">
+          <v-row>
+            <!-- Colonne image avec navigation -->
+            <v-col cols="12" md="8" class="position-relative">
+              <!-- Bouton Précédent -->
+              <v-btn
+                v-if="hasPreviousImage"
+                icon
+                variant="elevated"
+                color="primary"
+                class="nav-button nav-button-left"
+                @click="showPreviousImage"
+              >
+                <v-icon>mdi-chevron-left</v-icon>
+              </v-btn>
+
+              <!-- Image -->
+              <v-img :src="selectedImage.url" contain max-height="75vh" />
+
+              <!-- Bouton Suivant -->
+              <v-btn
+                v-if="hasNextImage"
+                icon
+                variant="elevated"
+                color="primary"
+                class="nav-button nav-button-right"
+                @click="showNextImage"
+              >
+                <v-icon>mdi-chevron-right</v-icon>
+              </v-btn>
+
+              <div class="mt-2 d-flex gap-2">
+                <v-chip size="small" color="info">{{ selectedImage.session }}</v-chip>
+                <v-chip size="small" color="success">{{ formatDate(selectedImage.created) }}</v-chip>
+                <v-chip size="small" color="grey" variant="outlined">
+                  {{ currentImageIndex + 1 }} / {{ allImages.length }}
+                </v-chip>
+              </div>
+            </v-col>
+
+            <!-- Colonne métadonnées -->
+            <v-col cols="12" md="4">
+              <div class="text-h6 mb-3">
+                <v-icon class="mr-2">mdi-information-outline</v-icon>
+                Métadonnées
+              </div>
+
+              <div v-if="loadingMetadata" class="text-center py-4">
+                <v-progress-circular indeterminate />
+              </div>
+
+              <div v-else-if="imageMetadata" style="max-height: 75vh; overflow-y: auto;">
+                <!-- Prompt -->
+                <div class="mb-3">
+                  <div class="text-subtitle-2 mb-1">Prompt</div>
+                  <div class="text-caption pa-2 bg-grey-lighten-4 rounded" style="max-height: 150px; overflow-y: auto;">
+                    {{ imageMetadata.prompt }}
+                  </div>
+                </div>
+
+                <!-- Negative Prompt -->
+                <div class="mb-3" v-if="imageMetadata.negative_prompt">
+                  <div class="text-subtitle-2 mb-1">Negative Prompt</div>
+                  <div class="text-caption pa-2 bg-grey-lighten-4 rounded" style="max-height: 100px; overflow-y: auto;">
+                    {{ imageMetadata.negative_prompt }}
+                  </div>
+                </div>
+
+                <!-- Paramètres -->
+                <div class="text-subtitle-2 mb-2">Paramètres</div>
+                <div class="d-flex flex-wrap gap-1">
+                  <v-chip size="small" v-for="(value, key) in metadataFields" :key="key">
+                    <strong>{{ key }}:</strong>&nbsp;{{ value }}
+                  </v-chip>
+                </div>
+              </div>
+
+              <div v-else class="text-center py-4">
+                <v-alert type="info" variant="outlined" density="compact">
+                  Chargement des métadonnées...
+                </v-alert>
+              </div>
+            </v-col>
+          </v-row>
         </v-card-text>
-        <v-card-actions>
-          <v-chip small color="info">{{ selectedImage.session }}</v-chip>
-          <v-chip small color="success">{{ formatDate(selectedImage.created) }}</v-chip>
-        </v-card-actions>
       </v-card>
     </v-dialog>
   </v-container>
@@ -139,100 +235,195 @@ export default {
 
   data() {
     return {
-      openNodes: ['root'],
-      selectedPath: null,
-      imageDialog: false,
-      selectedImage: null,
       loading: false,
-      fileTree: {},
-      allImages: []
+      loadingSessions: false,
+      sessions: [],  // Liste des sessions depuis l'API
+      allImages: [],
+      selectedSession: null,
+      imageDialog: false,
+      metadataDialog: false,
+      selectedImage: null,
+      imageMetadata: null,
+      loadingMetadata: false,
+      intersectionObserver: null,
+      sessionObserver: null
+    }
+  },
+
+  watch: {
+    // Observer les changements dans filteredImages pour attacher l'observer
+    filteredImages: {
+      handler() {
+        // Attendre le prochain tick pour que le DOM soit mis à jour
+        this.$nextTick(() => {
+          this.attachObservers()
+        })
+      }
+    },
+
+    // Gérer les raccourcis clavier quand la modal est ouverte
+    imageDialog(isOpen) {
+      if (isOpen) {
+        window.addEventListener('keydown', this.handleKeyNavigation)
+      } else {
+        window.removeEventListener('keydown', this.handleKeyNavigation)
+      }
     }
   },
 
   computed: {
+    // Images filtrées (toutes si pas de session sélectionnée)
     filteredImages() {
-      if (!this.selectedPath) {
-        return this.allImages
-      }
-      return this.allImages.filter(image => image.path === this.selectedPath)
+      return this.allImages
+    },
+
+    // Index de l'image courante dans la liste
+    currentImageIndex() {
+      if (!this.selectedImage) return -1
+      return this.allImages.findIndex(img => img.id === this.selectedImage.id)
+    },
+
+    // Y a-t-il une image précédente ?
+    hasPreviousImage() {
+      return this.currentImageIndex > 0
+    },
+
+    // Y a-t-il une image suivante ?
+    hasNextImage() {
+      return this.currentImageIndex >= 0 && this.currentImageIndex < this.allImages.length - 1
+    },
+
+    // Extraire les champs de métadonnées à afficher en chips
+    metadataFields() {
+      if (!this.imageMetadata) return {}
+
+      const fields = {}
+      const keys = ['seed', 'steps', 'sampler', 'scheduler', 'cfg_scale', 'model', 'width', 'height']
+
+      keys.forEach(key => {
+        if (this.imageMetadata[key] !== undefined && this.imageMetadata[key] !== null) {
+          fields[key] = this.imageMetadata[key]
+        }
+      })
+
+      return fields
     }
   },
 
   async mounted() {
-    // Charger directement toutes les images avec pagination
-    await this.loadImages()
+    await this.loadSessions()
+    this.setupLazyLoading()
+    this.setupSessionObserver()
+  },
+
+  beforeUnmount() {
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect()
+    }
+    if (this.sessionObserver) {
+      this.sessionObserver.disconnect()
+    }
+    // Nettoyer l'event listener clavier
+    window.removeEventListener('keydown', this.handleKeyNavigation)
   },
 
   methods: {
-    async loadFileTree() {
+    async loadSessions() {
       try {
-        this.loading = true
-        this.fileTree = await ApiService.getFileTree()
+        this.loadingSessions = true
+        const response = await ApiService.getSessions()
 
-        // Ouvre automatiquement la racine
-        this.openNodes = ['root']
+        // Transformer les sessions pour l'affichage
+        this.sessions = response.sessions.map(session => ({
+          name: session.name,
+          displayName: this.formatSessionName(session.name),
+          date: new Date(session.created_at),
+          count: null,  // Sera chargé à la demande
+          countLoading: false
+        }))
+
+        // Les counts seront chargés par le sessionObserver au scroll
       } catch (error) {
-        console.error('Erreur lors du chargement du treeview:', error)
+        console.error('Erreur lors du chargement des sessions:', error)
         this.$store.dispatch('showSnackbar', {
-          message: 'Erreur lors du chargement de la structure de fichiers',
+          message: 'Erreur lors du chargement des sessions',
           color: 'error'
         })
       } finally {
-        this.loading = false
+        this.loadingSessions = false
       }
     },
 
-    async loadTreeChildren(item) {
-      // Ne charge que si le nœud a des enfants potentiels
-      if (!item.hasChildren) {
-        return
+    setupSessionObserver() {
+      // Intersection Observer pour lazy loading des session counts
+      const options = {
+        root: null, // viewport
+        rootMargin: '50px', // Charger 50px avant que la session soit visible
+        threshold: 0.1 // Déclencher dès que 10% de l'élément est visible
       }
 
-      // Si déjà chargé, on ignore
-      if (item.children && item.children.length > 0) {
-        return
-      }
+      this.sessionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const sessionName = entry.target.dataset.sessionName
+            const session = this.sessions.find(s => s.name === sessionName)
 
-      try {
-        console.log('Fetching children from API for path:', item.path)
-        // Charge les enfants du dossier
-        const children = await ApiService.getFileTree(item.path)
-        console.log('API response:', children)
-
-        // Met à jour le nœud avec ses enfants
-        // L'API retourne soit un tableau directement, soit un objet avec une propriété children
-        const childrenArray = Array.isArray(children) ? children : (children.children || [])
-        console.log('Setting children array:', childrenArray)
-
-        // Important: retourner les enfants pour que Vuetify les gère
-        return childrenArray
-
-      } catch (error) {
-        console.error('Erreur lors du chargement des sous-dossiers:', error)
-        this.$store.dispatch('showSnackbar', {
-          message: `Erreur lors du chargement du dossier ${item.name}`,
-          color: 'error'
+            if (session && session.count === null && !session.countLoading) {
+              this.loadSessionCount(session)
+            }
+          }
         })
-        return []
+      }, options)
+
+      // Attacher l'observer à tous les éléments de session
+      this.$nextTick(() => {
+        const sessionItems = this.$refs.sessionItems
+        if (!sessionItems) return
+
+        const items = Array.isArray(sessionItems) ? sessionItems : [sessionItems]
+        items.forEach(item => {
+          // Vuetify v-list-item a un $el
+          const el = item.$el || item
+          if (el && el instanceof Element) {
+            this.sessionObserver.observe(el)
+          }
+        })
+      })
+    },
+
+    async loadSessionCount(session) {
+      if (session.countLoading || session.count !== null) return
+
+      session.countLoading = true
+      try {
+        const response = await ApiService.getSessionCount(session.name)
+        session.count = response.count
+      } catch (error) {
+        console.error(`Erreur chargement count ${session.name}:`, error)
+        session.count = 0
+      } finally {
+        session.countLoading = false
       }
     },
 
-    async loadImages(session = null) {
+    async loadSessionImages(sessionName) {
       try {
         this.loading = true
-        const response = await ApiService.getImages(1, 100, session)
-        this.allImages = response.images.map(image => ({
+        const response = await ApiService.getSessionImages(sessionName)
+
+        // Préparer les images pour affichage
+        this.allImages = response.images.map((image) => ({
           id: image.path,
           name: image.filename,
           path: image.path,
-          session: image.path.split('/')[0], // Extract session from path
-          url: ApiService.getImageUrl(image.path, false),
-          thumbnail: image.thumbnail_path ? ApiService.getImageUrl(image.thumbnail_path, true) : ApiService.getImageUrl(image.path, false),
-          created: new Date(image.created_at),
-          metadata: image.metadata
+          session: sessionName,
+          url: null, // Chargé à la demande lors du clic dans la modal
+          thumbnail: null, // Sera chargé via lazy loading
+          thumbnailLoading: false,
+          created: new Date(image.created_at)
         }))
       } catch (error) {
-        console.error('Erreur lors du chargement des images:', error)
+        console.error(`Erreur chargement images session ${sessionName}:`, error)
         this.$store.dispatch('showSnackbar', {
           message: 'Erreur lors du chargement des images',
           color: 'error'
@@ -242,44 +433,146 @@ export default {
       }
     },
 
-    async onLabelClick(item) {
-      console.log('Label clicked:', item.name, 'path:', item.path)
-
-      // Charge les images pour ce dossier
-      if (item.path) {
-        console.log('Loading images for path:', item.path)
-        this.selectedPath = item.path
-        await this.loadImages(item.path)
+    setupLazyLoading() {
+      // Intersection Observer pour lazy loading des thumbnails
+      const options = {
+        root: null, // viewport
+        rootMargin: '100px', // Charger 100px avant que l'image soit visible
+        threshold: 0.01 // Déclencher dès que 1% de l'image est visible
       }
+
+      this.intersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const imgElement = entry.target
+            const imagePath = imgElement.dataset.imagePath
+
+            if (imagePath) {
+              this.loadThumbnail(imagePath)
+              // Arrêter d'observer cette image une fois chargée
+              this.intersectionObserver.unobserve(imgElement)
+            }
+          }
+        })
+      }, options)
     },
 
-    onNodeExpand(item) {
-      console.log('Node expanded:', item.name, 'hasChildren:', item.hasChildren)
-      // L'expansion est gérée automatiquement par load-children
-    },
+    attachObservers() {
+      // Attacher l'observer à tous les éléments imageRefs
+      if (!this.intersectionObserver || !this.$refs.imageRefs) {
+        return
+      }
 
-    findNodeById(id, nodes = [this.fileTree]) {
-      for (const node of nodes) {
-        if (node.id === id) return node
-        if (node.children) {
-          const found = this.findNodeById(id, node.children)
-          if (found) return found
+      const refs = Array.isArray(this.$refs.imageRefs)
+        ? this.$refs.imageRefs
+        : [this.$refs.imageRefs]
+
+      refs.forEach(el => {
+        if (el) {
+          this.intersectionObserver.observe(el)
         }
-      }
-      return null
+      })
     },
 
-    openImageDialog(image) {
+    async loadThumbnail(imagePath) {
+      const image = this.allImages.find(img => img.path === imagePath)
+      if (!image || image.thumbnail || image.thumbnailLoading) {
+        return // Déjà chargé ou en cours de chargement
+      }
+
+      image.thumbnailLoading = true
+      try {
+        image.thumbnail = await ApiService.getImageAsBlob(imagePath, true)
+      } catch (error) {
+        console.error(`Erreur chargement thumbnail ${imagePath}:`, error)
+      } finally {
+        image.thumbnailLoading = false
+      }
+    },
+
+    async selectSession(sessionName) {
+      this.selectedSession = sessionName
+      this.allImages = []  // Clear images
+
+      if (sessionName) {
+        // Charger les images de cette session
+        await this.loadSessionImages(sessionName)
+      }
+    },
+
+    async openImageDialog(image) {
       this.selectedImage = image
       this.imageDialog = true
+      this.imageMetadata = null // Reset metadata
+      this.loadingMetadata = true
+
+      // Charger l'image full size si pas déjà chargée
+      if (!image.url) {
+        try {
+          image.url = await ApiService.getImageAsBlob(image.path, false)
+        } catch (error) {
+          console.error('Erreur chargement image:', error)
+        }
+      }
+
+      // Charger les métadonnées
+      try {
+        this.imageMetadata = await ApiService.getImageMetadata(image.path)
+      } catch (error) {
+        console.error('Erreur lors du chargement des métadonnées:', error)
+        this.$store.dispatch('showSnackbar', {
+          message: 'Erreur lors du chargement des métadonnées',
+          color: 'error'
+        })
+      } finally {
+        this.loadingMetadata = false
+      }
+    },
+
+    formatSessionName(sessionName) {
+      // Essayer de rendre le nom de session plus lisible
+      // Format: 2025-10-14_163854_hassaku_actualportrait.prompt
+      // On va extraire juste la partie après la date
+      const parts = sessionName.split('_')
+      if (parts.length >= 3) {
+        return parts.slice(2).join('_').replace('.prompt', '')
+      }
+      return sessionName
     },
 
     formatDate(date) {
       return new Intl.DateTimeFormat('fr-FR', {
         day: 'numeric',
         month: 'short',
-        year: 'numeric'
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       }).format(date)
+    },
+
+    showPreviousImage() {
+      if (this.hasPreviousImage) {
+        const prevImage = this.allImages[this.currentImageIndex - 1]
+        this.openImageDialog(prevImage)
+      }
+    },
+
+    showNextImage() {
+      if (this.hasNextImage) {
+        const nextImage = this.allImages[this.currentImageIndex + 1]
+        this.openImageDialog(nextImage)
+      }
+    },
+
+    handleKeyNavigation(event) {
+      // Navigation avec les flèches du clavier
+      if (event.key === 'ArrowLeft') {
+        this.showPreviousImage()
+      } else if (event.key === 'ArrowRight') {
+        this.showNextImage()
+      } else if (event.key === 'Escape') {
+        this.imageDialog = false
+      }
     }
   }
 }
@@ -287,15 +580,57 @@ export default {
 
 <style scoped>
 .border-r {
-  border-right: 1px solid rgba(0,0,0,0.12);
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .cursor-pointer {
   cursor: pointer;
 }
 
+.image-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
 .image-card:hover {
-  transform: translateY(-2px);
-  transition: transform 0.2s ease-in-out;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+.session-item {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.session-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.lazy-image-container {
+  width: 100%;
+  min-height: 200px;
+}
+
+.position-relative {
+  position: relative;
+}
+
+.nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.nav-button-left {
+  left: 10px;
+}
+
+.nav-button-right {
+  right: 10px;
+}
+
+.nav-button:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4) !important;
 }
 </style>
