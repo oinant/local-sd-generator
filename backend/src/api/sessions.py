@@ -8,12 +8,30 @@ Approche progressive pour gérer 12k+ images efficacement.
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from auth import AuthService
 from config import IMAGES_DIR
+
+
+def parse_session_datetime(session_name: str) -> Optional[datetime]:
+    """
+    Parse datetime from session folder name.
+
+    Format: 2025-10-14_173320_name.prompt
+    Returns datetime or None if unable to parse.
+    """
+    match = re.match(r'^(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})', session_name)
+    if match:
+        year, month, day, hour, minute, second = map(int, match.groups())
+        try:
+            return datetime(year, month, day, hour, minute, second)
+        except ValueError:
+            pass
+    return None
 
 
 class SessionInfo(BaseModel):
@@ -47,14 +65,20 @@ async def list_sessions(
     # Lister uniquement les dossiers de premier niveau
     for item in IMAGES_DIR.iterdir():
         if item.is_dir():
+            # Parse date from folder name (format: 2025-10-14_173320_name.prompt)
+            # Ignore folder if parsing fails (not a valid session)
+            created_at = parse_session_datetime(item.name)
+            if not created_at:
+                continue  # Skip folders that don't match session format
+
             sessions.append(SessionInfo(
                 name=item.name,
                 path=str(item.relative_to(IMAGES_DIR)),
-                created_at=datetime.fromtimestamp(item.stat().st_mtime),
+                created_at=created_at,
                 image_count=None  # Pas de comptage ici
             ))
 
-    # Trier par date décroissante
+    # Trier par date décroissante (basé sur le nom de dossier)
     sessions.sort(key=lambda x: x.created_at, reverse=True)
 
     return SessionListResponse(
