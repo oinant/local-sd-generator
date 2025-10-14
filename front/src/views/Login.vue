@@ -18,7 +18,7 @@
               <v-text-field
                 v-model="token"
                 label="Token d'authentification (GUID)"
-                placeholder="550e8400-e29b-41d4-a716-446655440000"
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                 prepend-inner-icon="mdi-key"
                 variant="outlined"
                 :rules="[rules.required, rules.guid]"
