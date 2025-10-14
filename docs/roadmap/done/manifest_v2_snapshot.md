@@ -1,9 +1,10 @@
 # Manifest V2 - Snapshot System
 
-**Status:** wip
+**Status:** done
 **Priority:** 2
 **Component:** cli
 **Created:** 2025-10-13
+**Completed:** 2025-10-14
 
 ## Description
 
@@ -248,8 +249,11 @@ class ManifestWriter:
 - [x] Ajouter tests unitaires pour ManifestWriter (11 tests)
 - [x] Ajouter tests unitaires pour get_options/get_model_checkpoint (3 tests)
 - [x] Documenter la nouvelle structure dans `docs/cli/technical/manifest_v2_format.md`
-- [ ] Tester avec une génération réelle
-- [ ] Valider le format JSON généré
+- [x] Tester avec une génération réelle
+- [x] Valider le format JSON généré
+- [x] Fix: Filtrer variations pour n'inclure que celles avec placeholder dans template
+- [x] Fix: Randomisation des sélecteurs avec SystemRandom (indépendant de seed)
+- [x] Fix: Retirer seed de la sélection des variations (seed n'affecte que SD)
 
 ## Success Criteria
 
