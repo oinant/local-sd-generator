@@ -474,7 +474,82 @@ docs/cli/technical/
 **Status Phase 4** : ✅ **TERMINÉE**
 
 **Prochaines étapes disponibles** :
-- [ ] Phase 3 : Créer section `reference/` (2-3h) - Syntaxe rapide et commandes CLI
+- [x] Phase 3 : Créer section `reference/` (2-3h) - **TERMINÉE**
+
+### Session 2025-10-14 (Phase 3 - Créer Reference)
+
+**Objectif** : Créer documentation de référence rapide pour quick lookup
+
+**Actions effectuées (Phase 3 - Documentation de référence)** :
+- ✅ Créé `docs/cli/reference/README.md` - Navigation rapide et index
+  - Vue d'ensemble des 4 docs de référence
+  - Navigation par besoin (syntaxe, commande, champ, valeur)
+  - Principes de la section (concis, scannable, complet)
+- ✅ Créé `docs/cli/reference/template-syntax.md` - Référence syntaxe complète
+  - Structure minimale et champs disponibles
+  - Placeholders et sélecteurs
+  - Imports (simple, multiple, inline, avec config)
+  - Inheritance (parent/enfant, override)
+  - Generation config (modes, seed modes)
+  - Parameters (SD, Hires Fix, ADetailer)
+  - Output config
+  - Chunks
+  - Exemples complets
+- ✅ Créé `docs/cli/reference/selectors-reference.md` - Tous les sélecteurs
+  - Tableau récapitulatif complet
+  - 6 sélecteurs détaillés (limite, index, clés, range, random, weight)
+  - Syntaxe correcte vs incorrecte
+  - Exemples d'utilisation
+  - Impact sur performances
+  - Cas d'usage par sélecteur
+- ✅ Créé `docs/cli/reference/cli-commands.md` - Toutes les commandes CLI
+  - Installation et setup
+  - 5 commandes principales (generate, list, validate, init, api)
+  - Options et flags détaillés
+  - Tableaux de référence rapide
+  - Exemples de workflows
+  - Troubleshooting CLI
+  - Variables d'environnement
+  - Codes de sortie
+- ✅ Créé `docs/cli/reference/yaml-schema.md` - Schéma formel complet
+  - 7 types de fichiers (.prompt.yaml, .template.yaml, .yaml, .chunk.yaml)
+  - Schema complet de tous les champs
+  - Règles de validation
+  - Types, valeurs acceptées, défauts
+  - Exemples complets
+- ✅ Mis à jour `docs/cli/README.md` - Ajout section reference
+  - Lien vers documentation de référence
+  - Mise à jour structure (reference/ non plus "à venir")
+
+**Structure reference/ finale** :
+```
+docs/cli/reference/
+├── README.md                # Navigation et index
+├── template-syntax.md       # Syntaxe YAML complète
+├── selectors-reference.md   # Tous les sélecteurs
+├── cli-commands.md          # Toutes les commandes
+└── yaml-schema.md           # Schéma formel
+```
+
+**Statistiques** :
+- **5 fichiers créés** (~2000+ lignes de documentation de référence)
+- **Temps de consultation** : 5-10 min par document
+- **Format** : Tableaux, listes, exemples minimaux
+- **Couverture** : 100% des features V2.0
+
+**Résultat** :
+- ✅ Triangle guide/reference/technical **COMPLET**
+- ✅ Quick lookup pour utilisateurs expérimentés
+- ✅ Syntaxe complète accessible rapidement
+- ✅ Toutes les commandes documentées
+- ✅ Schéma formel pour validation
+
+**Status Phase 3** : ✅ **TERMINÉE**
+
+**Prochaines étapes disponibles** :
+- [ ] Traduction anglaise (créer docs/en/)
+- [ ] VitePress setup (optionnel)
+- [ ] Index général des docs
 
 ---
 

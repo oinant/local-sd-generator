@@ -24,19 +24,18 @@ Guides progressifs pour apprendre le CLI étape par étape.
 
 ---
 
-### 🔄 **Vous cherchez une référence rapide ?** → Reference (à venir)
+### 🔄 **Vous cherchez une référence rapide ?** → Reference
 
 Syntaxe complète et référence condensée.
 
-- Syntaxe des templates
-- Tous les sélecteurs
-- Commandes CLI
-- Schéma YAML complet
-- API reference
+- **[Template Syntax](./reference/template-syntax.md)** - Structure YAML et placeholders
+- **[Selectors Reference](./reference/selectors-reference.md)** - Tous les sélecteurs en un coup d'œil
+- **[CLI Commands](./reference/cli-commands.md)** - Toutes les commandes disponibles
+- **[YAML Schema](./reference/yaml-schema.md)** - Schéma formel complet
 
-**Pour recherche rapide**
+**Pour recherche rapide (5-10 min par doc)**
 
-➡️ **Reference (en développement)**
+➡️ **[Documentation de référence →](./reference/README.md)**
 
 ---
 
@@ -72,7 +71,8 @@ docs/cli/
 │   ├── examples.md            # Cas d'usage (15 min)
 │   └── troubleshooting.md     # FAQ & dépannage (10 min)
 │
-├── reference/                  # 🔄 CHERCHER (à venir)
+├── reference/                  # 🔄 CHERCHER
+│   ├── README.md              # Navigation référence
 │   ├── template-syntax.md     # Référence syntaxe
 │   ├── selectors-reference.md # Tous les sélecteurs
 │   ├── cli-commands.md        # Commandes CLI
