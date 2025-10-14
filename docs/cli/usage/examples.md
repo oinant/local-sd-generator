@@ -610,8 +610,10 @@ for outfit in Outfits:      # Weight 1 (outer)
 
 ## Learn More
 
-- **[Getting Started](getting-started.md)** - First generation tutorial
-- **[YAML Templating Guide](yaml-templating-guide.md)** - Complete V2.0 guide with examples
+- **[Getting Started](../guide/getting-started.md)** - First generation tutorial
+- **[User Guide - Complete Learning Path](../guide/README.md)** - Progressive learning guide
+- **[Templates Basics](../guide/3-templates-basics.md)** - Multi-variations and organization
+- **[Templates Advanced](../guide/4-templates-advanced.md)** - Selectors, inheritance, and advanced features
 - **[Variation Files](variation-files.md)** - Complete variation file format reference
 
 ---

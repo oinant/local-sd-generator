@@ -35,7 +35,9 @@ The active roadmap is now organized as:
 
 - **YAML Templating:** `/docs/cli/technical/yaml-templating-system.md`
 - **Architecture:** `/docs/cli/technical/architecture.md`
-- **User Guide:** `/docs/cli/usage/yaml-templating-guide.md`
+- **User Guide (New):** `/docs/cli/guide/README.md` - Complete progressive learning path
+- **Getting Started:** `/docs/cli/guide/getting-started.md`
+- **Templates Advanced:** `/docs/cli/guide/4-templates-advanced.md`
 
 ---
 

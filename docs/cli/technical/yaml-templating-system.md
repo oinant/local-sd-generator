@@ -611,8 +611,10 @@ See `examples/prompts/scheduler_example.prompt.yaml` for full example.
 
 ## Related Documentation
 
-- [Getting Started Guide](../usage/getting-started.md)
-- [YAML Templating User Guide](../usage/yaml-templating-guide.md)
+- [Getting Started Guide](../guide/getting-started.md)
+- [User Guide - Complete Learning Path](../guide/README.md)
+- [Templates Basics](../guide/3-templates-basics.md)
+- [Templates Advanced](../guide/4-templates-advanced.md)
 - [Roadmap](../../roadmap/README.md)
 - [Architecture Overview](./architecture.md)
 

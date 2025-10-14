@@ -148,7 +148,7 @@ imports:
 
 ### Chunk Templates
 
-Reusable components with inheritance - see [YAML Templating Guide](./yaml-templating-guide.md).
+Reusable components with inheritance - see [Templates Advanced Guide](../guide/4-templates-advanced.md).
 
 ---
 
@@ -265,7 +265,9 @@ max_images=50  # Generate 50 random combinations
 
 ## Learn More
 
-- **[JSON Config System](json-config-system.md)** - Use JSON instead of Python scripts
+- **[Complete User Guide](../guide/README.md)** - Progressive learning path (2h complete course)
+- **[Templates Basics](../guide/3-templates-basics.md)** - Multi-variations and organization
+- **[Templates Advanced](../guide/4-templates-advanced.md)** - Selectors, inheritance, and advanced features
 - **[Variation Files](variation-files.md)** - Advanced placeholder syntax
 - **[Examples](examples.md)** - Common use cases
 
