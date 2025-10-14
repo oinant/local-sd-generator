@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 
-from app.auth import AuthService
-from app.models import UserInfo
+from auth import AuthService
+from models import UserInfo
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 
 async def _warm_file_tree_cache():
     """Précharge le file tree en arrière-plan pour accélérer l'affichage."""
-    from app.api.files import _get_directory_children
-    from app.config import IMAGE_FOLDERS
+    from api.files import _get_directory_children
+    from config import IMAGE_FOLDERS
 
     try:
         # Précharge l'arbre de chaque dossier racine

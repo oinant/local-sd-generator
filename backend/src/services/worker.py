@@ -4,7 +4,7 @@ from celery import Celery
 from PIL import Image
 import logging
 
-from app.config import REDIS_URL, IMAGES_DIR, THUMBNAILS_DIR, THUMBNAIL_SIZE, THUMBNAIL_QUALITY
+from config import REDIS_URL, IMAGES_DIR, THUMBNAILS_DIR, THUMBNAIL_SIZE, THUMBNAIL_QUALITY
 
 # Configuration du logger
 logging.basicConfig(level=logging.INFO)

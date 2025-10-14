@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from typing import Optional
 
-from app.auth import AuthService
-from app.models import GenerationRequest, GenerationResponse, GenerationJob
-from app.services.generation_service import GenerationService
+from auth import AuthService
+from models import GenerationRequest, GenerationResponse, GenerationJob
+from services.generation_service import GenerationService
 
 router = APIRouter(prefix="/api/generation", tags=["generation"])
 

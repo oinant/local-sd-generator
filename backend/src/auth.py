@@ -2,7 +2,7 @@ from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 
-from app.config import VALID_GUIDS, READ_ONLY_GUIDS
+from config import VALID_GUIDS, READ_ONLY_GUIDS
 
 security = HTTPBearer()
 

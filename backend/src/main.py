@@ -5,9 +5,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import uvicorn
 
-from app.config import API_HOST, API_PORT
-from app.api import images, generation, auth, files
-from app.__about__ import __version__
+from config import API_HOST, API_PORT
+from api import images, auth, files  # generation temporairement désactivé (imports CLI manquants)
+from __about__ import __version__
 
 
 @asynccontextmanager
@@ -45,7 +45,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Inclure les routeurs API
 app.include_router(auth.router)
 app.include_router(images.router)
-app.include_router(generation.router)
+# app.include_router(generation.router)  # TODO: Via queue background jobs (Celery) pour sécurité
 app.include_router(files.router)
 
 
@@ -128,7 +128,7 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "app.main:app",
+        "main:app",
         host=API_HOST,
         port=API_PORT,
         reload=True

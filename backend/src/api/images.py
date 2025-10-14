@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from PIL import Image
 
-from app.auth import AuthService
-from app.config import IMAGES_DIR, THUMBNAILS_DIR, METADATA_DIR
-from app.models import ImageInfo, ImageListResponse
+from auth import AuthService
+from config import IMAGES_DIR, THUMBNAILS_DIR, METADATA_DIR
+from models import ImageInfo, ImageListResponse
+from services.image_metadata import extract_png_metadata
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 
@@ -87,6 +88,42 @@ async def list_images(
     )
 
 
+# IMPORTANT: Route spécifique /metadata AVANT la route générique /{filename:path}
+@router.get("/{filename:path}/metadata")
+async def get_image_metadata(
+    filename: str,
+    user_guid: str = Depends(AuthService.validate_guid)
+):
+    """
+    Récupère les métadonnées d'une image depuis le PNG.
+
+    Extrait directement les metadata du chunk 'parameters' du PNG
+    (format standard Stable Diffusion WebUI).
+    """
+    # Construire le chemin vers l'image
+    image_path = IMAGES_DIR / filename
+
+    if not image_path.exists():
+        raise HTTPException(status_code=404, detail="Image non trouvée")
+
+    # Vérification de sécurité - s'assurer que le fichier est dans IMAGES_DIR
+    try:
+        image_path.resolve().relative_to(IMAGES_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    # Extraire metadata depuis PNG
+    try:
+        metadata = extract_png_metadata(image_path)
+        return metadata
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Image non trouvée")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Metadata invalide ou manquante: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la lecture des métadonnées: {str(e)}")
+
+
 @router.get("/{filename:path}")
 async def get_image(
     filename: str,
@@ -120,26 +157,3 @@ async def get_image(
         media_type="image/webp" if thumbnail else None,
         filename=file_path.name
     )
-
-
-@router.get("/{filename:path}/metadata")
-async def get_image_metadata(
-    filename: str,
-    user_guid: str = Depends(AuthService.validate_guid)
-):
-    """Récupère les métadonnées d'une image."""
-
-    # Extraire le nom de base sans extension
-    base_name = Path(filename).stem
-    metadata_file = METADATA_DIR / f"{base_name}.json"
-
-    if not metadata_file.exists():
-        raise HTTPException(status_code=404, detail="Métadonnées non trouvées")
-
-    try:
-        import json
-        with open(metadata_file, "r", encoding="utf-8") as f:
-            metadata = json.load(f)
-        return metadata
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la lecture des métadonnées: {str(e)}")

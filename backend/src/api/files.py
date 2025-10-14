@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Union
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 
-from app.auth import AuthService
-from app.config import IMAGE_FOLDERS
+from auth import AuthService
+from config import IMAGE_FOLDERS
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
