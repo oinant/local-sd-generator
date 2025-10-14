@@ -423,7 +423,58 @@ docs/cli/guide/
 
 **Prochaines étapes disponibles** :
 - [ ] Phase 3 : Créer section `reference/` (2-3h)
-- [ ] Phase 4 : Organiser `technical/` (1h)
+- [x] Phase 4 : Organiser `technical/` (1h) - **TERMINÉE**
+
+### Session 2025-10-14 (Phase 4 - Organiser Technical)
+
+**Objectif** : Déplacer la spec dans technical/ et créer navigation technique
+
+**Actions effectuées (Phase 4 - Organisation technique)** :
+- ✅ Déplacé `docs/roadmap/template-system-spec.md` → `docs/cli/technical/template-system-spec.md`
+- ✅ Créé `docs/cli/technical/architecture.md` - Vue d'ensemble architecture V2.0
+  - Structure modulaire (models, loaders, validators, resolvers, generators, normalizers, utils)
+  - V2Pipeline orchestrator avec 5 phases (Load → Validate → Resolve → Generate → Normalize)
+  - Patterns architecturaux (Strategy, Pipeline, Dependency Injection)
+  - Integration avec API Stable Diffusion
+  - Modèles de données (TemplateConfig, ResolvedVariation)
+  - Performance metrics et optimisations
+- ✅ Créé `docs/cli/technical/README.md` - Navigation complète section technique
+  - Vue d'ensemble des 3 docs techniques principales
+  - Parcours par rôle (développeur, mainteneur, contributeur, debugger)
+  - Statistiques du projet (tests, coverage, complexité)
+  - Commandes de dev (tests, quality tools, profiling)
+  - Liens externes et ressources
+- ✅ Mis à jour 5 fichiers avec liens vers nouveau chemin de spec :
+  - `/docs/cli/guide/4-templates-advanced.md`
+  - `/docs/cli/guide/examples.md`
+  - `/docs/cli/guide/README.md`
+  - `/docs/cli/README.md` (2 références)
+
+**Structure technique finale** :
+```
+docs/cli/technical/
+├── README.md                    # Navigation et parcours
+├── architecture.md              # Architecture V2.0 (nouveau)
+├── template-system-spec.md      # Spec complète (déplacé)
+├── yaml-templating-system.md    # Guide technique détaillé
+├── error-handling-validation.md # Système de validation
+├── manifest_v2_format.md        # Format manifest.json
+├── config-system.md             # Configuration
+├── output-system.md             # Système de sortie
+└── adetailer.md                 # ADetailer integration
+```
+
+**Résultat** :
+- ✅ Triangle guide/reference/technical complet
+- ✅ Documentation technique organisée dans un seul dossier
+- ✅ Navigation claire pour développeurs
+- ✅ Tous les liens inter-docs mis à jour
+- ✅ Architecture V2.0 documentée en détail
+
+**Status Phase 4** : ✅ **TERMINÉE**
+
+**Prochaines étapes disponibles** :
+- [ ] Phase 3 : Créer section `reference/` (2-3h) - Syntaxe rapide et commandes CLI
 
 ---
 

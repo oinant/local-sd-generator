@@ -513,7 +513,7 @@ parameters:
 
 ➡️ Consultez le [Troubleshooting](./troubleshooting.md) pour résoudre les problèmes courants
 
-➡️ Explorez la [documentation technique](../../roadmap/template-system-spec.md) pour comprendre l'architecture
+➡️ Explorez la [documentation technique](../technical/template-system-spec.md) pour comprendre l'architecture
 
 ➡️ Créez votre propre workflow en combinant ces exemples
 

@@ -149,7 +149,7 @@ Pour une maîtrise complète :
 ## 🔗 Ressources complémentaires
 
 ### Documentation technique
-- **[Architecture V2.0](../../roadmap/template-system-spec.md)** - Spécification technique complète
+- **[Architecture V2.0](../technical/template-system-spec.md)** - Spécification technique complète
 - **[Error Handling](../technical/error-handling-validation.md)** - Système de validation
 
 ### Documentation avancée

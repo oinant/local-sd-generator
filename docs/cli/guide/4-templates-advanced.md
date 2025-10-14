@@ -588,7 +588,7 @@ project/
 
 ### Pour aller plus loin
 
-➡️ Consultez la [documentation technique](../../roadmap/template-system-spec.md) pour :
+➡️ Consultez la [documentation technique](../technical/template-system-spec.md) pour :
 - Chunks et composition avancée
 - Multi-field variations
 - Architecture du système V2.0

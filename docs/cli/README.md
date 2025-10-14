@@ -44,7 +44,7 @@ Syntaxe complète et référence condensée.
 
 Documentation technique et spécifications.
 
-- **[Template System V2.0 Spec](../roadmap/template-system-spec.md)** - Spécification formelle complète
+- **[Template System V2.0 Spec](./technical/template-system-spec.md)** - Spécification formelle complète
 - **[Error Handling & Validation](./technical/error-handling-validation.md)** - Système de validation
 - **[Manifest V2 Format](./technical/manifest_v2_format.md)** - Format manifest.json
 - **[Config System](./technical/config-system.md)** - Système de configuration
@@ -165,7 +165,7 @@ Pour une maîtrise totale :
 Pour comprendre l'architecture :
 
 1. Parcours complet (2h)
-2. [Template System Spec](../roadmap/template-system-spec.md) - 1h
+2. [Template System Spec](./technical/template-system-spec.md) - 1h
 3. [Architecture technique](./technical/)
 
 ---
