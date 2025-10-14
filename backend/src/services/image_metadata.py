@@ -42,31 +42,55 @@ def extract_png_metadata(image_path: str | Path) -> dict[str, Any]:
     if not parameters:
         raise ValueError("Image has no metadata (missing 'parameters' chunk)")
 
-    # Parse SD WebUI metadata format:
-    # Line 0: Prompt
-    # Line 1: Negative prompt: ...
-    # Line 2: Steps: X, Sampler: Y, ...
-    lines = parameters.split('\n')
+    # Parse SD WebUI metadata format (same logic as AUTOMATIC1111)
+    # Last line = parameters (Steps:, Sampler:, etc.)
+    # Everything before = prompt + negative prompt (can be multiline)
 
-    # Extract prompt (line 0)
-    prompt = lines[0] if len(lines) > 0 else ''
+    lines = parameters.strip().split('\n')
 
-    # Extract negative prompt (line 1)
+    # Separate last line from the rest
+    if len(lines) > 0:
+        *prompt_lines, lastline = lines
+    else:
+        prompt_lines = []
+        lastline = ''
+
+    # Check if lastline actually contains parameters (at least 2 param matches)
+    re_param = re.compile(r'(\w[\w \-/]+):\s*("(?:[^"]*)"|[^,]*?)(?:,|$)')
+    param_matches = re_param.findall(lastline)
+
+    if len(param_matches) < 2:
+        # Not enough parameters, so lastline is part of prompt
+        prompt_lines.append(lastline)
+        lastline = ''
+
+    # Parse prompt and negative prompt from prompt_lines
+    prompt = ''
     negative_prompt = ''
-    if len(lines) > 1 and lines[1].startswith('Negative prompt:'):
-        negative_prompt = lines[1].replace('Negative prompt:', '').strip()
+    done_with_prompt = False
 
-    # Extract parameters (line 2)
+    for line in prompt_lines:
+        line = line.strip()
+        if line.startswith('Negative prompt:'):
+            done_with_prompt = True
+            line = line[16:].strip()  # Remove "Negative prompt:" prefix
+
+        if done_with_prompt:
+            negative_prompt += ('\n' if negative_prompt else '') + line
+        else:
+            prompt += ('\n' if prompt else '') + line
+
+    # Parse parameters from lastline
     params_dict: dict[str, Any] = {}
-    if len(lines) > 2:
-        param_line = lines[2]
+    for key, value in param_matches:
+        key = key.strip()
+        value = value.strip()
 
-        # Parse format: "Key: Value, Key2: Value2, ..."
-        # Using regex to handle commas inside values
-        for match in re.finditer(r'(\w[\w\s]*?):\s*([^,]+?)(?:,\s*(?=\w)|$)', param_line):
-            key = match.group(1).strip()
-            value = match.group(2).strip()
-            params_dict[key] = value
+        # Remove quotes if present
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+
+        params_dict[key] = value
 
     # Build structured metadata
     metadata = {
