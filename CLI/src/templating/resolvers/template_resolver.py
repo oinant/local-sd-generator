@@ -727,8 +727,10 @@ class TemplateResolver:
         if selector.limit is not None:
             if selector.limit >= len(values):
                 return values
-            # Random selection
-            return random.sample(values, selector.limit)
+            # Random selection using SystemRandom for cryptographically secure randomness from OS
+            # This ensures different results on each run, independent of any seed() calls
+            sys_random = random.SystemRandom()
+            return sys_random.sample(values, selector.limit)
 
         # No selector - return all
         return values

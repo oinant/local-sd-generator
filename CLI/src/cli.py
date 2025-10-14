@@ -213,36 +213,102 @@ def _generate(
         # Create output directory
         session_manager.create_session_dir()
 
-        # Save JSON manifest
-        manifest_path = session_dir / f"{session_name}_manifest.json"
-        manifest = {
-            "session_name": session_name,
-            "template_source": str(template_path),
-            "generated_at": datetime.now().isoformat(),
-            "total_variations": len(prompts),
-            "templating_system": "v2.0",
-            "variations": []
+        # Create snapshot V2 for manifest
+        # Get runtime info from API
+        runtime_info = {}
+        try:
+            checkpoint = api_client.get_model_checkpoint()
+            runtime_info = {"sd_model_checkpoint": checkpoint}
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch runtime info: {e}[/yellow]")
+            runtime_info = {"sd_model_checkpoint": "unknown"}
+
+        # Extract variations: pool complet + valeurs utilisées
+        variations_map = {}
+
+        # 1. Extract placeholders that actually appear in the resolved template
+        import re
+        placeholder_pattern = re.compile(r'\{(\w+)(?:\[[^\]]+\])?\}')
+        placeholders_in_template = set(placeholder_pattern.findall(resolved_config.template))
+
+        # 2. Extract complete pool from context.imports (only for placeholders in template)
+        for placeholder_name, import_data in context.imports.items():
+            # Skip if placeholder doesn't appear in template
+            if placeholder_name not in placeholders_in_template:
+                continue
+
+            if isinstance(import_data, dict):
+                # import_data is a dict like {"key1": "value1", "key2": "value2", ...}
+                all_values = list(import_data.values())
+                variations_map[placeholder_name] = {
+                    "available": all_values,
+                    "used": [],  # Will be filled below
+                    "count": len(all_values)
+                }
+
+        # 2. Extract actually used values from generated prompts
+        for prompt_dict in prompts:
+            variations = prompt_dict.get('variations', {})
+            for key, value in variations.items():
+                if key in variations_map:
+                    if value not in variations_map[key]["used"]:
+                        variations_map[key]["used"].append(value)
+                else:
+                    # Fallback: if placeholder not in imports (shouldn't happen)
+                    variations_map[key] = {
+                        "available": [value],
+                        "used": [value],
+                        "count": 1
+                    }
+
+        # Build generation params
+        gen_mode = config.generation.mode if config.generation else "combinatorial"
+        seed_mode = config.generation.seed_mode if config.generation and hasattr(config.generation, 'seed_mode') else "fixed"
+        base_seed = config.generation.seed if config.generation and hasattr(config.generation, 'seed') else -1
+        total_combs = stats.get('total_combinations', 1) if stats['total_placeholders'] > 0 else 1
+
+        generation_params = {
+            "mode": gen_mode,
+            "seed_mode": seed_mode,
+            "base_seed": base_seed,
+            "num_images": len(prompts),
+            "total_combinations": total_combs
         }
 
-        for idx, prompt_dict in enumerate(prompts):
-            # Filter out non-JSON-serializable parameters (like ADetailerConfig objects)
-            params = prompt_dict.get('parameters', {}).copy()
+        # Build api_params from first prompt
+        api_params = {}
+        if prompts and 'parameters' in prompts[0]:
+            params = prompts[0]['parameters'].copy()
+            # Remove non-serializable objects
             if 'adetailer' in params:
-                params['adetailer'] = "<ADetailerConfig object>"  # Placeholder for manifest
+                del params['adetailer']  # Will be in alwayson_scripts if present
+            api_params = params
 
-            manifest["variations"].append({
-                "index": idx,
-                "prompt": prompt_dict['prompt'],
-                "negative_prompt": prompt_dict.get('negative_prompt', ''),
-                "seed": prompt_dict.get('seed', -1),
-                "variations": prompt_dict.get('variations', {}),
-                "parameters": params
-            })
+        # Create snapshot
+        snapshot = {
+            "version": "2.0",
+            "timestamp": datetime.now().isoformat(),
+            "runtime_info": runtime_info,
+            "resolved_template": {
+                "prompt": resolved_config.template,
+                "negative": resolved_config.negative_prompt or ''
+            },
+            "generation_params": generation_params,
+            "api_params": api_params,
+            "variations": variations_map
+        }
+
+        # Save temporary snapshot (will be updated after generation with real seeds)
+        manifest_path = session_dir / "manifest.json"
+        temp_manifest = {
+            "snapshot": snapshot,
+            "images": []  # Will be filled after generation
+        }
 
         with open(manifest_path, 'w', encoding='utf-8') as f:
-            json.dump(manifest, f, indent=2, ensure_ascii=False)
+            json.dump(temp_manifest, f, indent=2, ensure_ascii=False)
 
-        console.print(f"[green]✓ Manifest saved:[/green] {manifest_path}\n")
+        console.print(f"[green]✓ Manifest initialized:[/green] {manifest_path}\n")
 
         # Test connection if not in dry-run mode
         if not dry_run:
@@ -286,13 +352,57 @@ def _generate(
             )
             prompt_configs.append(prompt_cfg)
 
-        # Generate images
+        # Define callback to update manifest after each image
+        def update_manifest_incremental(idx: int, prompt_cfg: PromptConfig, success: bool, api_response: Optional[dict]):
+            """Update manifest after each image generation"""
+            if not success:
+                return  # Skip failed images
+
+            # Get real seed from API response
+            real_seed = prompts[idx].get('seed', -1)
+
+            if api_response and 'info' in api_response:
+                try:
+                    # Parse 'info' JSON string to get real seed
+                    info = json.loads(api_response['info'])
+                    real_seed = info.get('seed', real_seed)
+                except Exception:
+                    # Fallback to original seed if parsing fails
+                    pass
+
+            # Read current manifest
+            try:
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    current_manifest = json.load(f)
+            except Exception:
+                # If manifest doesn't exist or is corrupted, recreate it
+                current_manifest = {"snapshot": snapshot, "images": []}
+
+            # Add new image entry
+            new_image = {
+                "filename": prompt_cfg.filename,
+                "seed": real_seed,
+                "prompt": prompts[idx]['prompt'],
+                "negative_prompt": prompts[idx].get('negative_prompt', ''),
+                "applied_variations": prompts[idx].get('variations', {})
+            }
+
+            current_manifest["images"].append(new_image)
+
+            # Write updated manifest
+            with open(manifest_path, 'w', encoding='utf-8') as f:
+                json.dump(current_manifest, f, indent=2, ensure_ascii=False)
+
+        # Generate images with incremental manifest updates
         success_count, total_count = generator.generate_batch(
             prompt_configs=prompt_configs,
-            delay_between_images=2.0
+            delay_between_images=2.0,
+            on_image_generated=update_manifest_incremental
         )
 
         fail_count = total_count - success_count
+
+        console.print(f"[green]✓ Manifest updated incrementally ({success_count} images)[/green]\n")
 
         # Display final summary
         summary = f"""[bold]Total images:[/bold] {total_count}

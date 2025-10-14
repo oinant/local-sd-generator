@@ -15,6 +15,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from api.sdapi_client import SDAPIClient, PromptConfig, GenerationConfig
+from execution.manifest import ManifestWriter, ManifestImage
 
 console = Console()
 
@@ -347,3 +348,124 @@ class V2Executor:
                 if not r['success']
             ]
         }
+
+    def _get_runtime_info(self) -> dict:
+        """
+        Get runtime information from SD WebUI API.
+
+        Returns:
+            dict with runtime info (sd_model_checkpoint, etc.)
+        """
+        try:
+            checkpoint = self.api_client.get_model_checkpoint()
+            return {
+                "sd_model_checkpoint": checkpoint
+            }
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch runtime info: {e}[/yellow]")
+            return {
+                "sd_model_checkpoint": "unknown"
+            }
+
+    def _extract_variations_from_prompts(
+        self,
+        prompts: List[Dict[str, Any]]
+    ) -> Dict[str, List[str]]:
+        """
+        Extract unique variation values from generated prompts.
+
+        Args:
+            prompts: List of prompt dicts with 'variations' key
+
+        Returns:
+            Dict mapping placeholder names to lists of unique values
+        """
+        variations_map = {}
+
+        for prompt_dict in prompts:
+            variations = prompt_dict.get('variations', {})
+            for key, value in variations.items():
+                if key not in variations_map:
+                    variations_map[key] = []
+                if value not in variations_map[key]:
+                    variations_map[key].append(value)
+
+        return variations_map
+
+    def _create_snapshot(
+        self,
+        template: str,
+        negative_prompt: str,
+        parameters: Dict[str, Any],
+        generation_params: Dict[str, Any],
+        prompts: List[Dict[str, Any]]
+    ) -> dict:
+        """
+        Create complete snapshot for manifest V2.
+
+        Args:
+            template: Resolved template string with placeholders
+            negative_prompt: Negative prompt template
+            parameters: API parameters
+            generation_params: Generation parameters (mode, seed_mode, etc.)
+            prompts: List of generated prompts
+
+        Returns:
+            Complete snapshot dictionary
+        """
+        # Extract variations from prompts
+        variations = self._extract_variations_from_prompts(prompts)
+
+        # Get runtime info
+        runtime_info = self._get_runtime_info()
+
+        # Build snapshot
+        snapshot = {
+            "version": "2.0",
+            "timestamp": datetime.now().isoformat(),
+            "runtime_info": runtime_info,
+            "resolved_template": {
+                "prompt": template,
+                "negative": negative_prompt
+            },
+            "generation_params": generation_params,
+            "api_params": parameters,
+            "variations": variations
+        }
+
+        return snapshot
+
+    def save_manifest(
+        self,
+        snapshot: dict,
+        results: List[Dict[str, Any]]
+    ) -> Path:
+        """
+        Save manifest V2 with snapshot and image info.
+
+        Args:
+            snapshot: Complete snapshot dictionary
+            results: Results from execute_prompts()
+
+        Returns:
+            Path to saved manifest.json
+        """
+        # Build manifest images
+        manifest_images = []
+        for result in results:
+            if result['success']:
+                img = ManifestImage(
+                    filename=result['image_path'].name,
+                    seed=result.get('seed', -1),
+                    prompt=result['prompt'],
+                    negative_prompt=result.get('negative_prompt', ''),
+                    applied_variations=result.get('variations', {})
+                )
+                manifest_images.append(img)
+
+        # Write manifest
+        writer = ManifestWriter(self.session_dir)
+        manifest_path = writer.write(snapshot, manifest_images)
+
+        console.print(f"[green]✓[/green] Manifest saved: {manifest_path}")
+        return manifest_path

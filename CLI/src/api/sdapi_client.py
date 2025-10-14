@@ -325,6 +325,36 @@ class SDAPIClient:
         response.raise_for_status()
         return response.json()
 
+    def get_options(self, timeout: int = 5) -> dict:
+        """
+        Get raw options/settings from SD WebUI
+
+        Returns:
+            dict: Complete options JSON from /sdapi/v1/options endpoint
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        response = requests.get(
+            f"{self.api_url}/sdapi/v1/options",
+            timeout=timeout
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_model_checkpoint(self, timeout: int = 5) -> str:
+        """
+        Get currently loaded model checkpoint name
+
+        Returns:
+            str: Model checkpoint name (e.g., "animefull_v1.safetensors [abc123def]")
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        options = self.get_options(timeout)
+        return options.get("sd_model_checkpoint", "unknown")
+
     def get_model_info(self, timeout: int = 5) -> dict:
         """
         Fetch current model/checkpoint information from WebUI options
@@ -340,12 +370,7 @@ class SDAPIClient:
         Raises:
             requests.RequestException: If API call fails
         """
-        response = requests.get(
-            f"{self.api_url}/sdapi/v1/options",
-            timeout=timeout
-        )
-        response.raise_for_status()
-        data = response.json()
+        data = self.get_options(timeout)
 
         return {
             "checkpoint": data.get("sd_model_checkpoint", "unknown"),

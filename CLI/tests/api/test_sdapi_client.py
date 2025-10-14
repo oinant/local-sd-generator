@@ -339,6 +339,63 @@ class TestSDAPIClient:
         )
 
     @patch('requests.get')
+    def test_get_options(self, mock_get):
+        """Test fetching raw options/settings"""
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "sd_model_checkpoint": "model.safetensors [hash]",
+            "sd_vae": "vae.ckpt",
+            "CLIP_stop_at_last_layers": 1,
+            "other_setting": "value"
+        }
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        options = client.get_options()
+
+        assert options['sd_model_checkpoint'] == "model.safetensors [hash]"
+        assert options['sd_vae'] == "vae.ckpt"
+        assert options['other_setting'] == "value"
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/sdapi/v1/options",
+            timeout=5
+        )
+
+    @patch('requests.get')
+    def test_get_model_checkpoint(self, mock_get):
+        """Test fetching currently loaded model checkpoint"""
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "sd_model_checkpoint": "animefull_v1.safetensors [abc123def]",
+            "sd_vae": "auto"
+        }
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        checkpoint = client.get_model_checkpoint()
+
+        assert checkpoint == "animefull_v1.safetensors [abc123def]"
+        mock_get.assert_called_once_with(
+            "http://127.0.0.1:7860/sdapi/v1/options",
+            timeout=5
+        )
+
+    @patch('requests.get')
+    def test_get_model_checkpoint_unknown(self, mock_get):
+        """Test checkpoint fallback when not in options"""
+        mock_response = Mock()
+        mock_response.json.return_value = {}
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = SDAPIClient()
+        checkpoint = client.get_model_checkpoint()
+
+        assert checkpoint == "unknown"
+
+    @patch('requests.get')
     def test_get_model_info(self, mock_get):
         """Test fetching current model info"""
         mock_response = Mock()

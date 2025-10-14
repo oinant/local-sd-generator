@@ -293,8 +293,7 @@ class PromptGenerator:
                 variation_state[name] = combo[name_idx]
 
             # Add random values for non-combinatorial vars (weight 0)
-            # Seed random with index to get different values per image
-            random.seed(generation.seed + idx if generation.seed >= 0 else None)
+            # Use truly random selection (not seeded - variations should be random each run)
             for name, variations in non_combinatorial_vars:
                 variation_state[name] = random.choice(variations)
 
@@ -354,10 +353,8 @@ class PromptGenerator:
             if len(prompts) >= generation.max_images:
                 break
 
-            # Seed random with attempt number to get different values
-            random.seed(generation.seed + attempt if generation.seed >= 0 else None)
-
-            # Generate random combination
+            # Generate random combination (truly random - not seeded)
+            # The seed parameter only affects SD image generation, not variation selection
             variation_state = {}
             for name, variations in selected_variations.items():
                 variation_state[name] = random.choice(variations)

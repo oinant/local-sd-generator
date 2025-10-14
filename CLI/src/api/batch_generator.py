@@ -6,7 +6,7 @@ to execute batch image generation workflows.
 """
 
 import time
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Callable
 from pathlib import Path
 
 from .sdapi_client import SDAPIClient, PromptConfig, GenerationConfig
@@ -56,13 +56,17 @@ class BatchGenerator:
 
     def generate_batch(self,
                       prompt_configs: List[PromptConfig],
-                      delay_between_images: float = 2.0) -> Tuple[int, int]:
+                      delay_between_images: float = 2.0,
+                      on_image_generated: Optional[Callable[[int, PromptConfig, bool, Optional[Dict]], None]] = None) -> Tuple[int, int]:
         """
         Generate a batch of images
 
         Args:
             prompt_configs: List of prompt configurations
             delay_between_images: Delay in seconds between each generation
+            on_image_generated: Optional callback(index, prompt_config, success, api_response)
+                               Called after each image generation attempt
+                               api_response is None on failure, contains API response dict on success
 
         Returns:
             Tuple[int, int]: (success_count, total_count)
@@ -86,7 +90,7 @@ class BatchGenerator:
         for i, prompt_config in enumerate(prompt_configs, 1):
             self.progress.report_image_start(i, prompt_config.filename)
 
-            success = self._generate_single_image(prompt_config)
+            success, api_response = self._generate_single_image(prompt_config)
 
             if success:
                 success_count += 1
@@ -102,6 +106,10 @@ class BatchGenerator:
             if success:
                 self.progress.increment_success()
 
+            # Call callback after each image (success or failure)
+            if on_image_generated:
+                on_image_generated(i - 1, prompt_config, success, api_response)
+
             # Delay between images (except after last)
             if i < total_images:
                 time.sleep(delay_between_images)
@@ -114,7 +122,7 @@ class BatchGenerator:
 
         return success_count, total_images
 
-    def _generate_single_image(self, prompt_config: PromptConfig) -> bool:
+    def _generate_single_image(self, prompt_config: PromptConfig) -> Tuple[bool, Optional[Dict]]:
         """
         Generate a single image
 
@@ -122,23 +130,25 @@ class BatchGenerator:
             prompt_config: Prompt configuration
 
         Returns:
-            bool: True if successful, False otherwise
+            Tuple[bool, Optional[Dict]]: (success, api_response)
+                - success: True if successful, False otherwise
+                - api_response: API response dict on success (contains 'info' with real seed), None on failure or dry-run
         """
         try:
             if self.dry_run:
                 # Dry-run mode: save JSON payload instead of generating
                 payload = self.api_client.get_payload_for_config(prompt_config)
                 self.image_writer.save_json_request(payload, prompt_config.filename)
+                return True, None
             else:
                 # Production mode: generate via API and save image
                 response = self.api_client.generate_image(prompt_config)
                 self.image_writer.save_image(response['images'][0], prompt_config.filename)
-
-            return True
+                return True, response
 
         except Exception as e:
             print(f"❌ Erreur génération {prompt_config.filename}: {e}")
-            return False
+            return False, None
 
     def save_batch_config(self,
                          base_prompt: str = "",
