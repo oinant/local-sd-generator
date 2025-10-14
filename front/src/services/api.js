@@ -2,7 +2,9 @@ import axios from 'axios'
 
 class ApiService {
   constructor() {
-    this.baseURL = process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : ''
+    // Support for Cloudflare Tunnel via environment variable (Vue CLI uses process.env.VUE_APP_)
+    const cloudflareBackend = process.env.VUE_APP_API_URL
+    this.baseURL = cloudflareBackend || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '')
     this.token = localStorage.getItem('authToken') || ''
 
     this.client = axios.create({

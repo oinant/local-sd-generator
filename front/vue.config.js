@@ -5,6 +5,13 @@ module.exports = defineConfig({
   lintOnSave: false, // Désactive ESLint pendant le dev pour éviter les blocages
   devServer: {
     port: 3000,
+    allowedHosts: [
+      'localhost',
+      '.trycloudflare.com' // Allow Cloudflare Tunnel subdomains
+    ],
+    client: {
+      webSocketURL: 'auto://0.0.0.0:0/ws' // Auto-detect protocol (wss:// for HTTPS)
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
