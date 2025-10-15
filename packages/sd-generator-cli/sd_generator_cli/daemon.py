@@ -172,21 +172,41 @@ def find_webui_package() -> Optional[Path]:
     """
     Find the sd-generator-webui package location.
 
+    Priority:
+    1. Dev config from sdgen_config.json (dev.webui_path)
+    2. Python import (pip install)
+    3. Monorepo structure
+
     Returns:
         Path to webui package or None if not found
     """
+    # 1. Try dev config from sdgen_config.json
     try:
-        # Try to import the webui package
+        from sd_generator_cli.config.global_config import load_global_config
+        config = load_global_config()
+        dev_config = config.get("dev", {})
+        if "webui_path" in dev_config:
+            webui_path = Path(dev_config["webui_path"])
+            if webui_path.exists():
+                return webui_path
+    except Exception:
+        pass
+
+    # 2. Try to import the webui package (pip install)
+    try:
         import sd_generator_webui
         webui_path = Path(sd_generator_webui.__file__).parent.parent.parent
         return webui_path
     except ImportError:
-        # Fallback: check monorepo structure
-        cli_path = Path(__file__).parent.parent.parent
-        webui_path = cli_path.parent / "sd-generator-webui"
-        if webui_path.exists():
-            return webui_path
-        return None
+        pass
+
+    # 3. Fallback: check monorepo structure
+    cli_path = Path(__file__).parent.parent.parent
+    webui_path = cli_path.parent / "sd-generator-webui"
+    if webui_path.exists():
+        return webui_path
+
+    return None
 
 
 def is_automatic1111_running(api_url: str) -> bool:

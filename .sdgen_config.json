@@ -1,5 +1,8 @@
 {
   "configs_dir": "D:/StableDiffusion/private/configs",
   "output_dir": "D:/StableDiffusion/private/results",
-  "api_url": "http://127.0.0.1:7860"
+  "api_url": "http://127.0.0.1:7860",
+  "dev": {
+    "webui_path": "/mnt/d/StableDiffusion/local-sd-generator/packages/sd-generator-webui"
+  }
 }

@@ -42,9 +42,15 @@ Manage system-wide settings stored in `.sdgen_config.json`.
 {
   "configs_dir": "/absolute/path/to/configs",
   "output_dir": "/absolute/path/to/outputs",
-  "api_url": "http://127.0.0.1:7860"
+  "api_url": "http://127.0.0.1:7860",
+  "dev": {
+    "webui_path": "/absolute/path/to/webui/package"
+  }
 }
 ```
+
+**Optional Fields:**
+- `dev.webui_path`: Path to sd-generator-webui package for development mode (used by `sdgen start`/`sdgen webui` commands)
 
 ### File Locations
 

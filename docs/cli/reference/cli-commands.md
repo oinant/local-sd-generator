@@ -346,6 +346,200 @@ Current model:
 
 ---
 
+## Environment Management Commands
+
+### `start` - Start all services
+
+**Usage** :
+```bash
+# Start backend + frontend only
+sdgen start
+
+# Start with Automatic1111 (Windows from WSL)
+sdgen start --start-a1111
+
+# With custom A1111 path
+sdgen start --start-a1111 --a1111-bat /mnt/d/sd/webui.bat
+
+# Custom ports
+sdgen start --backend-port 8080 --frontend-port 3000
+
+# Backend only (no frontend)
+sdgen start --no-frontend
+
+# Disable backend auto-reload
+sdgen start --no-reload
+```
+
+**Options** :
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--start-a1111` | flag | false | Start Automatic1111 on Windows |
+| `--a1111-bat` | path | from config | Path to webui.bat |
+| `--backend-port` | int | 8000 | Backend server port |
+| `--frontend-port` | int | 5173 | Frontend dev server port |
+| `--no-frontend` | flag | false | Don't start frontend |
+| `--no-reload` | flag | false | Disable backend auto-reload |
+
+**Services started** :
+- Automatic1111 WebUI (if `--start-a1111`)
+- Backend FastAPI server (uvicorn)
+- Frontend Vite dev server (unless `--no-frontend`)
+
+**Note** : All services run in background (non-blocking)
+
+---
+
+### `stop` - Stop all services
+
+**Usage** :
+```bash
+# Stop all running services
+sdgen stop
+```
+
+**Stops** :
+- Automatic1111 (if managed by sdgen)
+- Backend server
+- Frontend server
+
+**Behavior** :
+1. Graceful shutdown (SIGTERM) with 5s timeout
+2. Force kill (SIGKILL) if still alive
+3. Cleanup PID files
+
+---
+
+### `status` - Show service status
+
+**Usage** :
+```bash
+# Show status of all services
+sdgen status
+```
+
+**Output** :
+```
+Service Status
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┓
+┃ Service         ┃ Status   ┃ PID   ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━┩
+│ Automatic1111   │ Running  │ 12345 │
+│ Backend API     │ Running  │ 12346 │
+│ Frontend        │ Running  │ 12347 │
+└─────────────────┴──────────┴───────┘
+
+Log files: ~/.sdgen/logs/
+PID files: ~/.sdgen/pids/
+```
+
+---
+
+### `webui` - WebUI management
+
+Subcommands for managing backend + frontend only (without Automatic1111).
+
+#### `webui start` - Start WebUI services
+
+**Usage** :
+```bash
+# Start backend + frontend
+sdgen webui start
+
+# Custom ports
+sdgen webui start --backend-port 8080 --frontend-port 3000
+
+# Disable auto-reload
+sdgen webui start --no-reload
+```
+
+**Options** :
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--backend-port` | int | 8000 | Backend server port |
+| `--frontend-port` | int | 5173 | Frontend dev server port |
+| `--no-reload` | flag | false | Disable backend auto-reload |
+
+---
+
+#### `webui stop` - Stop WebUI services
+
+**Usage** :
+```bash
+# Stop backend + frontend
+sdgen webui stop
+```
+
+---
+
+#### `webui restart` - Restart WebUI services
+
+**Usage** :
+```bash
+# Restart backend + frontend
+sdgen webui restart
+
+# With custom ports
+sdgen webui restart --backend-port 8080
+```
+
+---
+
+#### `webui status` - Show WebUI status
+
+**Usage** :
+```bash
+# Show status of backend + frontend
+sdgen webui status
+```
+
+**Output** :
+```
+WebUI Status
+┏━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━┓
+┃ Service  ┃ Status   ┃ PID  ┃
+┡━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━┩
+│ Backend  │ Running  │ 1234 │
+│ Frontend │ Running  │ 1235 │
+└──────────┴──────────┴──────┘
+```
+
+---
+
+### Service Management Details
+
+**PID Files** : `~/.sdgen/pids/`
+- `automatic1111.pid`
+- `backend.pid`
+- `frontend.pid`
+
+**Log Files** : `~/.sdgen/logs/`
+- `automatic1111.log`
+- `backend.log`
+- `frontend.log`
+
+**Dev Config** :
+
+Add to `sdgen_config.json` for development mode:
+```json
+{
+  "dev": {
+    "webui_path": "/path/to/local-sd-generator/packages/sd-generator-webui"
+  }
+}
+```
+
+**WebUI Package Detection** :
+
+Priority order:
+1. `dev.webui_path` from config (dev mode)
+2. Python import (pip install)
+3. Monorepo structure (relative path)
+
+---
+
 ## Commandes avancées
 
 ### Debugging et Verbose
