@@ -20,6 +20,6 @@ module.exports = defineConfig({
       }
     }
   },
-  outputDir: '../static/dist',
-  publicPath: process.env.NODE_ENV === 'production' ? '/static/dist/' : '/'
+  outputDir: '../backend/static/dist',
+  publicPath: process.env.NODE_ENV === 'production' ? '/webui/' : '/'
 })

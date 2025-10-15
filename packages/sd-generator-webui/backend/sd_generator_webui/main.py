@@ -17,24 +17,31 @@ def get_frontend_path() -> Path:
     Locate frontend build directory.
 
     Priority:
-    1. Packaged build (production): ../front/dist
-    2. Monorepo dev mode: ../../front/dist
+    1. Monorepo dev: backend/static/dist (sibling to sd_generator_webui module)
+    2. Pip install: site-packages/backend/static/dist
 
     Returns:
         Path to frontend dist directory or None if not found
     """
-    # Get package root
-    package_root = Path(__file__).parent.parent.parent
+    # Get backend package directory (where this file is)
+    # This is: .../backend/sd_generator_webui/
+    package_dir = Path(__file__).parent
 
-    # Try packaged build (production)
-    frontend_dist = package_root / "front" / "dist"
+    # Try 1: Monorepo dev - go up to backend/, then static/dist
+    # From: .../backend/sd_generator_webui/
+    # To:   .../backend/static/dist
+    backend_dir = package_dir.parent
+    frontend_dist = backend_dir / "static" / "dist"
     if frontend_dist.exists() and (frontend_dist / "index.html").exists():
         return frontend_dist
 
-    # Try monorepo structure (dev mode - but frontend must be built)
-    monorepo_dist = package_root.parent.parent / "front" / "dist"
-    if monorepo_dist.exists() and (monorepo_dist / "index.html").exists():
-        return monorepo_dist
+    # Try 2: Pip install - frontend in site-packages/backend/static/dist
+    # package_dir = .../site-packages/sd_generator_webui
+    # backend_dir = .../site-packages/backend
+    site_packages = package_dir.parent
+    backend_dist = site_packages / "backend" / "static" / "dist"
+    if backend_dist.exists() and (backend_dist / "index.html").exists():
+        return backend_dist
 
     return None
 
@@ -64,20 +71,9 @@ async def lifespan(app: FastAPI):
 
         if frontend_path:
             print(f"✓ Frontend build trouvé: {frontend_path}")
-            print("✓ Backend sert le frontend static")
+            print("✓ Backend sert le frontend à /webui")
             app.state.frontend_path = frontend_path
             app.state.production_mode = True
-
-            # Mount static files
-            try:
-                app.mount(
-                    "/assets",
-                    StaticFiles(directory=str(frontend_path / "assets")),
-                    name="assets"
-                )
-                print("✓ Assets montés: /assets")
-            except Exception as e:
-                print(f"⚠ Erreur montage assets: {e}")
 
         else:
             print("⚠ Pas de frontend build - Backend API only")
@@ -126,13 +122,32 @@ async def get_mode():
 
 @app.get("/")
 async def root():
-    """
-    Serve frontend in production mode or API info page in dev mode.
-    """
-    # Production mode: serve frontend build
+    """API info page - redirects to /webui in production."""
     if app.state.production_mode and app.state.frontend_path:
-        index_file = app.state.frontend_path / "index.html"
-        return FileResponse(index_file)
+        # Production mode: redirect to /webui
+        return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>SD Image Generator</title>
+        <meta charset="utf-8">
+        <meta http-equiv="refresh" content="0;url=/webui">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; text-align: center; }
+            .container { max-width: 600px; margin: 100px auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            a { color: #007bff; text-decoration: none; font-weight: bold; }
+            a:hover { text-decoration: underline; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎨 SD Image Generator</h1>
+            <p>Redirecting to <a href="/webui">/webui</a>...</p>
+            <p><small>API docs: <a href="/docs">/docs</a></small></p>
+        </div>
+    </body>
+    </html>
+    """)
 
     # Dev mode: show API info page
     return HTMLResponse(content="""
@@ -210,25 +225,34 @@ async def health_check():
     }
 
 
-# Catch-all route for SPA (Vue Router) - MUST BE LAST
-# This handles client-side routing (e.g., /gallery, /login, etc.)
-@app.get("/{full_path:path}")
-async def catch_all(full_path: str):
-    """
-    Catch-all for SPA routing in production mode.
-    In dev mode, returns 404.
-    """
-    # Production mode: serve index.html for all non-API routes
-    if app.state.production_mode and app.state.frontend_path:
-        # Don't catch API routes
-        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("health"):
-            raise HTTPException(status_code=404, detail="Not found")
+# WebUI routes - serve frontend at /webui
+@app.get("/webui")
+async def serve_webui_root():
+    """Serve WebUI index.html at /webui."""
+    if not app.state.production_mode or not app.state.frontend_path:
+        raise HTTPException(status_code=404, detail="WebUI not available in dev mode")
 
-        index_file = app.state.frontend_path / "index.html"
-        return FileResponse(index_file)
+    index_file = app.state.frontend_path / "index.html"
+    return FileResponse(index_file)
 
-    # Dev mode: 404
-    raise HTTPException(status_code=404, detail="Not found - use frontend dev server")
+
+@app.get("/webui/{full_path:path}")
+async def serve_webui_spa(full_path: str):
+    """
+    Catch-all for SPA routing under /webui.
+    Serves static files if they exist, otherwise serves index.html for Vue Router.
+    """
+    if not app.state.production_mode or not app.state.frontend_path:
+        raise HTTPException(status_code=404, detail="WebUI not available in dev mode")
+
+    # Check if requested file exists (js, css, fonts, img, etc.)
+    requested_file = app.state.frontend_path / full_path
+    if requested_file.exists() and requested_file.is_file():
+        return FileResponse(requested_file)
+
+    # Otherwise serve index.html for Vue Router (client-side routing)
+    index_file = app.state.frontend_path / "index.html"
+    return FileResponse(index_file)
 
 
 if __name__ == "__main__":
