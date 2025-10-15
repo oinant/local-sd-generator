@@ -332,6 +332,21 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False) 
     if not no_reload:
         cmd.append("--reload")
 
+    # Add --dev-mode flag if we're in dev mode
+    dev_mode = is_dev_mode()
+    if dev_mode:
+        # Pass via env var (FastAPI app will read it)
+        env_vars = {
+            **os.environ,
+            "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}",
+            "SD_GENERATOR_DEV_MODE": "1"
+        }
+    else:
+        env_vars = {
+            **os.environ,
+            "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}"
+        }
+
     ensure_dirs()
     log_file = open(LOG_FILES["backend"], "w")
 
@@ -341,13 +356,14 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False) 
         stdout=log_file,
         stderr=subprocess.STDOUT,
         start_new_session=True,
-        env={**os.environ, "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}"}
+        env=env_vars
     )
 
     write_pid("backend", proc.pid)
 
+    mode_str = "DEV" if dev_mode else "PRODUCTION"
     console.print(f"[green]✓ Backend started on http://0.0.0.0:{backend_port}[/green]")
-    console.print(f"[dim]PID: {proc.pid} | Log: {LOG_FILES['backend']}[/dim]")
+    console.print(f"[dim]Mode: {mode_str} | PID: {proc.pid} | Log: {LOG_FILES['backend']}[/dim]")
 
     return proc.pid
 

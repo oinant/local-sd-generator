@@ -2,8 +2,12 @@
 Poetry build script for sd-generator-webui.
 
 Builds the frontend (npm run build) before packaging the Python wheel.
+
+IMPORTANT: For editable installs (pip install -e .), set SKIP_FRONTEND_BUILD=1
+to skip the frontend build (dev mode with Vite dev server).
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -11,8 +15,18 @@ from pathlib import Path
 
 def build():
     """Build frontend before packaging."""
+    # Check if we should skip the build (editable/dev mode)
+    skip_build = os.environ.get("SKIP_FRONTEND_BUILD", "0") == "1"
+
+    if skip_build:
+        print("=" * 60)
+        print("SKIP_FRONTEND_BUILD=1 detected - Skipping frontend build")
+        print("Mode: DEV (use Vite dev server)")
+        print("=" * 60)
+        return
+
     print("=" * 60)
-    print("Building frontend...")
+    print("Building frontend for production...")
     print("=" * 60)
 
     # Get paths

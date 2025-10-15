@@ -215,13 +215,20 @@ def webui_start(
         daemon.start_backend(backend_port, webui_path, no_reload)
         time.sleep(2)
 
-        # Start frontend
+        # Start frontend (only in dev mode)
         console.print("[cyan]→ Starting frontend...[/cyan]")
-        daemon.start_frontend(frontend_port, webui_path)
+        frontend_pid = daemon.start_frontend(frontend_port, webui_path)
 
+        # Display URLs based on mode
         console.print("\n[bold green]✓ WebUI services started[/bold green]")
-        console.print(f"[dim]Backend: http://localhost:{backend_port}/docs[/dim]")
-        console.print(f"[dim]Frontend: http://localhost:{frontend_port}[/dim]\n")
+        console.print(f"[dim]Backend API: http://localhost:{backend_port}/docs[/dim]")
+
+        if frontend_pid:
+            # Dev mode: frontend on separate port
+            console.print(f"[dim]Frontend (DEV): http://localhost:{frontend_port}[/dim]\n")
+        else:
+            # Production mode: frontend served by backend
+            console.print(f"[dim]Frontend (PROD): http://localhost:{backend_port}[/dim]\n")
 
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")

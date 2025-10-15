@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,31 +45,44 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Démarrage du backend SD Image Generator")
 
-    # Check if frontend build exists
-    frontend_path = get_frontend_path()
-    if frontend_path:
-        print(f"✓ Frontend build trouvé: {frontend_path}")
-        print("✓ Mode PRODUCTION - Backend sert le frontend static")
-        app.state.frontend_path = frontend_path
-        app.state.production_mode = True
+    # Check if we're in dev mode (explicit flag from CLI)
+    dev_mode_env = os.environ.get("SD_GENERATOR_DEV_MODE")
+    print(f"DEBUG: SD_GENERATOR_DEV_MODE = {dev_mode_env}")
+    dev_mode = dev_mode_env == "1"
 
-        # Mount static files in production mode
-        # Must be done here to access app.state.frontend_path
-        try:
-            app.mount(
-                "/assets",
-                StaticFiles(directory=str(frontend_path / "assets")),
-                name="assets"
-            )
-            print("✓ Assets montés: /assets")
-        except Exception as e:
-            print(f"⚠ Erreur montage assets: {e}")
-
-    else:
-        print("⚠ Pas de frontend build - Mode dev (frontend séparé attendu)")
-        print("✓ Mode DEV - Frontend attendu sur http://localhost:5173")
+    if dev_mode:
+        # DEV MODE: Frontend runs on separate Vite dev server
+        print("✓ Mode DEV (explicit flag)")
+        print("✓ Frontend attendu sur http://localhost:5173 (Vite dev server)")
         app.state.frontend_path = None
         app.state.production_mode = False
+
+    else:
+        # PRODUCTION MODE: Backend serves built frontend
+        print("✓ Mode PRODUCTION (default)")
+        frontend_path = get_frontend_path()
+
+        if frontend_path:
+            print(f"✓ Frontend build trouvé: {frontend_path}")
+            print("✓ Backend sert le frontend static")
+            app.state.frontend_path = frontend_path
+            app.state.production_mode = True
+
+            # Mount static files
+            try:
+                app.mount(
+                    "/assets",
+                    StaticFiles(directory=str(frontend_path / "assets")),
+                    name="assets"
+                )
+                print("✓ Assets montés: /assets")
+            except Exception as e:
+                print(f"⚠ Erreur montage assets: {e}")
+
+        else:
+            print("⚠ Pas de frontend build - Backend API only")
+            app.state.frontend_path = None
+            app.state.production_mode = True  # Still production, just no frontend
 
     yield
 
