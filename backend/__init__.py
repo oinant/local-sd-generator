@@ -1,1 +1,0 @@
-# Backend FastAPI for SD Image Generator

@@ -63,7 +63,9 @@
       "Bash(../venv/bin/python3 -m vulture:*)",
       "Bash(../venv/bin/python3 -m pytest tests/templating/ -v)",
       "Bash(../venv/bin/python3 -m pytest tests/ --ignore=tests/legacy --ignore=tests/integration -v --tb=short)",
-      "Bash(../venv/bin/python3 -m pytest tests/templating/test_resolver_imports.py::TestEdgeCases::test_multi_file_with_nonexistent_files -v)"
+      "Bash(../venv/bin/python3 -m pytest tests/templating/test_resolver_imports.py::TestEdgeCases::test_multi_file_with_nonexistent_files -v)",
+      "Bash(curl -s http://0.0.0.0:7860/docs)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

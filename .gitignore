@@ -221,3 +221,6 @@ backend/frontend/.env.local
 private_generators/
 CLI/private_generators/
 apioutput/
+
+# Legacy code (monorepo Phase 1 - moved to packages/)
+_old/

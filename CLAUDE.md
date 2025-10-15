@@ -5,25 +5,32 @@
 - **Lis la doc dans `/docs`** - Structure organisée par composant (CLI, WebApp, Tooling)
 - **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
 - Les tests sont dans `/CLI/tests` et utilisent pytest
+- url de l'api automatic1111: http://172.29.128.1:7860
 
 ## ⚠️ Configuration Critique
 
-**Le fichier `.sdgen_config.json` DOIT être dans le home directory (`~/.sdgen_config.json`) !**
+**Le fichier `sdgen_config.json` est dans le répertoire courant !**
+
+Le fichier de config est **toujours** cherché dans le répertoire d'exécution (`./sdgen_config.json`).
 
 ```bash
-# Créer/modifier la config
+# Créer/modifier la config (dans le répertoire courant)
+cd /path/to/my-project
 sdgen init
 
-# Fichier créé : ~/.sdgen_config.json
-# Contenu :
+# Fichier créé : ./sdgen_config.json
+# Contenu par défaut :
 {
-  "configs_dir": "/path/to/your/templates",
-  "output_dir": "/path/to/output",
-  "api_url": "http://127.0.0.1:7860"
+  "configs_dir": "./prompts",
+  "output_dir": "./results",
+  "api_url": "http://172.29.128.1:7860"
 }
 ```
 
-**NE PAS** mettre la config dans le dossier du projet, elle ne sera pas trouvée depuis d'autres répertoires.
+**Avantages :**
+- Config par projet (versionnable avec git)
+- Chaque projet est autonome
+- Facilite le packaging et la distribution
 
 ## 📁 Structure du Projet
 
