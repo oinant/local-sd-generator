@@ -69,6 +69,19 @@ api_app = typer.Typer(
 )
 app.add_typer(api_app, name="api")
 
+# Import environment management commands
+from sd_generator_cli.commands import (
+    start_command,
+    stop_command,
+    status_command,
+    webui_app
+)
+
+app.command(name="start")(start_command)
+app.command(name="stop")(stop_command)
+app.command(name="status")(status_command)
+app.add_typer(webui_app, name="webui")
+
 
 def check_tty() -> bool:
     """Check if running in a TTY (interactive terminal)."""
