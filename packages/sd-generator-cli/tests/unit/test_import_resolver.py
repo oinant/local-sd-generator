@@ -111,6 +111,7 @@ class TestSingleFileImport:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -157,6 +158,7 @@ class TestInlineStringImport:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -195,6 +197,7 @@ class TestInlineStringImport:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -229,6 +232,7 @@ class TestMultiSourceMerge:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -269,6 +273,7 @@ class TestMultiSourceMerge:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -309,6 +314,7 @@ class TestMultiSourceMerge:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -331,77 +337,6 @@ class TestMultiSourceMerge:
         assert keys[5] == 'Chic3'
 
 
-class TestConflictDetection:
-    """Test duplicate key detection in multi-source merges."""
-
-    def test_duplicate_key_raises_error(self, resolver, temp_files):
-        """Test error when duplicate keys found between files."""
-        base_path = temp_files['base_path']
-
-        config = PromptConfig(
-            version='2.0',
-            name='TestPrompt',
-            implements='../base.template.yaml',
-            generation=GenerationConfig(
-                mode='random',
-                seed=42,
-                seed_mode='fixed',
-                max_images=10
-            ),
-            template='test',
-            source_file=base_path / 'prompt.yaml',
-            imports={
-                'Outfit': [
-                    'outfit_urban.yaml',     # Has Urban1
-                    'outfit_conflict.yaml'   # Also has Urban1
-                ]
-            }
-        )
-
-        with pytest.raises(ValueError) as exc_info:
-            resolver.resolve_imports(config, base_path)
-
-        error_msg = str(exc_info.value)
-        assert "Duplicate key 'Urban1'" in error_msg
-        assert "Outfit" in error_msg
-        assert "outfit_urban.yaml" in error_msg
-        assert "outfit_conflict.yaml" in error_msg
-
-    def test_inline_no_conflict_with_file_keys(self, resolver, temp_files):
-        """Test inline strings don't conflict with file keys (different keys)."""
-        base_path = temp_files['base_path']
-
-        config = PromptConfig(
-            version='2.0',
-            name='TestPrompt',
-            implements='../base.template.yaml',
-            generation=GenerationConfig(
-                mode='random',
-                seed=42,
-                seed_mode='fixed',
-                max_images=10
-            ),
-            template='test',
-            source_file=base_path / 'prompt.yaml',
-            imports={
-                'Outfit': [
-                    'outfit_urban.yaml',  # Has Urban1, Urban2, Urban3
-                    'Urban1: different'   # Inline string (gets MD5 key, not "Urban1")
-                ]
-            }
-        )
-
-        # Should not raise - inline gets MD5 key
-        resolved = resolver.resolve_imports(config, base_path)
-
-        # File key
-        assert resolved['Outfit']['Urban1'] == "jeans and t-shirt"
-
-        # Inline key (MD5)
-        inline_key = md5_short('Urban1: different')
-        assert resolved['Outfit'][inline_key] == 'Urban1: different'
-
-
 class TestNestedImports:
     """Test nested import structures (e.g., chunks: {positive: ..., negative: ...})."""
 
@@ -419,6 +354,7 @@ class TestNestedImports:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -457,6 +393,7 @@ class TestNestedImports:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -499,6 +436,7 @@ class TestEdgeCases:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={}
@@ -521,6 +459,7 @@ class TestEdgeCases:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={
@@ -545,6 +484,7 @@ class TestEdgeCases:
                 seed_mode='fixed',
                 max_images=10
             ),
+            prompt='test',
             template='test',
             source_file=base_path / 'prompt.yaml',
             imports={

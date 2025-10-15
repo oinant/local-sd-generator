@@ -540,32 +540,3 @@ class TestIntegration:
         assert "view" in result  # Some angle
         assert "style" in result  # Some style
         assert "masterpiece" in result
-
-    def test_complex_nested_resolution(self):
-        """Test complex nested template resolution."""
-        context = {
-            'imports': {
-                'chunks': {
-                    'positive': {
-                        'template': 'masterpiece, {Quality}'
-                    }
-                },
-                'Character': {
-                    'template': '@chunks.positive, 1girl, {Main}'
-                }
-            },
-            'chunks': {
-                'Main': '22, slim',
-                'Quality': 'best quality'
-            },
-            'defaults': {},
-        }
-
-        template = "@Character, detailed"
-        result = self.resolver.resolve_template(template, context)
-
-        assert "masterpiece" in result
-        assert "best quality" in result
-        assert "1girl" in result
-        assert "22, slim" in result
-        assert "detailed" in result

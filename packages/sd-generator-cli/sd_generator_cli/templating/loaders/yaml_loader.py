@@ -1,7 +1,7 @@
 """
 YAML file loader for Template System V2.0.
 
-This module handles loading and caching of YAML files with proper path resolution.
+This module handles loading of YAML files with proper path resolution.
 All paths are resolved relative to a base path for portability across systems.
 """
 
@@ -12,27 +12,19 @@ import yaml
 
 class YamlLoader:
     """
-    Loads YAML files with caching and relative path resolution.
+    Loads YAML files with relative path resolution.
 
-    The loader maintains a cache of loaded files to avoid redundant I/O operations.
     All paths are resolved relative to a base path to ensure portability.
-
-    Attributes:
-        cache: Dictionary mapping absolute file paths to loaded YAML data
+    No caching is used - files are loaded fresh each time for simplicity.
     """
 
-    def __init__(self, cache: Optional[dict] = None):
-        """
-        Initialize the YAML loader.
-
-        Args:
-            cache: Optional existing cache dictionary. If None, creates a new cache.
-        """
-        self.cache = cache if cache is not None else {}
+    def __init__(self):
+        """Initialize the YAML loader."""
+        pass
 
     def load_file(self, path: Path | str, base_path: Optional[Path] = None) -> Dict[str, Any]:
         """
-        Load a YAML file with caching.
+        Load a YAML file.
 
         Args:
             path: Path to the YAML file (relative or absolute).
@@ -50,13 +42,6 @@ class YamlLoader:
         # Allow absolute paths for entry points (direct load_file calls)
         resolved_path = self.resolve_path(path, base_path, allow_absolute=True)
 
-        # CACHE DISABLED: Performance not critical for local NVMe SSD access
-        # Cache in RAM for session duration only if needed, but disabled for now
-        # to avoid stale data issues during development/testing
-        # cache_key = str(resolved_path)
-        # if cache_key in self.cache:
-        #     return self.cache[cache_key]
-
         # Check file exists
         if not resolved_path.exists():
             raise FileNotFoundError(f"File not found: {resolved_path}")
@@ -68,8 +53,6 @@ class YamlLoader:
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Failed to parse YAML in {resolved_path}: {e}")
 
-        # CACHE DISABLED: See comment above
-        # self.cache[cache_key] = data
         return data
 
     def resolve_path(self, path: Path | str, base_path: Optional[Path] = None,
@@ -113,18 +96,3 @@ class YamlLoader:
         # Resolve relative to base_path
         resolved = (base_path / path).resolve()
         return resolved
-
-    def clear_cache(self):
-        """Clear the internal cache of loaded files."""
-        self.cache.clear()
-
-    def invalidate(self, path: Path | str):
-        """
-        Invalidate a specific file in the cache.
-
-        Args:
-            path: Absolute path to the file to invalidate
-        """
-        cache_key = str(Path(path).resolve())
-        if cache_key in self.cache:
-            del self.cache[cache_key]

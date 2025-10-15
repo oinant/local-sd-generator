@@ -132,6 +132,7 @@ class TestV2Pipeline:
             version='2.0',
             name='test',
             implements='base',
+            prompt='test',
             template='{Color}',
             source_file=Path('/fake/path.yaml'),
             generation=GenerationConfig(
@@ -154,7 +155,7 @@ class TestV2Pipeline:
 
         try:
             # Resolve
-            context = self.pipeline.resolve(config)
+            resolved_config, context = self.pipeline.resolve(config)
 
             # Verify
             assert 'Color' in context.imports
@@ -172,6 +173,7 @@ class TestV2Pipeline:
             version='2.0',
             name='test',
             implements='base',
+            prompt='test',
             template='{Color}, {Size}',
             source_file=Path('/fake/path.yaml'),
             generation=GenerationConfig(
@@ -216,6 +218,7 @@ class TestV2Pipeline:
             version='2.0',
             name='test',
             implements='base',
+            prompt='test',
             template='{Color}',
             source_file=Path('/fake/path.yaml'),
             generation=GenerationConfig(
@@ -249,6 +252,7 @@ class TestV2Pipeline:
             version='2.0',
             name='test',
             implements='base',
+            prompt='test',
             template='{Color}',
             source_file=Path('/fake/path.yaml'),
             negative_prompt='low quality,, bad',
@@ -278,6 +282,7 @@ class TestV2Pipeline:
             version='2.0',
             name='test',
             implements='base',
+            prompt='test',
             template='{Color}',
             source_file=Path('/fake/path.yaml'),
             generation=GenerationConfig(
@@ -412,6 +417,7 @@ class TestV2Pipeline:
             version='2.0',
             name='test',
             implements='base',
+            prompt='test',
             template='{Color}',
             source_file=Path(self.temp_dir) / 'test.prompt.yaml',
             generation=GenerationConfig(
@@ -426,13 +432,13 @@ class TestV2Pipeline:
         original_load = self.pipeline.load
         self.pipeline.load = lambda x: config
 
-        # Mock resolve to return simple context
+        # Mock resolve to return tuple (resolved_config, context)
         original_resolve = self.pipeline.resolve
-        self.pipeline.resolve = lambda x: ResolvedContext(
+        self.pipeline.resolve = lambda x: (x, ResolvedContext(
             imports={'Color': {'red': 'red', 'blue': 'blue'}},
             chunks={},
             parameters={}
-        )
+        ))
 
         try:
             # Run pipeline
@@ -453,6 +459,7 @@ class TestV2Pipeline:
             version='2.0',
             name='complex',
             implements='base',
+            prompt='test',
             template='{Style[$1]}, {Subject[$5]}',
             source_file=Path('/fake/path.yaml'),
             generation=GenerationConfig(
@@ -496,6 +503,7 @@ class TestV2Pipeline:
             version='2.0',
             name='selector_test',
             implements='base',
+            prompt='test',
             template='{Color[red,blue]}',
             source_file=Path('/fake/path.yaml'),
             generation=GenerationConfig(
@@ -531,6 +539,7 @@ class TestV2Pipeline:
             version='2.0',
             name='test',
             implements='base',
+            prompt='test',
             template='{Color}',
             source_file=Path('/fake/path.yaml'),
             negative_prompt='bad quality',

@@ -55,13 +55,13 @@ class TestInheritanceResolverBasic:
         assert result.template == "test template"
 
     def test_simple_inheritance_template(self, tmp_path):
-        """Test simple 1-level inheritance for TemplateConfig."""
+        """Test simple 1-level inheritance for TemplateConfig (INJECTION)."""
         # Create parent template
         parent_file = tmp_path / "parent.template.yaml"
         parent_data = {
             "version": "2.0",
             "name": "Parent",
-            "template": "parent template",
+            "template": "parent {prompt} template",
             "parameters": {"width": 832, "height": 1216},
             "imports": {"Character": "../chunks/char.chunk.yaml"}
         }
@@ -73,7 +73,7 @@ class TestInheritanceResolverBasic:
             "version": "2.0",
             "name": "Child",
             "implements": "parent.template.yaml",
-            "template": "child template",
+            "template": "child {prompt} template",
             "parameters": {"steps": 30}  # Override
         }
 
@@ -90,7 +90,8 @@ class TestInheritanceResolverBasic:
 
         # Assert
         assert result.name == "Child"
-        assert result.template == "child template"
+        # INJECTION: child template injected into parent's {prompt}
+        assert result.template == "parent child {prompt} template template"
         # Parameters should be merged (parent + child)
         assert result.parameters["width"] == 832  # From parent
         assert result.parameters["height"] == 1216  # From parent
@@ -152,7 +153,7 @@ class TestMultiLevelInheritance:
         grandparent_data = {
             "version": "2.0",
             "name": "Grandparent",
-            "template": "grandparent template",
+            "template": "grandparent {prompt} template",
             "parameters": {"width": 512, "height": 512, "steps": 20}
         }
         grandparent_file.write_text(yaml.dump(grandparent_data))
@@ -163,7 +164,7 @@ class TestMultiLevelInheritance:
             "version": "2.0",
             "name": "Parent",
             "implements": "grandparent.template.yaml",
-            "template": "parent template",
+            "template": "parent {prompt} template",
             "parameters": {"width": 832, "steps": 30}  # Override width, steps
         }
         parent_file.write_text(yaml.dump(parent_data))
@@ -174,7 +175,7 @@ class TestMultiLevelInheritance:
             "version": "2.0",
             "name": "Child",
             "implements": "parent.template.yaml",
-            "template": "child template",
+            "template": "child {prompt} template",
             "parameters": {"steps": 40}  # Override steps again
         }
 
@@ -204,7 +205,7 @@ class TestMergeRules:
         parent_data = {
             "version": "2.0",
             "name": "Parent",
-            "template": "template",
+            "template": "{prompt}",
             "parameters": {
                 "width": 832,
                 "height": 1216,
@@ -220,7 +221,7 @@ class TestMergeRules:
             "version": "2.0",
             "name": "Child",
             "implements": "parent.template.yaml",
-            "template": "template",
+            "template": "{prompt}",
             "parameters": {
                 "steps": 40,  # Override
                 "sampler": "DPM++ 2M"  # New key
@@ -247,7 +248,7 @@ class TestMergeRules:
         parent_data = {
             "version": "2.0",
             "name": "Parent",
-            "template": "template",
+            "template": "{prompt}",
             "imports": {
                 "Character": "../chunks/char1.chunk.yaml",
                 "Style": "../variations/style.yaml"
@@ -260,7 +261,7 @@ class TestMergeRules:
             "version": "2.0",
             "name": "Child",
             "implements": "parent.template.yaml",
-            "template": "template",
+            "template": "{prompt}",
             "imports": {
                 "Character": "../chunks/char2.chunk.yaml",  # Override
                 "Outfit": "../variations/outfit.yaml"  # New
@@ -285,7 +286,7 @@ class TestMergeRules:
         parent_data = {
             "version": "2.0",
             "type": "character",
-            "template": "template",
+            "template": "test template",
             "defaults": {"Angle": "Straight", "Pose": "Standing"},
             "chunks": {"Main": "30"}
         }
@@ -296,7 +297,7 @@ class TestMergeRules:
             "version": "2.0",
             "type": "character",
             "implements": "parent.chunk.yaml",
-            "template": "template",
+            "template": "test",
             "defaults": {"Pose": "Sitting"},  # Override
             "chunks": {"Main": "22", "HairCut": "BobCut"}  # Override + New
         }
@@ -315,46 +316,13 @@ class TestMergeRules:
         assert result.chunks["Main"] == "22"  # Overridden
         assert result.chunks["HairCut"] == "BobCut"  # New
 
-    def test_template_replace_with_warning(self, tmp_path, caplog):
-        """Test that child template replaces parent and logs warning."""
-        parent_file = tmp_path / "parent.chunk.yaml"
-        parent_data = {
-            "version": "2.0",
-            "type": "character",
-            "template": "parent template content"
-        }
-        parent_file.write_text(yaml.dump(parent_data))
-
-        child_file = tmp_path / "child.chunk.yaml"
-        child_data = {
-            "version": "2.0",
-            "type": "character",
-            "implements": "parent.chunk.yaml",
-            "template": "child template content"
-        }
-
-        loader = YamlLoader()
-        parser = ConfigParser()
-        resolver = InheritanceResolver(loader, parser)
-
-        child_config = parser.parse_chunk(child_data, child_file)
-
-        # Execute with logging capture
-        with caplog.at_level(logging.WARNING):
-            result = resolver.resolve_implements(child_config)
-
-        # Assert template replaced
-        assert result.template == "child template content"
-        # Assert warning logged
-        assert "Overriding parent template" in caplog.text
-
     def test_negative_prompt_inheritance(self, tmp_path):
         """Test negative_prompt inheritance (REPLACE if child provides)."""
         parent_file = tmp_path / "parent.template.yaml"
         parent_data = {
             "version": "2.0",
             "name": "Parent",
-            "template": "template",
+            "template": "{prompt}",
             "negative_prompt": "parent negative"
         }
         parent_file.write_text(yaml.dump(parent_data))
@@ -365,7 +333,7 @@ class TestMergeRules:
             "version": "2.0",
             "name": "Child1",
             "implements": "parent.template.yaml",
-            "template": "template"
+            "template": "{prompt}"
             # No negative_prompt
         }
 
@@ -383,7 +351,7 @@ class TestMergeRules:
             "version": "2.0",
             "name": "Child2",
             "implements": "parent.template.yaml",
-            "template": "template",
+            "template": "{prompt}",
             "negative_prompt": "child negative"
         }
 
@@ -402,7 +370,7 @@ class TestCacheBehavior:
         parent_data = {
             "version": "2.0",
             "name": "Parent",
-            "template": "parent template"
+            "template": "parent {prompt} template"
         }
         parent_file.write_text(yaml.dump(parent_data))
 
@@ -411,7 +379,7 @@ class TestCacheBehavior:
             "version": "2.0",
             "name": "Child",
             "implements": "parent.template.yaml",
-            "template": "child template"
+            "template": "child {prompt} template"
         }
 
         loader = YamlLoader()
@@ -442,7 +410,7 @@ class TestCacheBehavior:
         parent_data = {
             "version": "2.0",
             "name": "Parent",
-            "template": "parent template"
+            "template": "parent {prompt} template"
         }
         parent_file.write_text(yaml.dump(parent_data))
 
@@ -451,7 +419,7 @@ class TestCacheBehavior:
             "version": "2.0",
             "name": "Child",
             "implements": "parent.template.yaml",
-            "template": "child template"
+            "template": "child {prompt} template"
         }
 
         loader = YamlLoader()
@@ -474,7 +442,7 @@ class TestCacheBehavior:
         parent_data = {
             "version": "2.0",
             "name": "Parent",
-            "template": "parent template"
+            "template": "parent {prompt} template"
         }
         parent_file.write_text(yaml.dump(parent_data))
 
@@ -483,7 +451,7 @@ class TestCacheBehavior:
             "version": "2.0",
             "name": "Child",
             "implements": "parent.template.yaml",
-            "template": "child template"
+            "template": "child {prompt} template"
         }
 
         loader = YamlLoader()
@@ -605,7 +573,7 @@ class TestErrorHandling:
             "version": "2.0",
             "name": "Child",
             "implements": "nonexistent.template.yaml",
-            "template": "child"
+            "template": "child {prompt}"
         }
 
         loader = YamlLoader()
@@ -625,7 +593,7 @@ class TestErrorHandling:
             "version": "2.0",
             "name": "Child",
             "implements": "/absolute/path/parent.template.yaml",  # Absolute path
-            "template": "child"
+            "template": "child {prompt}"
         }
 
         loader = YamlLoader()

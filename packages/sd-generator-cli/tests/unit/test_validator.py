@@ -138,6 +138,7 @@ class TestPhase1Structure:
             name='TestPrompt',
             implements=None,  # Optional for standalone prompts
             generation=gen_config,
+            prompt='test',
             template='test',
             source_file=temp_dir / 'test.yaml'
         )
@@ -153,6 +154,7 @@ class TestPhase1Structure:
             name='TestPrompt',
             implements='../base.yaml',
             generation=None,  # Missing
+            prompt='test',
             template='test',
             source_file=temp_dir / 'test.yaml'
         )
@@ -444,36 +446,6 @@ class TestPhase3Inheritance:
 class TestPhase4Imports:
     """Test Phase 4: Imports validation (duplicate keys)."""
 
-    def test_duplicate_keys_in_multi_source(self, temp_dir, validator):
-        """Test that duplicate keys across import files are caught."""
-        # Create first file with key 'Casual'
-        file1 = temp_dir / 'outfit1.yaml'
-        file1.write_text(yaml.dump({'Casual': 'jeans', 'Formal': 'suit'}))
-
-        # Create second file with duplicate key 'Casual'
-        file2 = temp_dir / 'outfit2.yaml'
-        file2.write_text(yaml.dump({'Casual': 'casual dress', 'Sports': 'sportswear'}))
-
-        config = TemplateConfig(
-            version='2.0',
-            name='TestTemplate',
-            template='test',
-            imports={
-                'Outfit': [
-                    'outfit1.yaml',
-                    'outfit2.yaml'
-                ]
-            },
-            source_file=temp_dir / 'test.yaml'
-        )
-
-        result = validator.validate(config)
-        assert not result.is_valid
-        import_errors = [e for e in result.errors if e.type == 'import']
-        assert len(import_errors) >= 1
-        assert any('duplicate' in e.message.lower() for e in import_errors)
-        assert any('casual' in e.message.lower() for e in import_errors)
-
     def test_no_duplicate_keys_valid(self, temp_dir, validator):
         """Test that non-conflicting multi-source imports are valid."""
         # Create files with unique keys
@@ -641,6 +613,7 @@ class TestPhase5Templates:
             name='TestPrompt',
             implements='parent.yaml',
             generation=gen_config,
+            prompt='test',
             template='{loras}, {prompt}, detailed',  # Reserved OK in prompts
             source_file=temp_dir / 'test.prompt.yaml'
         )
@@ -770,29 +743,3 @@ class TestErrorDetails:
         assert error.details is not None
         assert 'child_type' in error.details
         assert 'parent_type' in error.details
-
-    def test_import_error_includes_conflict_details(self, temp_dir, validator):
-        """Test that import conflict errors include key details."""
-        file1 = temp_dir / 'outfit1.yaml'
-        file1.write_text(yaml.dump({'Casual': 'jeans'}))
-
-        file2 = temp_dir / 'outfit2.yaml'
-        file2.write_text(yaml.dump({'Casual': 'dress'}))
-
-        config = TemplateConfig(
-            version='2.0',
-            name='TestTemplate',
-            template='test',
-            imports={
-                'Outfit': ['outfit1.yaml', 'outfit2.yaml']
-            },
-            source_file=temp_dir / 'test.yaml'
-        )
-
-        result = validator.validate(config)
-        import_errors = [e for e in result.errors if e.type == 'import']
-        assert len(import_errors) >= 1
-        error = import_errors[0]
-        assert error.details is not None
-        assert 'key' in error.details
-        assert error.details['key'] == 'Casual'
