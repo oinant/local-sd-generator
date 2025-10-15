@@ -2,7 +2,7 @@ from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 
-from config import VALID_GUIDS, READ_ONLY_GUIDS
+from sd_generator_webui.config import VALID_GUIDS, READ_ONLY_GUIDS
 
 security = HTTPBearer()
 

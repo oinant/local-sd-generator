@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Union
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 
-from auth import AuthService
-from config import IMAGE_FOLDERS
+from sd_generator_webui.auth import AuthService
+from sd_generator_webui.config import IMAGE_FOLDERS
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 

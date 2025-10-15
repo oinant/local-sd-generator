@@ -1,60 +1,46 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "sd-generator-cli"
 version = "2.0.0"
 description = "CLI for Stable Diffusion image generation with advanced templating system"
+authors = ["SD Generator <noreply@example.com>"]
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MIT"}
-authors = [
-    {name = "SD Generator", email = "noreply@example.com"}
-]
+license = "MIT"
+homepage = "https://github.com/oinant/local-sd-generator"
+repository = "https://github.com/oinant/local-sd-generator"
+documentation = "https://github.com/oinant/local-sd-generator/tree/main/docs"
 keywords = ["stable-diffusion", "image-generation", "cli", "templating"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
+packages = [{include = "sd_generator_cli"}]
 
-dependencies = [
-    "pyyaml>=6.0",
-    "requests>=2.28.0",
-    "typer>=0.9.0",
-    "rich>=13.0.0",
-]
+[tool.poetry.dependencies]
+python = "^3.10"
+pyyaml = "^6.0"
+requests = "^2.28.0"
+typer = {extras = ["all"], version = "^0.9.0"}
+rich = "^13.0.0"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "flake8>=6.0.0",
-    "radon>=6.0.0",
-    "vulture>=2.0.0",
-    "bandit>=1.7.0",
-    "mypy>=1.0.0",
-]
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-cov = "^4.1.0"
+flake8 = "^7.0.0"
+radon = "^6.0.0"
+vulture = "^2.0.0"
+bandit = "^1.7.0"
+mypy = "^1.8.0"
 
-[project.scripts]
+[tool.poetry.scripts]
 sdgen = "sd_generator_cli.cli:app"
 
-[project.urls]
-Homepage = "https://github.com/oinant/local-sd-generator"
-Documentation = "https://github.com/oinant/local-sd-generator/tree/main/docs"
-Repository = "https://github.com/oinant/local-sd-generator"
-Issues = "https://github.com/oinant/local-sd-generator/issues"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["sd_generator_cli*"]
-exclude = ["tests*"]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -85,7 +71,7 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

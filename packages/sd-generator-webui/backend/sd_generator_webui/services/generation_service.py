@@ -10,8 +10,8 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent / "CLI"))
 
 from image_variation_generator import ImageVariationGenerator
 from variation_loader import load_variations_for_placeholders
-from config import IMAGES_DIR, METADATA_DIR, VARIATIONS_DIR
-from models import GenerationRequest, GenerationJob, GenerationStatus, SeedMode, GenerationMode
+from sd_generator_webui.config import IMAGES_DIR, METADATA_DIR, VARIATIONS_DIR
+from sd_generator_webui.models import GenerationRequest, GenerationJob, GenerationStatus, SeedMode, GenerationMode
 
 
 class GenerationService:

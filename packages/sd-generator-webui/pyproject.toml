@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "sd-generator-webui"
+version = "0.1.0"
+description = "Web UI for Stable Diffusion image generation with advanced templating"
+authors = ["SD Generator <noreply@example.com>"]
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/oinant/local-sd-generator"
+repository = "https://github.com/oinant/local-sd-generator"
+documentation = "https://github.com/oinant/local-sd-generator/tree/main/docs"
+keywords = ["stable-diffusion", "image-generation", "webui", "fastapi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: FastAPI",
+]
+packages = [{include = "sd_generator_webui", from = "backend"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+sd-generator-cli = {path = "../sd-generator-cli", develop = true}
+fastapi = "^0.110.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+python-multipart = "^0.0.9"
+pillow = "^10.0.0"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+httpx = "^0.27.0"
+pytest-asyncio = "^0.23.0"
+
+[tool.poetry.scripts]
+sdgen-web = "sd_generator_webui.main:run"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]

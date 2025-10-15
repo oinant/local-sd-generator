@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from PIL import Image
 
-from auth import AuthService
-from config import IMAGES_DIR, THUMBNAILS_DIR, METADATA_DIR
-from models import ImageInfo, ImageListResponse
-from services.image_metadata import extract_png_metadata
+from sd_generator_webui.auth import AuthService
+from sd_generator_webui.config import IMAGES_DIR, THUMBNAILS_DIR, METADATA_DIR
+from sd_generator_webui.models import ImageInfo, ImageListResponse
+from sd_generator_webui.services.image_metadata import extract_png_metadata
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 

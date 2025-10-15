@@ -5,9 +5,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import uvicorn
 
-from config import API_HOST, API_PORT
-from api import images, auth, files, sessions  # generation temporairement désactivé (imports CLI manquants)
-from __about__ import __version__
+from sd_generator_webui.config import API_HOST, API_PORT
+from sd_generator_webui.api import images, auth, files, sessions  # generation temporairement désactivé (imports CLI manquants)
+from sd_generator_webui.__about__ import __version__
 
 
 @asynccontextmanager

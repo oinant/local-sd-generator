@@ -13,8 +13,8 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from auth import AuthService
-from config import IMAGES_DIR
+from sd_generator_webui.auth import AuthService
+from sd_generator_webui.config import IMAGES_DIR
 
 
 def parse_session_datetime(session_name: str) -> Optional[datetime]:
