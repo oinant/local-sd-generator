@@ -71,7 +71,7 @@ class TestV2Pipeline:
         content = f"version: '2.0'\nname: {name}\n"
         if implements:
             content += f"implements: {implements}\n"
-        content += f"template: '{template}'\n"
+        content += f"prompt: '{template}'\n"
         content += "generation:\n"
         for key, value in generation.items():
             if isinstance(value, str):
@@ -113,7 +113,7 @@ class TestV2Pipeline:
         # Verify
         assert config.name == 'test'
         assert config.implements is None  # Standalone prompt
-        assert config.template == '{Color}'
+        assert config.prompt == '{Color}'
         assert config.generation.mode == 'combinatorial'
         assert config.generation.seed == 42
         assert config.parameters == {'steps': 20, 'cfg_scale': 7.0}

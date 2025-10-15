@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sd-generator-cli"
+version = "2.0.0"
+description = "CLI for Stable Diffusion image generation with advanced templating system"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "SD Generator", email = "noreply@example.com"}
+]
+keywords = ["stable-diffusion", "image-generation", "cli", "templating"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+    "requests>=2.28.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "flake8>=6.0.0",
+    "radon>=6.0.0",
+    "vulture>=2.0.0",
+    "bandit>=1.7.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+sdgen = "sd_generator_cli.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/oinant/local-sd-generator"
+Documentation = "https://github.com/oinant/local-sd-generator/tree/main/docs"
+Repository = "https://github.com/oinant/local-sd-generator"
+Issues = "https://github.com/oinant/local-sd-generator/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sd_generator_cli*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]
+
+[tool.coverage.run]
+source = ["sd_generator_cli"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
