@@ -168,6 +168,24 @@ def stop_service(service: str, timeout: int = 5) -> bool:
         return False
 
 
+def is_dev_mode() -> bool:
+    """
+    Check if running in dev mode (monorepo with sources).
+
+    Dev mode is detected by presence of dev.webui_path in config.
+
+    Returns:
+        True if dev mode, False if production (pip install)
+    """
+    try:
+        from sd_generator_cli.config.global_config import load_global_config
+        config = load_global_config()
+        dev_config = config.get("dev", {})
+        return "webui_path" in dev_config
+    except Exception:
+        return False
+
+
 def find_webui_package() -> Optional[Path]:
     """
     Find the sd-generator-webui package location.
@@ -336,16 +354,28 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False) 
 
 def start_frontend(frontend_port: int, webui_path: Path) -> Optional[int]:
     """
-    Start Vite frontend in background.
+    Start Vite frontend in background (DEV MODE ONLY).
+
+    In production mode, frontend is served by FastAPI backend from built static files.
 
     Args:
         frontend_port: Port to run on
         webui_path: Path to webui package
 
     Returns:
-        PID or None if error
+        PID or None if error or production mode
     """
+    # Check if we're in dev mode
+    if not is_dev_mode():
+        console.print("[yellow]⚠ Production mode: Frontend servi par le backend (pas de Vite séparé)[/yellow]")
+        return None
+
     frontend_dir = webui_path / "front"
+
+    # Check if frontend directory exists (dev mode)
+    if not frontend_dir.exists():
+        console.print(f"[red]✗ Frontend directory not found: {frontend_dir}[/red]")
+        return None
 
     cmd = ["npm", "run", "dev", "--", "--port", str(frontend_port), "--host"]
 
@@ -362,7 +392,7 @@ def start_frontend(frontend_port: int, webui_path: Path) -> Optional[int]:
 
     write_pid("frontend", proc.pid)
 
-    console.print(f"[green]✓ Frontend started on http://localhost:{frontend_port}[/green]")
+    console.print(f"[green]✓ Frontend (DEV) started on http://localhost:{frontend_port}[/green]")
     console.print(f"[dim]PID: {proc.pid} | Log: {LOG_FILES['frontend']}[/dim]")
 
     return proc.pid

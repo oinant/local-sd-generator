@@ -20,6 +20,16 @@ classifiers = [
 ]
 packages = [{include = "sd_generator_webui", from = "backend"}]
 
+# Include frontend build in wheel (production mode)
+include = [
+    { path = "front/dist/**/*", format = "wheel" }
+]
+
+# Build frontend before packaging
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = false
+
 [tool.poetry.dependencies]
 python = "^3.10"
 sd-generator-cli = {path = "../sd-generator-cli", develop = true}
