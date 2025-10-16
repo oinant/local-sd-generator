@@ -342,18 +342,23 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False, 
         cmd.append("--reload")
 
     # Set env vars based on dev mode
+    # Pass config file path to backend so it can find sdgen_config.json
+    config_path = str(Path.cwd() / "sdgen_config.json")
+
     if dev_mode:
         # DEV MODE: Tell backend to not serve frontend (API only)
         env_vars = {
             **os.environ,
             "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}",
-            "SD_GENERATOR_DEV_MODE": "1"
+            "SD_GENERATOR_DEV_MODE": "1",
+            "SDGEN_CONFIG_PATH": config_path
         }
     else:
         # PRODUCTION MODE: Backend serves built frontend
         env_vars = {
             **os.environ,
-            "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}"
+            "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}",
+            "SDGEN_CONFIG_PATH": config_path
         }
 
     ensure_dirs()

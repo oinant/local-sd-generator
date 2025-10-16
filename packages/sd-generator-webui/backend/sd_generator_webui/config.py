@@ -15,12 +15,22 @@ VARIATIONS_DIR = PROJECT_ROOT / "variations"
 
 def load_global_config() -> dict:
     """
-    Load sdgen_config.json from current working directory.
+    Load sdgen_config.json from configured path or current working directory.
+
+    Priority:
+    1. SDGEN_CONFIG_PATH env var (set by CLI when launching backend)
+    2. Current working directory (fallback for standalone usage)
 
     Returns:
         Config dictionary with defaults if file not found
     """
-    config_path = Path.cwd() / "sdgen_config.json"
+    # Try to get config path from environment (set by CLI)
+    config_path_str = os.getenv("SDGEN_CONFIG_PATH")
+    if config_path_str:
+        config_path = Path(config_path_str)
+    else:
+        # Fallback to current working directory
+        config_path = Path.cwd() / "sdgen_config.json"
 
     if not config_path.exists():
         return {}

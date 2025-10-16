@@ -90,16 +90,14 @@ class TestConfigCommandList:
         assert "api_url" in result.stdout
         assert "configs_dir" in result.stdout
 
-    def test_config_list_masks_webui_token(self, config_file: Path, monkeypatch: Any) -> None:
-        """Test that webui_token is partially masked in list output."""
+    def test_config_list_shows_full_webui_token(self, config_file: Path, monkeypatch: Any) -> None:
+        """Test that webui_token is displayed in full (not masked)."""
         monkeypatch.chdir(config_file.parent)
         result = runner.invoke(app, ["config", "list"])
 
         assert result.exit_code == 0
-        # Full token should NOT appear
-        assert "abcdefghijklmnopqrstuvwxyz123456" not in result.stdout
-        # Masked version should appear (abc***456)
-        assert "abc***456" in result.stdout
+        # Full token should appear (no masking for local tool)
+        assert "abcdefghijklmnopqrstuvwxyz123456" in result.stdout
 
     def test_config_list_shows_not_set_for_missing_token(self, config_file_no_token: Path, monkeypatch: Any) -> None:
         """Test that missing webui_token shows as 'not set'."""

@@ -278,17 +278,8 @@ def config_command(
 
         for k in VALID_KEYS:
             v = config_data.get(k)
-
-            # Mask webui_token if present
-            if k == "webui_token" and v:
-                if len(v) > 6:
-                    masked_value = f"{v[:3]}***{v[-3:]}"
-                else:
-                    masked_value = "***"
-                table.add_row(k, masked_value)
-            else:
-                display_value = str(v) if v is not None else "[dim]not set[/dim]"
-                table.add_row(k, display_value)
+            display_value = str(v) if v is not None else "[dim]not set[/dim]"
+            table.add_row(k, display_value)
 
         console.print(table)
         console.print()
