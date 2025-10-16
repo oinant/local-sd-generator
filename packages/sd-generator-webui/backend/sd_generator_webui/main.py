@@ -229,8 +229,17 @@ async def health_check():
 @app.get("/webui")
 async def serve_webui_root():
     """Serve WebUI index.html at /webui."""
-    if not app.state.production_mode or not app.state.frontend_path:
-        raise HTTPException(status_code=404, detail="WebUI not available in dev mode")
+    if not app.state.production_mode:
+        raise HTTPException(
+            status_code=404,
+            detail="WebUI not available in dev mode. Use --dev-mode flag with separate Vite server on http://localhost:5173"
+        )
+
+    if not app.state.frontend_path:
+        raise HTTPException(
+            status_code=500,
+            detail="Frontend build not found. Server misconfiguration: run 'npm run build' in front/ directory and rebuild package."
+        )
 
     index_file = app.state.frontend_path / "index.html"
     return FileResponse(index_file)
@@ -242,8 +251,17 @@ async def serve_webui_spa(full_path: str):
     Catch-all for SPA routing under /webui.
     Serves static files if they exist, otherwise serves index.html for Vue Router.
     """
-    if not app.state.production_mode or not app.state.frontend_path:
-        raise HTTPException(status_code=404, detail="WebUI not available in dev mode")
+    if not app.state.production_mode:
+        raise HTTPException(
+            status_code=404,
+            detail="WebUI not available in dev mode. Use --dev-mode flag with separate Vite server on http://localhost:5173"
+        )
+
+    if not app.state.frontend_path:
+        raise HTTPException(
+            status_code=500,
+            detail="Frontend build not found. Server misconfiguration: run 'npm run build' in front/ directory and rebuild package."
+        )
 
     # Check if requested file exists (js, css, fonts, img, etc.)
     requested_file = app.state.frontend_path / full_path

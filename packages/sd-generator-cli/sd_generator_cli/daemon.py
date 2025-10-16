@@ -168,49 +168,18 @@ def stop_service(service: str, timeout: int = 5) -> bool:
         return False
 
 
-def is_dev_mode() -> bool:
-    """
-    Check if running in dev mode (monorepo with sources).
-
-    Dev mode is detected by presence of dev.webui_path in config.
-
-    Returns:
-        True if dev mode, False if production (pip install)
-    """
-    try:
-        from sd_generator_cli.config.global_config import load_global_config
-        config = load_global_config()
-        dev_config = config.get("dev", {})
-        return "webui_path" in dev_config
-    except Exception:
-        return False
-
-
 def find_webui_package() -> Optional[Path]:
     """
     Find the sd-generator-webui package location.
 
     Priority:
-    1. Dev config from sdgen_config.json (dev.webui_path)
-    2. Python import (pip install)
-    3. Monorepo structure
+    1. Python import (pip install)
+    2. Monorepo structure (for development)
 
     Returns:
         Path to webui package or None if not found
     """
-    # 1. Try dev config from sdgen_config.json
-    try:
-        from sd_generator_cli.config.global_config import load_global_config
-        config = load_global_config()
-        dev_config = config.get("dev", {})
-        if "webui_path" in dev_config:
-            webui_path = Path(dev_config["webui_path"])
-            if webui_path.exists():
-                return webui_path
-    except Exception:
-        pass
-
-    # 2. Try to import the webui package (pip install)
+    # 1. Try to import the webui package (pip install)
     try:
         import sd_generator_webui
         webui_path = Path(sd_generator_webui.__file__).parent.parent.parent
@@ -218,7 +187,7 @@ def find_webui_package() -> Optional[Path]:
     except ImportError:
         pass
 
-    # 3. Fallback: check monorepo structure
+    # 2. Fallback: check monorepo structure
     cli_path = Path(__file__).parent.parent.parent
     webui_path = cli_path.parent / "sd-generator-webui"
     if webui_path.exists():
@@ -308,7 +277,7 @@ def start_automatic1111_windows(bat_path: str, api_url: str) -> Optional[int]:
         return None
 
 
-def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False) -> Optional[int]:
+def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False, dev_mode: bool = False) -> Optional[int]:
     """
     Start FastAPI backend in background.
 
@@ -316,6 +285,7 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False) 
         backend_port: Port to run on
         webui_path: Path to webui package
         no_reload: Disable auto-reload
+        dev_mode: Force dev mode (separate frontend server)
 
     Returns:
         PID or None if error
@@ -332,16 +302,16 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False) 
     if not no_reload:
         cmd.append("--reload")
 
-    # Add --dev-mode flag if we're in dev mode
-    dev_mode = is_dev_mode()
+    # Set env vars based on dev mode
     if dev_mode:
-        # Pass via env var (FastAPI app will read it)
+        # DEV MODE: Tell backend to not serve frontend (API only)
         env_vars = {
             **os.environ,
             "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}",
             "SD_GENERATOR_DEV_MODE": "1"
         }
     else:
+        # PRODUCTION MODE: Backend serves built frontend
         env_vars = {
             **os.environ,
             "PATH": f"{os.environ.get('HOME')}/.local/bin:{os.environ.get('PATH')}"
@@ -368,7 +338,7 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False) 
     return proc.pid
 
 
-def start_frontend(frontend_port: int, webui_path: Path) -> Optional[int]:
+def start_frontend(frontend_port: int, webui_path: Path, dev_mode: bool = False) -> Optional[int]:
     """
     Start Vite frontend in background (DEV MODE ONLY).
 
@@ -377,12 +347,13 @@ def start_frontend(frontend_port: int, webui_path: Path) -> Optional[int]:
     Args:
         frontend_port: Port to run on
         webui_path: Path to webui package
+        dev_mode: Enable dev mode (separate frontend server)
 
     Returns:
         PID or None if error or production mode
     """
     # Check if we're in dev mode
-    if not is_dev_mode():
+    if not dev_mode:
         console.print("[yellow]⚠ Production mode: Frontend servi par le backend (pas de Vite séparé)[/yellow]")
         return None
 
@@ -393,7 +364,7 @@ def start_frontend(frontend_port: int, webui_path: Path) -> Optional[int]:
         console.print(f"[red]✗ Frontend directory not found: {frontend_dir}[/red]")
         return None
 
-    cmd = ["npm", "run", "dev", "--", "--port", str(frontend_port), "--host"]
+    cmd = ["npm", "run", "serve", "--", "--port", str(frontend_port), "--host"]
 
     ensure_dirs()
     log_file = open(LOG_FILES["frontend"], "w")

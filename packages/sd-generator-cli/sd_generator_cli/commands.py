@@ -29,6 +29,7 @@ def start_command(
     frontend_port: int = typer.Option(5173, "--frontend-port", "-fp", help="Frontend dev server port"),
     no_frontend: bool = typer.Option(False, "--no-frontend", help="Don't start frontend"),
     no_reload: bool = typer.Option(False, "--no-reload", help="Disable backend auto-reload"),
+    dev_mode: bool = typer.Option(False, "--dev-mode", help="Start in dev mode (separate frontend server)"),
 ):
     """
     Start the complete SD Generator environment.
@@ -52,21 +53,16 @@ def start_command(
     try:
         # Load config
         config = load_global_config()
-        api_url = config.get("api_url", "http://172.29.128.1:7860")
+        api_url = config.api_url
 
         # 1. Start Automatic1111 (if requested)
         if start_a1111:
             console.print("\n[cyan]→ Starting Automatic1111...[/cyan]")
 
-            # Load path from config if not provided
+            # a1111_bat must be provided via --a1111-bat flag
             if not a1111_bat:
-                serve_config = config.get("serve", {})
-                a1111_config = serve_config.get("automatic1111", {})
-                a1111_bat = a1111_config.get("bat_path")
-
-            if not a1111_bat:
-                console.print("[red]✗ No webui.bat path configured[/red]")
-                console.print("[yellow]→ Set in sdgen_config.json or use --a1111-bat[/yellow]")
+                console.print("[red]✗ No webui.bat path provided[/red]")
+                console.print("[yellow]→ Use --a1111-bat /path/to/webui.bat[/yellow]")
             else:
                 daemon.start_automatic1111_windows(a1111_bat, api_url)
                 console.print("[dim]Waiting 10s for API startup...[/dim]")
@@ -85,13 +81,13 @@ def start_command(
 
         # 3. Start Backend
         console.print("\n[cyan]→ Starting backend...[/cyan]")
-        daemon.start_backend(backend_port, webui_path, no_reload)
+        daemon.start_backend(backend_port, webui_path, no_reload, dev_mode=dev_mode)
         time.sleep(2)  # Give backend time to start
 
-        # 4. Start Frontend (if not disabled)
-        if not no_frontend:
+        # 4. Start Frontend (if not disabled and in dev mode)
+        if not no_frontend and dev_mode:
             console.print("\n[cyan]→ Starting frontend...[/cyan]")
-            daemon.start_frontend(frontend_port, webui_path)
+            daemon.start_frontend(frontend_port, webui_path, dev_mode=True)
 
         # Display final status
         console.print("\n")
@@ -190,18 +186,24 @@ webui_app = typer.Typer(
 
 @webui_app.command(name="start")
 def webui_start(
+    dev_mode: bool = typer.Option(False, "--dev-mode", help="Start in dev mode (separate frontend server)"),
     backend_port: int = typer.Option(8000, "--backend-port", "-bp", help="Backend server port"),
     frontend_port: int = typer.Option(5173, "--frontend-port", "-fp", help="Frontend dev server port"),
     no_reload: bool = typer.Option(False, "--no-reload", help="Disable backend auto-reload"),
 ):
     """
-    Start WebUI services (backend + frontend).
+    Start WebUI services.
+
+    Production mode (default): Backend serves built frontend
+    Dev mode (--dev-mode): Backend + separate Vite dev server
 
     Examples:
-        sdgen webui start
+        sdgen webui start                    # Production mode
+        sdgen webui start --dev-mode         # Dev mode
         sdgen webui start --backend-port 8080
     """
-    console.print("[cyan]Starting WebUI services...[/cyan]\n")
+    mode_str = "DEV" if dev_mode else "PRODUCTION"
+    console.print(f"[cyan]Starting WebUI services ({mode_str} mode)...[/cyan]\n")
 
     try:
         # Find WebUI package
@@ -212,18 +214,20 @@ def webui_start(
 
         # Start backend
         console.print("[cyan]→ Starting backend...[/cyan]")
-        daemon.start_backend(backend_port, webui_path, no_reload)
+        daemon.start_backend(backend_port, webui_path, no_reload, dev_mode=dev_mode)
         time.sleep(2)
 
-        # Start frontend (only in dev mode)
-        console.print("[cyan]→ Starting frontend...[/cyan]")
-        frontend_pid = daemon.start_frontend(frontend_port, webui_path)
+        frontend_pid = None
+        if dev_mode:
+            # Dev mode: Start separate frontend
+            console.print("[cyan]→ Starting frontend dev server...[/cyan]")
+            frontend_pid = daemon.start_frontend(frontend_port, webui_path, dev_mode=True)
 
         # Display URLs based on mode
         console.print("\n[bold green]✓ WebUI services started[/bold green]")
         console.print(f"[dim]Backend API: http://localhost:{backend_port}/docs[/dim]")
 
-        if frontend_pid:
+        if dev_mode and frontend_pid:
             # Dev mode: frontend on separate port
             console.print(f"[dim]Frontend (DEV): http://localhost:{frontend_port}[/dim]\n")
         else:
@@ -257,6 +261,7 @@ def webui_stop():
 
 @webui_app.command(name="restart")
 def webui_restart(
+    dev_mode: bool = typer.Option(False, "--dev-mode", help="Start in dev mode (separate frontend server)"),
     backend_port: int = typer.Option(8000, "--backend-port", "-bp", help="Backend server port"),
     frontend_port: int = typer.Option(5173, "--frontend-port", "-fp", help="Frontend dev server port"),
     no_reload: bool = typer.Option(False, "--no-reload", help="Disable backend auto-reload"),
@@ -266,8 +271,10 @@ def webui_restart(
 
     Examples:
         sdgen webui restart
+        sdgen webui restart --dev-mode
     """
-    console.print("[cyan]Restarting WebUI services...[/cyan]\n")
+    mode_str = "DEV" if dev_mode else "PRODUCTION"
+    console.print(f"[cyan]Restarting WebUI services ({mode_str} mode)...[/cyan]\n")
 
     # Stop first
     daemon.stop_service("backend")
@@ -282,11 +289,12 @@ def webui_restart(
             raise typer.Exit(code=1)
 
         console.print("[cyan]→ Starting backend...[/cyan]")
-        daemon.start_backend(backend_port, webui_path, no_reload)
+        daemon.start_backend(backend_port, webui_path, no_reload, dev_mode=dev_mode)
         time.sleep(2)
 
-        console.print("[cyan]→ Starting frontend...[/cyan]")
-        daemon.start_frontend(frontend_port, webui_path)
+        if dev_mode:
+            console.print("[cyan]→ Starting frontend dev server...[/cyan]")
+            daemon.start_frontend(frontend_port, webui_path, dev_mode=True)
 
         console.print("\n[bold green]✓ WebUI services restarted[/bold green]\n")
 

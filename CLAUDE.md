@@ -213,8 +213,11 @@ cd CLI && ../venv/bin/python3 -m vulture . \
 # -r : recursif, -ll : low/low severity (moins verbeux)
 venv/bin/python3 -m bandit -r CLI -ll -f txt
 
-# 5. Type checking (optionnel, peut être verbeux)
-venv/bin/python3 -m mypy CLI --ignore-missing-imports
+# 5. Type checking STRICT (détecte les erreurs d'attributs)
+# IMPORTANT: Activer strict mode dans pyproject.toml ([tool.mypy] strict = true)
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes
+# OU pour check rapide d'un fichier :
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli/commands.py --show-error-codes
 ```
 
 **Analyse complète :**
@@ -394,6 +397,52 @@ vulture CLI/
 bandit -r CLI/
 ```
 
+## 🔒 Type Checking (mypy strict mode)
+
+**CRITIQUE** : Les erreurs de type comme `'GlobalConfig' object has no attribute 'get'` **DOIVENT** être détectées avant l'exécution.
+
+### Configuration
+
+Le projet utilise **mypy en mode strict** dans `packages/sd-generator-cli/pyproject.toml` :
+- `strict = true` : Détecte les erreurs d'attributs
+- Force les type hints sur toutes les fonctions
+- Catch les None implicites
+
+### Workflow obligatoire
+
+**Avant chaque commit :**
+```bash
+# Depuis la racine du projet
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes
+```
+
+**Si erreurs → FIX avant de commit !**
+
+### Règles de type hints
+
+```python
+# ❌ MAUVAIS : mypy ne check pas le corps sans return type
+def start_command(dev_mode, backend_port):
+    config = load_global_config()
+    api_url = config.get("api_url")  # Erreur non détectée
+
+# ✅ BON : mypy check le corps avec return type
+def start_command(
+    dev_mode: bool,
+    backend_port: int
+) -> None:  # 👈 Obligatoire pour que mypy check
+    config = load_global_config()  # Type: GlobalConfig
+    api_url = config.api_url  # ✅ Attribut direct
+```
+
+### Documentation complète
+
+Voir `docs/tooling/type-checking-guide.md` pour :
+- Guide complet du type checking
+- Erreurs courantes et leur fix
+- Pre-commit hook setup
+- Bonnes/mauvaises pratiques
+
 ## 🚀 CLI Usage
 
 ### Generate images from template
@@ -440,7 +489,8 @@ python3 src/cli.py api model-info
 **Last major migration:** 2025-10-10 (V1→V2 complete)
 
 ## Commands
-- **Lint:** `flake8 CLI/ --max-line-length=120`
-- **Test:** `python3 -m pytest tests/ --ignore=tests/legacy -v`
-- **Coverage:** `python3 -m pytest tests/v2/ --cov=templating --cov-report=term-missing`
-- **Build:** À déterminer
+- **Lint (style):** `venv/bin/python3 -m flake8 packages/sd-generator-cli --max-line-length=120 --exclude=tests`
+- **Lint (types):** `venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes` (strict mode enabled)
+- **Test:** `cd packages/sd-generator-cli && ../../venv/bin/python3 -m pytest tests/ -v`
+- **Coverage:** `cd packages/sd-generator-cli && ../../venv/bin/python3 -m pytest tests/ --cov=sd_generator_cli --cov-report=term-missing`
+- **Build:** `cd packages/sd-generator-cli && poetry build`

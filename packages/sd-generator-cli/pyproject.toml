@@ -23,7 +23,7 @@ packages = [{include = "sd_generator_cli"}]
 python = "^3.10"
 pyyaml = "^6.0"
 requests = "^2.28.0"
-typer = {extras = ["all"], version = ">=0.9.0,<1.0"}
+typer = {extras = ["all"], version = "^0.19.2"}
 rich = "^13.0.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -72,7 +72,15 @@ exclude_lines = [
 
 [tool.mypy]
 python_version = "3.10"
+# Strict mode for catching attribute errors
+strict = true
+# But allow some flexibility
+ignore_missing_imports = true
+# This is key: checks untyped function bodies
+check_untyped_defs = true
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+no_implicit_optional = true
