@@ -234,7 +234,7 @@ def status_command() -> None:
 
 
 def config_command(
-    key: Optional[str] = typer.Argument(None, help="Config key to read/write"),
+    key: Optional[str] = typer.Argument(None, help="Config key to read/write or 'renew-token'"),
     value: Optional[str] = typer.Argument(None, help="Value to set (optional)"),
     list_all: bool = typer.Option(False, "--list", "-l", help="List all config keys"),
 ) -> None:
@@ -245,6 +245,7 @@ def config_command(
         sdgen config list              # List all config
         sdgen config api_url           # Read api_url
         sdgen config api_url http://... # Set api_url
+        sdgen config renew-token        # Generate new WebUI token
     """
     # Define valid config keys
     VALID_KEYS = ["api_url", "configs_dir", "output_dir", "webui_token"]
@@ -291,6 +292,35 @@ def config_command(
 
         console.print(table)
         console.print()
+        return
+
+    # MODE SPECIAL: Renew token
+    if key == "renew-token":
+        from sd_generator_cli.config.global_config import generate_webui_token
+
+        # Generate new token
+        new_token = generate_webui_token()
+
+        # Update config
+        config_data["webui_token"] = new_token
+
+        # Save updated config
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=2, ensure_ascii=False)
+                f.write('\n')
+
+            console.print(f"[green]✓ New WebUI token generated:[/green] {new_token}")
+            console.print(f"[dim]  Token updated in {config_path}[/dim]")
+            console.print()
+            console.print("[yellow]⚠  WebUI services need to be restarted to use the new token.[/yellow]")
+            console.print("[cyan]   Run: sdgen webui restart[/cyan]")
+            console.print()
+
+        except Exception as e:
+            console.print(f"[red]✗ Error writing config: {e}[/red]")
+            raise typer.Exit(code=1)
+
         return
 
     # MODE 2 & 3: Read or write a specific key

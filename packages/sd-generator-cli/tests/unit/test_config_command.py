@@ -260,5 +260,101 @@ class TestConfigCommandErrors:
         assert result.exit_code != 0
 
 
+class TestConfigCommandRenewToken:
+    """Test config renew-token mode."""
+
+    def test_renew_token_generates_new_token(self, config_file: Path, monkeypatch: Any) -> None:
+        """Test that renew-token generates a new UUID token."""
+        monkeypatch.chdir(config_file.parent)
+
+        # Get original token
+        with open(config_file, 'r', encoding='utf-8') as f:
+            original_data = json.load(f)
+        original_token = original_data.get("webui_token")
+
+        # Run renew-token
+        result = runner.invoke(app, ["config", "renew-token"])
+
+        assert result.exit_code == 0
+        assert "new webui token generated" in result.stdout.lower()
+        assert "webui services need to be restarted" in result.stdout.lower()
+        assert "sdgen webui restart" in result.stdout.lower()
+
+        # Verify new token was written
+        with open(config_file, 'r', encoding='utf-8') as f:
+            new_data = json.load(f)
+        new_token = new_data.get("webui_token")
+
+        # Should be different
+        assert new_token != original_token
+        # Should be a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+        assert len(new_token) == 36
+        assert new_token.count('-') == 4
+
+    def test_renew_token_preserves_other_keys(self, config_file: Path, monkeypatch: Any) -> None:
+        """Test that renew-token doesn't change other config keys."""
+        monkeypatch.chdir(config_file.parent)
+
+        # Get original config
+        with open(config_file, 'r', encoding='utf-8') as f:
+            original_data = json.load(f)
+
+        original_api_url = original_data["api_url"]
+        original_configs_dir = original_data["configs_dir"]
+        original_output_dir = original_data["output_dir"]
+
+        # Run renew-token
+        result = runner.invoke(app, ["config", "renew-token"])
+        assert result.exit_code == 0
+
+        # Verify other keys unchanged
+        with open(config_file, 'r', encoding='utf-8') as f:
+            new_data = json.load(f)
+
+        assert new_data["api_url"] == original_api_url
+        assert new_data["configs_dir"] == original_configs_dir
+        assert new_data["output_dir"] == original_output_dir
+
+    def test_renew_token_works_without_existing_token(self, config_file_no_token: Path, monkeypatch: Any) -> None:
+        """Test that renew-token works even if no token exists initially."""
+        monkeypatch.chdir(config_file_no_token.parent)
+
+        # Verify no token initially
+        with open(config_file_no_token, 'r', encoding='utf-8') as f:
+            original_data = json.load(f)
+        assert "webui_token" not in original_data or original_data.get("webui_token") is None
+
+        # Run renew-token
+        result = runner.invoke(app, ["config", "renew-token"])
+        assert result.exit_code == 0
+
+        # Verify token was created
+        with open(config_file_no_token, 'r', encoding='utf-8') as f:
+            new_data = json.load(f)
+
+        new_token = new_data.get("webui_token")
+        assert new_token is not None
+        assert len(new_token) == 36  # UUID format
+
+    def test_renew_token_displays_new_token_in_output(self, config_file: Path, monkeypatch: Any) -> None:
+        """Test that renew-token displays the new token in output."""
+        monkeypatch.chdir(config_file.parent)
+
+        result = runner.invoke(app, ["config", "renew-token"])
+
+        assert result.exit_code == 0
+
+        # Extract token from output (format: "✓ New WebUI token generated: <token>")
+        # The token should be visible in the output
+        lines = result.stdout.split('\n')
+        token_line = [l for l in lines if "token generated" in l.lower()][0]
+
+        # Should contain a UUID-like string
+        import re
+        uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+        match = re.search(uuid_pattern, token_line)
+        assert match is not None
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
