@@ -334,7 +334,7 @@ def start_backend(backend_port: int, webui_path: Path, no_reload: bool = False, 
     cmd = [
         "poetry", "run", "uvicorn",
         "sd_generator_webui.main:app",
-        "--host", "0.0.0.0",
+        "--host", "0.0.0.0",  # nosec B104 - Intentional for local dev (allows WSL <-> Windows access)
         "--port", str(backend_port),
     ]
 

@@ -15,6 +15,9 @@ def md5_short(value: str, length: int = 8) -> str:
     This is used to create unique keys for inline variation strings
     that don't have explicit keys in the YAML.
 
+    Note: MD5 is used here for non-security purposes (generating short,
+    unique dictionary keys). Not for cryptographic purposes.
+
     Args:
         value: String to hash
         length: Length of the hash to return (default: 8)
@@ -26,5 +29,6 @@ def md5_short(value: str, length: int = 8) -> str:
         >>> md5_short("red dress")
         '7d8e3a2f'
     """
-    hash_full = hashlib.md5(value.encode('utf-8')).hexdigest()
+    # MD5 is used for generating unique keys, not for security
+    hash_full = hashlib.md5(value.encode('utf-8'), usedforsecurity=False).hexdigest()
     return hash_full[:length]
