@@ -111,25 +111,38 @@ The backend serves:
 
 ### Development Mode
 
-**Start backend (API only):**
+Use the `--dev-mode` flag to start backend (API only) and frontend (Vite) separately:
+
 ```bash
-cd packages/sd-generator-webui
-SD_GENERATOR_DEV_MODE=1 python3 -m uvicorn sd_generator_webui.main:app --reload --port 8000
+# Start with dev mode flag
+sdgen webui start --dev-mode
 ```
 
-**Start frontend dev server (with hot reload):**
-```bash
-cd front
-npm run dev
-```
+This will launch:
+- Backend API on port 8000
+- Frontend Vite dev server on port 5173
 
 Access frontend at: **http://localhost:5173**
 
-In dev mode:
-- Backend serves API only (port 8000)
-- Frontend runs on Vite dev server (port 5173)
+Benefits:
 - Hot module replacement for instant updates
+- Vue DevTools support
 - Source maps for debugging
+- Fast refresh on code changes
+
+**Manual start (if needed):**
+
+If you need to start services manually:
+
+```bash
+# Terminal 1 - Backend
+cd packages/sd-generator-webui
+SD_GENERATOR_DEV_MODE=1 python3 -m uvicorn sd_generator_webui.main:app --reload --port 8000
+
+# Terminal 2 - Frontend
+cd packages/sd-generator-webui/front
+npm run dev
+```
 
 ## API Documentation
 
@@ -200,24 +213,29 @@ npm install
 
 ### Development Workflow
 
-**Terminal 1 - Backend (API only):**
+**Recommended: Use `sdgen webui start --dev-mode`**
+
 ```bash
+# Starts both backend and frontend in dev mode
+sdgen webui start --dev-mode
+
+# Access at http://localhost:5173
+```
+
+**Manual start (if needed):**
+
+If you need to start services manually:
+
+```bash
+# Terminal 1 - Backend (API only)
 cd packages/sd-generator-webui
-
-# Set dev mode flag
 export SD_GENERATOR_DEV_MODE=1
-
-# Set required config
 export IMAGE_FOLDERS='[{"path": "/tmp/test-images", "name": "Test"}]'
 export VALID_GUIDS='["test-guid"]'
 export READ_ONLY_GUIDS='[]'
-
-# Start with auto-reload
 python3 -m uvicorn sd_generator_webui.main:app --reload --port 8000
-```
 
-**Terminal 2 - Frontend (Vite dev server):**
-```bash
+# Terminal 2 - Frontend (Vite dev server)
 cd packages/sd-generator-webui/front
 npm run dev
 ```

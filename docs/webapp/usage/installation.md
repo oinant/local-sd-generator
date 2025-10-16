@@ -187,31 +187,16 @@ npm install
 
 #### Option 1: Full Dev Mode (Recommended)
 
-Run backend and frontend separately with hot reload.
-
-**Terminal 1 - Backend (API only):**
+Use the `--dev-mode` flag to run backend and frontend separately with hot reload.
 
 ```bash
-cd packages/sd-generator-webui
-
-# Enable dev mode
-export SD_GENERATOR_DEV_MODE=1
-
-# Configure (minimal for testing)
-export IMAGE_FOLDERS='[{"path": "/tmp/test-images", "name": "Test"}]'
-export VALID_GUIDS='["dev-guid"]'
-export READ_ONLY_GUIDS='[]'
-
-# Start backend
-python3 -m uvicorn sd_generator_webui.main:app --reload --port 8000
+# Start both services in dev mode
+sdgen webui start --dev-mode
 ```
 
-**Terminal 2 - Frontend (Vite dev server):**
-
-```bash
-cd packages/sd-generator-webui/front
-npm run dev
-```
+This launches:
+- Backend API on port 8000 (with auto-reload)
+- Frontend Vite dev server on port 5173 (with HMR)
 
 **Access:** http://localhost:5173 (Vite dev server)
 
@@ -220,6 +205,24 @@ Benefits:
 - 🐛 Vue DevTools support
 - 📦 Source maps for debugging
 - 🔄 Auto-reload on file changes
+
+**Manual start (if needed):**
+
+If you prefer to start services manually:
+
+```bash
+# Terminal 1 - Backend (API only)
+cd packages/sd-generator-webui
+export SD_GENERATOR_DEV_MODE=1
+export IMAGE_FOLDERS='[{"path": "/tmp/test-images", "name": "Test"}]'
+export VALID_GUIDS='["dev-guid"]'
+export READ_ONLY_GUIDS='[]'
+python3 -m uvicorn sd_generator_webui.main:app --reload --port 8000
+
+# Terminal 2 - Frontend (Vite dev server)
+cd packages/sd-generator-webui/front
+npm run dev
+```
 
 #### Option 2: Production Mode Locally
 
