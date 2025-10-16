@@ -217,6 +217,42 @@ def is_automatic1111_running(api_url: str) -> bool:
         return False
 
 
+def is_backend_running(port: int = 8000) -> bool:
+    """
+    Check if backend API is responding via HTTP.
+
+    Args:
+        port: Backend port (default: 8000)
+
+    Returns:
+        True if backend responds
+    """
+    try:
+        import requests
+        response = requests.get(f"http://localhost:{port}/docs", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
+def is_frontend_running(port: int = 5173) -> bool:
+    """
+    Check if frontend dev server is responding via HTTP.
+
+    Args:
+        port: Frontend port (default: 5173)
+
+    Returns:
+        True if frontend responds
+    """
+    try:
+        import requests
+        response = requests.get(f"http://localhost:{port}", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
 def start_automatic1111_windows(bat_path: str, api_url: str) -> Optional[int]:
     """
     Launch Automatic1111 on Windows from WSL.

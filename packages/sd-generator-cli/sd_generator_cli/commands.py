@@ -140,20 +140,50 @@ def stop_command():
         raise typer.Exit(code=1)
 
 
-def status_command():
+def status_command() -> None:
     """
     Show status of all SD Generator services.
 
+    Prerequisites:
+    1. Check config file exists and is valid
+    2. If OK, display service status table
+    3. If KO, show error and exit
+
     Displays:
-    - Automatic1111 status (if managed)
+    - Automatic1111 status (checks API, not just PID)
     - Backend status
     - Frontend status
 
     Examples:
         sdgen status
     """
+    # STEP 1: Validate config file (mandatory)
+    try:
+        config = load_global_config()
+    except FileNotFoundError:
+        console.print(
+            "[red]✗ Config file error:[/red] No sdgen_config.json file found.\n"
+            "[yellow]→ Please run 'sdgen init' to create config[/yellow]\n"
+            "[yellow]→ Or check that you are in the intended folder[/yellow]"
+        )
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(
+            f"[red]✗ Config file error:[/red] Your sdgen_config.json is not valid.\n"
+            f"[yellow]→ Error: {e}[/yellow]\n"
+            "[yellow]→ Please fix the config file or run 'sdgen init' to recreate it[/yellow]"
+        )
+        raise typer.Exit(code=1)
+
+    # STEP 2: Config OK, get service status
     statuses = daemon.get_all_services_status()
 
+    # Check if services are actually responding via HTTP (handles external launches)
+    a1111_api_running = daemon.is_automatic1111_running(config.api_url)
+    backend_api_running = daemon.is_backend_running(port=8000)  # TODO: Get from config?
+    frontend_running = daemon.is_frontend_running(port=5173)   # TODO: Get from config?
+
+    # Build status table
     table = Table(title="Service Status", border_style="cyan")
     table.add_column("Service", style="cyan")
     table.add_column("Status", style="bold")
@@ -165,12 +195,29 @@ def status_command():
         "frontend": "Frontend"
     }
 
-    for service, (running, pid) in statuses.items():
+    for service, (pid_running, pid) in statuses.items():
         name = service_names[service]
-        if running:
+
+        # Check API/HTTP status for each service
+        if service == "a1111":
+            api_running = a1111_api_running
+        elif service == "backend":
+            api_running = backend_api_running
+        else:  # frontend
+            api_running = frontend_running
+
+        # Determine status and PID display
+        if api_running:
+            # Service responds via HTTP
             status = "[green]Running[/green]"
-            pid_str = str(pid) if pid != 999999 else "N/A (Windows)"
+            if pid:
+                # PID exists (launched by sdgen)
+                pid_str = str(pid) if pid != 999999 else "N/A (Windows)"
+            else:
+                # No PID (launched externally)
+                pid_str = "External"
         else:
+            # Service does not respond
             status = "[red]Stopped[/red]"
             pid_str = "—"
 
