@@ -146,7 +146,8 @@ def _generate(
         prompts = pipeline.generate(resolved_config, context)
 
         # Display variation statistics
-        stats = pipeline.get_variation_statistics(resolved_config.template, context)
+        template_str = resolved_config.template if resolved_config.template else ""
+        stats = pipeline.get_variation_statistics(template_str, context)
 
         if stats['total_placeholders'] > 0:
             # Create variation statistics panel
@@ -242,7 +243,8 @@ def _generate(
         # 1. Extract placeholders that actually appear in the resolved template
         import re
         placeholder_pattern = re.compile(r'\{(\w+)(?:\[[^\]]+\])?\}')
-        placeholders_in_template = set(placeholder_pattern.findall(resolved_config.template))
+        template_for_extraction = resolved_config.template if resolved_config.template else ""
+        placeholders_in_template = set(placeholder_pattern.findall(template_for_extraction))
 
         # 2. Extract complete pool from context.imports (only for placeholders in template)
         for placeholder_name, import_data in context.imports.items():
@@ -263,9 +265,10 @@ def _generate(
         for prompt_dict in prompts:
             variations = prompt_dict.get('variations', {})
             for key, value in variations.items():
-                if key in variations_map:
-                    if value not in variations_map[key]["used"]:
-                        variations_map[key]["used"].append(value)
+                if key in variations_map and isinstance(variations_map[key], dict):
+                    used_list = variations_map[key].get("used")
+                    if isinstance(used_list, list) and value not in used_list:
+                        used_list.append(value)
                 else:
                     # Fallback: if placeholder not in imports (shouldn't happen)
                     variations_map[key] = {
@@ -722,7 +725,8 @@ def validate_template(
         table.add_column("Value", style="green")
 
         table.add_row("Name", config.name)
-        table.add_row("Type", config.type)
+        if hasattr(config, 'type'):
+            table.add_row("Type", config.type)
         table.add_row("Version", config.version)
 
         if config.implements:

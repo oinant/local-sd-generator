@@ -102,6 +102,12 @@ def start_command(
             table.add_row("Frontend", f"http://localhost:{frontend_port}")
 
         console.print(table)
+
+        # Display auth token if configured
+        if config.webui_token:
+            console.print(f"\n[yellow]🔑 Auth Token: {config.webui_token}[/yellow]")
+            console.print("[dim]   Use this token to authenticate with the WebUI[/dim]")
+
         console.print("\n[bold green]✓ All services started in background[/bold green]")
         console.print("[dim]Use 'sdgen stop' to stop all services[/dim]")
         console.print("[dim]Use 'sdgen status' to check service status[/dim]\n")
@@ -229,10 +235,21 @@ def webui_start(
 
         if dev_mode and frontend_pid:
             # Dev mode: frontend on separate port
-            console.print(f"[dim]Frontend (DEV): http://localhost:{frontend_port}[/dim]\n")
+            console.print(f"[dim]Frontend (DEV): http://localhost:{frontend_port}[/dim]")
         else:
             # Production mode: frontend served by backend
-            console.print(f"[dim]Frontend (PROD): http://localhost:{backend_port}[/dim]\n")
+            console.print(f"[dim]Frontend (PROD): http://localhost:{backend_port}[/dim]")
+
+        # Display auth token if configured
+        try:
+            config = load_global_config()
+            if config.webui_token:
+                console.print(f"\n[yellow]🔑 Auth Token: {config.webui_token}[/yellow]")
+                console.print("[dim]   Use this token to authenticate with the WebUI[/dim]")
+        except Exception:
+            pass  # Silently ignore if config not found
+
+        console.print()
 
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")

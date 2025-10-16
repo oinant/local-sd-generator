@@ -13,7 +13,7 @@ This module provides the main orchestrator that coordinates all V2 components:
 """
 
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from sd_generator_cli.templating.loaders.yaml_loader import YamlLoader
 from sd_generator_cli.templating.loaders.parser import ConfigParser
@@ -46,7 +46,7 @@ class V2Pipeline:
         prompts = pipeline.run('path/to/prompt.yaml')
     """
 
-    def __init__(self, configs_dir: str = None):
+    def __init__(self, configs_dir: Optional[str] = None):
         """
         Initialize the V2 pipeline.
 
@@ -93,14 +93,14 @@ class V2Pipeline:
             ValueError: If config is invalid
         """
         # Load YAML
-        config_path = Path(config_path)
-        if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
+        path = Path(config_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Config file not found: {path}")
 
-        data = self.loader.load_file(config_path, config_path.parent)
+        data = self.loader.load_file(path, path.parent)
 
         # Parse into model
-        config = self.parser.parse_prompt(data, config_path)
+        config = self.parser.parse_prompt(data, path)
 
         # Validate
         validation_result = self.validator.validate(config)
@@ -132,6 +132,11 @@ class V2Pipeline:
         """
         # Phase 3: Resolve inheritance chain
         resolved_config = self.inheritance_resolver.resolve_implements(config)
+
+        # Type narrow: ensure we got back a PromptConfig (should always be true when input is PromptConfig)
+        if not isinstance(resolved_config, PromptConfig):
+            raise ValueError(f"Expected PromptConfig after resolution, got {type(resolved_config).__name__}")
+
         # Build simple chain for parameter merging (just use the resolved config)
         inheritance_chain = [resolved_config]
 
@@ -160,8 +165,9 @@ class V2Pipeline:
         resolved_config_with_chunks = deepcopy(resolved_config)
 
         # Call template resolver in Phase 1 mode (inject chunks only, no placeholder resolution)
+        template_str = resolved_config.template if resolved_config.template else ""
         template_with_chunks = self.template_resolver._inject_all_chunks_phase1(
-            resolved_config.template,
+            template_str,
             {
                 'imports': context.imports,
                 'chunks': context.chunks,
@@ -195,7 +201,7 @@ class V2Pipeline:
             }
         """
         # Use config.template (the final template after inheritance)
-        template = config.template
+        template = config.template if config.template else ""
 
         # Generate prompts
         prompts = self.generator.generate_prompts(
@@ -384,7 +390,7 @@ class V2Pipeline:
         placeholder_pattern = re.compile(r'\{(\w+)(?:\[[^\]]+\])?\}')
         placeholder_names = set(placeholder_pattern.findall(template))
 
-        statistics = {
+        statistics: Dict[str, Any] = {
             'placeholders': {},
             'total_combinations': 1,
             'total_placeholders': 0
@@ -417,7 +423,11 @@ class V2Pipeline:
                         'sources': sources,
                         'is_multi_source': sources > 1
                     }
-                    statistics['total_combinations'] *= count
-                    statistics['total_placeholders'] += 1
+                    total_comb = statistics['total_combinations']
+                    if isinstance(total_comb, int):
+                        statistics['total_combinations'] = total_comb * count
+                    total_ph = statistics['total_placeholders']
+                    if isinstance(total_ph, int):
+                        statistics['total_placeholders'] = total_ph + 1
 
         return statistics

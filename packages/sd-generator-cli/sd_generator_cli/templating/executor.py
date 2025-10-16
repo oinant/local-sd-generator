@@ -42,9 +42,9 @@ class V2Executor:
 
     def __init__(
         self,
-        api_client: SDAPIClient = None,
-        output_dir: str = None,
-        session_name: str = None
+        api_client: Optional[SDAPIClient] = None,
+        output_dir: Optional[str] = None,
+        session_name: Optional[str] = None
     ):
         """
         Initialize the executor.
@@ -297,7 +297,7 @@ class V2Executor:
 
         return metadata_path
 
-    def set_output_dir(self, output_dir: str, session_name: str = None):
+    def set_output_dir(self, output_dir: str, session_name: Optional[str] = None):
         """
         Change output directory and optionally session name.
 
@@ -380,7 +380,7 @@ class V2Executor:
         Returns:
             Dict mapping placeholder names to lists of unique values
         """
-        variations_map = {}
+        variations_map: Dict[str, List[str]] = {}
 
         for prompt_dict in prompts:
             variations = prompt_dict.get('variations', {})

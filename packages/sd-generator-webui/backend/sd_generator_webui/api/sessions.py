@@ -127,7 +127,7 @@ async def list_session_images(
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
     # Collecter les fichiers images de ce dossier uniquement (pas récursif)
-    image_files = []
+    image_files: list[Path] = []
     for ext in [".png", ".jpg", ".jpeg", ".webp"]:
         image_files.extend(session_path.glob(f"*{ext}"))
 

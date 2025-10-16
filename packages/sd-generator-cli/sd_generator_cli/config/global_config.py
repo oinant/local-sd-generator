@@ -2,12 +2,13 @@
 Global Configuration System for SD Generator
 
 Manages sdgen_config.json in the current working directory.
-Supports configs_dir, output_dir, and api_url settings.
+Supports configs_dir, output_dir, api_url, and webui_token settings.
 
 Config location: ./sdgen_config.json (current directory only)
 """
 
 import json
+import uuid
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
@@ -19,6 +20,7 @@ class GlobalConfig:
     configs_dir: str = "./prompts"
     output_dir: str = "./results"
     api_url: str = "http://127.0.0.1:7860"
+    webui_token: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary"""
@@ -30,7 +32,8 @@ class GlobalConfig:
         return cls(
             configs_dir=data.get("configs_dir", cls.configs_dir),
             output_dir=data.get("output_dir", cls.output_dir),
-            api_url=data.get("api_url", cls.api_url)
+            api_url=data.get("api_url", cls.api_url),
+            webui_token=data.get("webui_token")
         )
 
 
@@ -102,18 +105,33 @@ def create_default_global_config(path: Path, config: Optional[GlobalConfig] = No
         raise ValueError(f"Error creating config file {path}: {e}")
 
 
-def prompt_user_for_paths(interactive: bool = True) -> tuple[str, str, str]:
+def generate_webui_token() -> str:
     """
-    Prompt user for configuration paths.
+    Generate a new UUID v4 token for WebUI authentication.
+
+    Returns:
+        UUID string
+    """
+    return str(uuid.uuid4())
+
+
+def prompt_user_for_paths(interactive: bool = True) -> tuple[str, str, str, Optional[str]]:
+    """
+    Prompt user for configuration paths and WebUI token.
 
     Args:
         interactive: If True, prompt user for input. If False, use defaults.
 
     Returns:
-        Tuple of (configs_dir, output_dir, api_url)
+        Tuple of (configs_dir, output_dir, api_url, webui_token)
     """
     if not interactive:
-        return GlobalConfig.configs_dir, GlobalConfig.output_dir, GlobalConfig.api_url
+        return (
+            GlobalConfig.configs_dir,
+            GlobalConfig.output_dir,
+            GlobalConfig.api_url,
+            None
+        )
 
     print("\n=== SD Generator Global Configuration ===")
     print("\nPress Enter to use default values.")
@@ -133,7 +151,19 @@ def prompt_user_for_paths(interactive: bool = True) -> tuple[str, str, str]:
     if not api_url:
         api_url = GlobalConfig.api_url
 
-    return configs_dir, output_dir, api_url
+    # WebUI Token (optional)
+    print("\n--- WebUI Authentication (optional) ---")
+    print("Generate a secure token for WebUI access?")
+    print("(Useful if you plan to expose WebUI via tunneling)")
+    generate_token = input("Generate token? [Y/n]: ").strip().lower()
+
+    webui_token = None
+    if generate_token != 'n':
+        webui_token = generate_webui_token()
+        print(f"\n✓ Generated token: {webui_token}")
+        print("  Save this token to authenticate with the WebUI.")
+
+    return configs_dir, output_dir, api_url, webui_token
 
 
 def ensure_global_config(interactive: bool = True, force_create: bool = False) -> GlobalConfig:
@@ -163,11 +193,12 @@ def ensure_global_config(interactive: bool = True, force_create: bool = False) -
     if interactive:
         if not config_path.exists():
             print(f"\nCreating config at: {config_path}")
-        configs_dir, output_dir, api_url = prompt_user_for_paths(interactive=True)
+        configs_dir, output_dir, api_url, webui_token = prompt_user_for_paths(interactive=True)
         config = GlobalConfig(
             configs_dir=configs_dir,
             output_dir=output_dir,
-            api_url=api_url
+            api_url=api_url,
+            webui_token=webui_token
         )
     else:
         config = GlobalConfig()

@@ -237,9 +237,11 @@ class InheritanceResolver:
 
         # 1. parameters: MERGE (TemplateConfig and PromptConfig)
         if isinstance(child, TemplateConfig) and isinstance(parent, TemplateConfig):
+            assert isinstance(merged, TemplateConfig)  # Type narrow for mypy
             merged.parameters = {**parent.parameters, **child.parameters}
         elif isinstance(child, PromptConfig) and isinstance(parent, (TemplateConfig, PromptConfig)):
             # PromptConfig can inherit from TemplateConfig or PromptConfig
+            assert isinstance(merged, PromptConfig)  # Type narrow for mypy
             merged.parameters = {**parent.parameters, **child.parameters}
 
         # 2. imports: MERGE (all config types)
@@ -247,6 +249,7 @@ class InheritanceResolver:
 
         # 3. chunks and defaults: MERGE (ChunkConfig only)
         if isinstance(child, ChunkConfig) and isinstance(parent, ChunkConfig):
+            assert isinstance(merged, ChunkConfig)  # Type narrow for mypy
             merged.chunks = {**parent.chunks, **child.chunks}
             merged.defaults = {**parent.defaults, **child.defaults}
 
@@ -306,21 +309,25 @@ class InheritanceResolver:
                 merged.template = child.template
 
         # 5. negative_prompt: INJECTION (if {negprompt} present)
-        if hasattr(parent, 'negative_prompt') and hasattr(child, 'negative_prompt'):
-            if parent.negative_prompt and '{negprompt}' in parent.negative_prompt:
+        # Only TemplateConfig and PromptConfig have negative_prompt, not ChunkConfig
+        if isinstance(child, (TemplateConfig, PromptConfig)) and isinstance(parent, (TemplateConfig, PromptConfig)):
+            assert isinstance(merged, (TemplateConfig, PromptConfig))  # Type narrow for mypy
+            parent_neg = parent.negative_prompt
+            child_neg = getattr(child, 'negative_prompt', None)
+            if parent_neg and '{negprompt}' in parent_neg:
                 # Inject child negative_prompt into {negprompt}
-                child_neg = child.negative_prompt if child.negative_prompt else ''
-                merged.negative_prompt = parent.negative_prompt.replace('{negprompt}', child_neg)
+                child_neg_str = child_neg if child_neg else ''
+                merged.negative_prompt = parent_neg.replace('{negprompt}', child_neg_str)
                 logger.debug(
                     f"Injected negative_prompt from {child.source_file.name} into "
                     f"{{negprompt}} placeholder"
                 )
-            elif child.negative_prompt:
+            elif child_neg:
                 # No {negprompt} in parent → child overrides
-                merged.negative_prompt = child.negative_prompt
+                merged.negative_prompt = child_neg
             else:
                 # Child has no negative_prompt → inherit from parent
-                merged.negative_prompt = parent.negative_prompt
+                merged.negative_prompt = parent_neg
 
         return merged
 

@@ -1,190 +1,184 @@
 # Notes pour la prochaine session
 
-**Date:** 2025-10-15
-**Contexte restant:** 9%
+**Date:** 2025-10-16
+**Contexte restant:** ~90%
 
-## ⚠️ État actuel
+## ✅ Session accomplie
 
-On s'est perdus dans les détails techniques du mode dev/production. On a implémenté un système avec `SD_GENERATOR_DEV_MODE` env var, mais **on n'a jamais testé le vrai workflow utilisateur final**.
+### Fixes CLI (tous résolus)
+1. ✅ **Fix `sdgen start` crash** - `'GlobalConfig' object has no attribute 'get'`
+   - Remplacé `config.get()` par attributs dataclass (`config.api_url`)
+   - Simplifié gestion `a1111_bat` (via flag `--a1111-bat` uniquement)
 
-## 🎯 Ce qu'on doit faire
+2. ✅ **Fix dev/prod mode detection**
+   - Supprimé détection basée sur `dev.webui_path` dans config
+   - Mode exclusivement contrôlé par flag `--dev-mode`
+   - Simplifié `find_webui_package()` (plus de détection de mode)
 
-### Objectif : Tester l'expérience utilisateur lambda
+3. ✅ **Fix messages d'erreur backend**
+   - Split 404 (dev mode) / 500 (frontend build manquant)
+   - Messages clairs avec instructions de résolution
 
-**User persona:**
-- Pas dev
-- A installé Automatic1111
-- Veut générer des milliers d'images avec templates
-- Fait `pip install sd-generator-cli sd-generator-webui`
-- Lance `sdgen webui start`
-- Ouvre http://localhost:8000 → Interface web fonctionne
+4. ✅ **Fix frontend Vite dev server**
+   - Changé `npm run dev` → `npm run serve` dans daemon.py
+   - Frontend démarre correctement en mode dev
 
-### Workflow de test à faire
+### Type Safety Improvements
+1. ✅ **Mypy strict mode activé**
+   - Configuration stricte dans `pyproject.toml`
+   - Détecte erreurs d'attributs avant runtime
+
+2. ✅ **Documentation complète**
+   - `docs/tooling/type-checking-guide.md` créé
+   - Section ajoutée dans `CLAUDE.md`
+   - Workflow pre-commit documenté
+
+3. ✅ **Typer upgrade**
+   - Version ^0.19.2 (fix help text rendering)
+
+### Commit créé
+- Hash: `ab4f37c`
+- Titre: "fix(cli): Fix dev/prod mode detection and type safety issues"
+- 8 fichiers modifiés, +435/-80 lignes
+
+## 🎯 Prochaine tâche prioritaire
+
+### Feature: Token configuration via CLI
+
+**Problème actuel:**
+Le token d'authentification (GUID) est hardcodé dans `/packages/sd-generator-webui/backend/.env`:
+```
+VALID_GUIDS=["dd9585a5-e646-4726-900b-0c27d30c565f"]
+```
+
+**Objectif:**
+Permettre à l'utilisateur de configurer son token via la CLI, similaire à `sdgen init`.
+
+**Approche proposée:**
+
+1. **Créer commande `sdgen webui init`**
+   ```bash
+   sdgen webui init
+   ```
+
+   Comportement:
+   - Demande si générer un nouveau token ou utiliser existant
+   - Si nouveau : génère UUID v4 avec `uuid.uuid4()`
+   - Si existant : demande le token
+   - Crée ou met à jour `.env` dans `backend/`
+   - Configure `VALID_GUIDS` et optionnellement `READ_ONLY_GUIDS`
+
+2. **Structure suggérée:**
+   ```
+   packages/sd-generator-cli/sd_generator_cli/
+   ├── commands.py          # Ajouter webui_init()
+   └── config/
+       └── webui_config.py  # Nouveau fichier pour gestion .env WebUI
+   ```
+
+3. **Fonctions à créer:**
+   ```python
+   # config/webui_config.py
+   def generate_token() -> str:
+       """Generate new UUID token"""
+
+   def load_webui_env(webui_path: Path) -> dict:
+       """Load existing .env from webui backend"""
+
+   def save_webui_env(webui_path: Path, config: dict) -> None:
+       """Save/update .env in webui backend"""
+
+   def prompt_token_config() -> dict:
+       """Interactive prompt for token configuration"""
+   ```
+
+4. **Workflow utilisateur:**
+   ```bash
+   # Installation propre
+   pip install sd-generator-cli sd-generator-webui
+
+   # Configuration WebUI (incluant token)
+   sdgen webui init
+   > Generate new token or use existing? [new/existing]: new
+   > Generated token: abc-123-def-456
+   > Token saved to: ~/.sdgen/webui_token.txt
+   > Also saved in backend/.env
+
+   # Lancer WebUI
+   sdgen webui start
+   > ✓ WebUI started
+   > Token: Use 'abc-123-def-456' to authenticate
+   ```
+
+5. **Améliorations optionnelles:**
+   - Stocker token dans `~/.sdgen/webui_token.txt` pour référence
+   - Afficher token au démarrage avec `sdgen webui start`
+   - Commande `sdgen webui token` pour afficher token actuel
+   - Support multi-tokens (admin + read-only)
+
+**Priorité:** P1 - Critical (UX blocker)
+
+**Complexité estimée:** Medium (~2h)
+- Création commande CLI
+- Gestion fichier .env
+- Génération/validation UUID
+- Tests interactifs
+
+**Tests à faire:**
+- [ ] Génération nouveau token
+- [ ] Import token existant
+- [ ] Mise à jour .env
+- [ ] Token affiché au start
+- [ ] Authentification backend fonctionne
+
+## 📊 État du projet
+
+**CLI:**
+- ✅ Commandes de base fonctionnelles
+- ✅ Dev/prod mode corrigé
+- ✅ Type safety amélioré
+- ⏳ Token init à implémenter
+
+**WebUI:**
+- ✅ Backend FastAPI opérationnel
+- ✅ Frontend Vue.js servi correctement
+- ⏳ Auth flow à tester end-to-end
+- ⏳ Token init manquant
+
+**Tests:**
+- ✅ 25/25 tests CLI passent
+- ✅ Type checking mypy strict activé
+- ⏳ Tests auth à ajouter
+
+**Doc:**
+- ✅ Type checking guide complet
+- ✅ CLI usage documenté
+- ⏳ WebUI auth workflow à documenter
+
+## 🔧 Commandes utiles
 
 ```bash
-# 1. Builder le frontend (production)
-cd /mnt/d/StableDiffusion/local-sd-generator/packages/sd-generator-webui/front
-npm run build  # Crée front/dist/
+# Type check (strict mode)
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes
 
-# 2. Builder les packages Python
-cd ../
-poetry build  # Crée wheel avec front/dist/ embedded
+# Tests CLI
+cd packages/sd-generator-cli && ../../venv/bin/python3 -m pytest tests/ -v
 
-cd ../../sd-generator-cli
-poetry build  # Crée wheel du CLI
+# Lancer WebUI
+sdgen webui start                # Production
+sdgen webui start --dev-mode     # Dev mode
 
-# 3. Créer un venv de test (simuler installation user)
-cd /tmp
-python3 -m venv test-sdgen
-source test-sdgen/bin/activate
-
-# 4. Installer depuis les wheels
-pip install /path/to/sd-generator-cli/dist/*.whl
-pip install /path/to/sd-generator-webui/dist/*.whl
-
-# 5. Lancer comme un user (SANS dev.webui_path dans config)
-sdgen webui start
-
-# 6. Vérifier
-curl http://localhost:8000  # Doit servir le frontend
-curl http://localhost:8000/api/mode  # Doit dire "production"
+# Token actuel
+cat packages/sd-generator-webui/backend/.env | grep VALID_GUIDS
 ```
 
-## 📦 Ce qui est déjà fait
+## 📝 Rappels importants
 
-### Backend (main.py)
-- ✅ Détection du mode via `SD_GENERATOR_DEV_MODE` env var
-- ✅ Mode production par défaut (sans env var)
-- ✅ Serve frontend static depuis `front/dist/` en production
-- ✅ Page dev avec bandeau jaune si pas de build
-- ✅ Catch-all route pour SPA routing
-
-### CLI (daemon.py)
-- ✅ Détecte dev mode via `dev.webui_path` dans config
-- ✅ Passe `SD_GENERATOR_DEV_MODE=1` au backend si dev
-- ✅ Skip frontend launch en production (servi par backend)
-- ✅ Lance Vite dev server en mode dev
-
-### Build system
-- ✅ `build.py` pour builder frontend avant packaging
-- ✅ `SKIP_FRONTEND_BUILD=1` pour editable install
-- ✅ `pyproject.toml` inclut `front/dist/` dans wheel
-
-### Packages installés en editable
-- ✅ CLI : `pip install -e packages/sd-generator-cli`
-- ✅ WebUI : `SKIP_FRONTEND_BUILD=1 pip install -e packages/sd-generator-webui`
-
-## 🐛 Problème actuel (non résolu)
-
-L'env var `SD_GENERATOR_DEV_MODE` ne passe pas au backend quand lancé via `poetry run uvicorn` avec `--reload`.
-
-**Log montrait:**
-```
-DEBUG: SD_GENERATOR_DEV_MODE = None
-✓ Mode PRODUCTION (default)
-```
-
-**Raisons possibles:**
-- `poetry run` crée un subprocess qui n'hérite pas des env vars
-- `--reload` d'uvicorn crée un reloader process + worker process
-- Les env vars ne sont pas propagées correctement
-
-**Mais:** On s'en fout pour le test utilisateur final! En production il n'y a pas de `poetry run`, c'est directement le script Python installé.
-
-## 🎯 Prochaines actions
-
-1. **Builder le frontend** (pour avoir `front/dist/`)
-2. **Builder les wheels** avec `poetry build`
-3. **Tester installation propre** dans un venv isolé
-4. **Vérifier que ça marche** sans aucun config dev
-5. **Si ça marche** → On est bons! Commit et doc
-6. **Si ça marche pas** → Debug avec le vrai workflow user
-
-## 📝 Notes techniques
-
-### Structure attendue du wheel
-
-```
-sd-generator-webui/
-├── sd_generator_webui/          # Package Python
-│   ├── __init__.py
-│   ├── main.py
-│   └── ...
-└── front/
-    └── dist/                     # Frontend buildé (embedded)
-        ├── index.html
-        ├── assets/
-        └── ...
-```
-
-### Détection en production
-
-Quand installé via pip :
-```python
-import sd_generator_webui
-package_root = Path(sd_generator_webui.__file__).parent.parent.parent
-frontend_dist = package_root / "front" / "dist"
-# frontend_dist doit exister et contenir index.html
-```
-
-### Commandes user finales
-
-```bash
-# Installation
-pip install sd-generator-cli sd-generator-webui
-
-# Usage
-sdgen webui start  # Backend sur :8000 avec frontend embedded
-sdgen webui stop
-sdgen webui status
-
-# Génération
-sdgen generate -t template.yaml
-```
-
-## 🔧 Outils à utiliser
-
-- MCP Playwright pour tester l'interface web
-- `curl` pour tester les endpoints
-- `poetry build` pour créer les wheels
-- Venv isolé pour simuler user install
-
-## 💡 Rappel important
-
-**Ne PAS se perdre dans le mode dev!** Le mode dev c'est pour nous. L'objectif c'est que l'utilisateur final ait une expérience simple sans configuration.
+1. **TOUJOURS lancer mypy avant commit** (strict mode activé)
+2. **Utiliser attributs dataclass** (pas `.get()` sur objets non-dict)
+3. **Dev mode = flag `--dev-mode`** (pas basé sur config)
+4. **Frontend = npm run serve** (pas "dev")
 
 ---
 
-**Prochaine session :** Commencer par builder et tester le workflow production complet.
-
-
-  Session Accomplishments
-
-  ✅ Fixed WebUI routing architecture
-  - Simplified routing by serving frontend at /webui instead of root /
-  - Fixed static asset serving issues (JS chunks returning HTML)
-  - Updated Vue.js build configuration with publicPath: '/webui/'
-  - Verified fix with Playwright - all assets load correctly
-
-  ✅ Implemented --dev-mode flag
-  - Added --dev-mode flag to sdgen webui start command
-  - Flag controls SD_GENERATOR_DEV_MODE environment variable
-  - Enables separate backend/frontend servers for development
-  - Successfully tested and verified working
-
-  ✅ Updated all documentation
-  - Main README.md
-  - packages/sd-generator-webui/README.md
-  - docs/webapp/usage/installation.md
-  - All now correctly show /webui URLs and --dev-mode flag usage
-
-  ✅ Fixed Typer compatibility
-  - Upgraded from Typer 0.9.4 to 0.19.2
-  - Updated version constraint to >=0.9.0,<1.0
-  - Resolved help text rendering bug
-
-  ✅ Created comprehensive CLI test suite
-  - Added tests/test_cli_commands.py with 25 tests
-  - Tests verify all commands are properly mapped
-  - Tests confirm --dev-mode flag is present and functional
-  - All tests passing (22/25 completed before timeout)
+**Prochaine session:** Implémenter `sdgen webui init` pour configuration token interactive.

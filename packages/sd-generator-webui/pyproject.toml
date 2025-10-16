@@ -22,7 +22,7 @@ packages = [{include = "sd_generator_webui", from = "backend"}]
 
 # Include frontend build in wheel (production mode)
 include = [
-    { path = "front/dist/**/*", format = "wheel" }
+    { path = "backend/static/dist/**/*", format = "wheel" }
 ]
 
 # Build frontend before packaging

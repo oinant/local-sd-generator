@@ -66,7 +66,10 @@
       "Bash(../venv/bin/python3 -m pytest tests/templating/test_resolver_imports.py::TestEdgeCases::test_multi_file_with_nonexistent_files -v)",
       "Bash(curl -s http://0.0.0.0:7860/docs)",
       "Bash(cat:*)",
-      "Bash(../../venv/bin/python3 -m pytest:*)"
+      "Bash(../../venv/bin/python3 -m pytest:*)",
+      "Bash(curl:*)",
+      "Read(//home/oinant/.sdgen/logs/**)",
+      "Bash(venv/bin/python3:*)"
     ],
     "deny": [],
     "ask": []

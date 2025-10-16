@@ -73,8 +73,9 @@ def build():
         print(result.stderr)
         sys.exit(1)
 
-    # Check if dist was created
-    dist_dir = frontend_dir / "dist"
+    # Check if dist was created (output goes to backend/static/dist)
+    backend_dir = package_root / "backend"
+    dist_dir = backend_dir / "static" / "dist"
     if not dist_dir.exists():
         print(f"ERROR: Build output not found: {dist_dir}")
         sys.exit(1)

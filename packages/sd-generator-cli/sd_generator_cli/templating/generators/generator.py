@@ -35,7 +35,7 @@ class PromptGenerator:
         → Outfit loop (outer), Angle loop (inner), Quality random
     """
 
-    def __init__(self, resolver: TemplateResolver = None, normalizer: PromptNormalizer = None):
+    def __init__(self, resolver: Optional[TemplateResolver] = None, normalizer: Optional[PromptNormalizer] = None):
         """
         Initialize the prompt generator.
 
@@ -343,8 +343,8 @@ class PromptGenerator:
         Returns:
             List of prompt dicts
         """
-        prompts = []
-        used_combinations = set()
+        prompts: List[Dict[str, Any]] = []
+        used_combinations: set[tuple[tuple[str, str], ...]] = set()
 
         # Limit attempts to avoid infinite loop
         max_attempts = generation.max_images * 10

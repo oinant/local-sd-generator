@@ -63,7 +63,7 @@ class TestV2Pipeline:
         name: str,
         template: str,
         generation: dict,
-        implements: str = None,
+        implements: str | None = None,
         **kwargs
     ) -> Path:
         """Create a prompt file in temp directory."""

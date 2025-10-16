@@ -25,7 +25,7 @@ async def list_images(
     """Liste les images générées avec pagination."""
 
     # Collecter tous les fichiers images
-    image_files = []
+    image_files: list[Path] = []
     for ext in [".png", ".jpg", ".jpeg", ".webp"]:
         image_files.extend(IMAGES_DIR.glob(f"**/*{ext}"))
 

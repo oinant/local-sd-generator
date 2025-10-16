@@ -1,10 +1,10 @@
 import os
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables from .env file (optional)
 load_dotenv()
 
 # Paths
@@ -12,8 +12,32 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 CLI_DIR = PROJECT_ROOT / "CLI"
 VARIATIONS_DIR = PROJECT_ROOT / "variations"
 
-# Image folders configuration - Load from environment
-IMAGE_FOLDERS: List[dict] = json.loads(os.getenv("IMAGE_FOLDERS"))
+
+def load_global_config() -> dict:
+    """
+    Load sdgen_config.json from current working directory.
+
+    Returns:
+        Config dictionary with defaults if file not found
+    """
+    config_path = Path.cwd() / "sdgen_config.json"
+
+    if not config_path.exists():
+        return {}
+
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+# Load global config for webui_token
+GLOBAL_CONFIG = load_global_config()
+
+# Image folders configuration - Load from environment or use default
+IMAGE_FOLDERS_STR = os.getenv("IMAGE_FOLDERS", '[{"name": "Default", "path": "/mnt/d/StableDiffusion/apioutput"}]')
+IMAGE_FOLDERS: List[dict] = json.loads(IMAGE_FOLDERS_STR)
 
 # Use the first configured folder as IMAGES_DIR
 IMAGES_DIR = Path(IMAGE_FOLDERS[0]["path"]) if IMAGE_FOLDERS else PROJECT_ROOT / "apioutput" / "images"
@@ -27,15 +51,22 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8000"))
 API_WORKERS = int(os.getenv("API_WORKERS", "1"))
 
-# Redis Configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-
 # Stable Diffusion WebUI Configuration
-SD_WEBUI_URL = os.getenv("SD_WEBUI_URL", "http://127.0.0.1:7860")
+SD_WEBUI_URL = GLOBAL_CONFIG.get("api_url", os.getenv("SD_WEBUI_URL", "http://127.0.0.1:7860"))
 
-# Authentication - Load from environment variables
-VALID_GUIDS: List[str] = json.loads(os.getenv("VALID_GUIDS"))
-READ_ONLY_GUIDS: List[str] = json.loads(os.getenv("READ_ONLY_GUIDS"))
+# Authentication - Load from sdgen_config.json or .env fallback
+webui_token: Optional[str] = GLOBAL_CONFIG.get("webui_token")
+
+if webui_token:
+    # Token configured in sdgen_config.json - use it
+    VALID_GUIDS: List[str] = [webui_token]
+    READ_ONLY_GUIDS: List[str] = []
+else:
+    # Fallback to .env for backward compatibility
+    valid_guids_str = os.getenv("VALID_GUIDS", "[]")
+    read_only_guids_str = os.getenv("READ_ONLY_GUIDS", "[]")
+    VALID_GUIDS = json.loads(valid_guids_str)
+    READ_ONLY_GUIDS = json.loads(read_only_guids_str)
 
 # Image Processing
 MAX_IMAGES_PER_GENERATION = 10

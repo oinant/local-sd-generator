@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/files", tags=["files"])
 
 @router.get("/tree")
 async def get_file_tree(
-    path: str = None,
+    path: str | None = None,
     user_guid: str = Depends(AuthService.validate_guid)
 ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
     """
@@ -22,7 +22,7 @@ async def get_file_tree(
     try:
         if path is None:
             # Structure racine - rapide, pas de récursivité
-            tree = {
+            tree: Dict[str, Any] = {
                 "id": "root",
                 "name": "Images générées",
                 "type": "root",
@@ -71,7 +71,7 @@ async def get_file_tree(
 def _get_directory_children(directory_path: str) -> List[Dict[str, Any]]:
     """Retourne les enfants d'un répertoire pour le lazy loading optimisé."""
     path = Path(directory_path)
-    children = []
+    children: list[Dict[str, Any]] = []
 
     if not path.exists():
         return children
@@ -110,7 +110,7 @@ def _get_directory_children(directory_path: str) -> List[Dict[str, Any]]:
             children.append(child_item)
 
     # Trie par nom
-    children.sort(key=lambda x: x["name"].lower())
+    children.sort(key=lambda x: str(x["name"]).lower())
     return children
 
 
@@ -243,13 +243,13 @@ def _get_directory_tree_recursive(directory: Path, parent_type: str = "folder") 
         pass  # Ignore les dossiers inaccessibles
 
     # Trie par nom
-    children.sort(key=lambda x: x["name"].lower())
+    children.sort(key=lambda x: str(x["name"]).lower())
     return children
 
 
 @router.get("/images")
 async def get_images(
-    path: str = None,
+    path: str | None = None,
     user_guid: str = Depends(AuthService.validate_guid)
 ) -> List[Dict[str, Any]]:
     """
@@ -299,7 +299,7 @@ def _scan_images_in_directory(directory: Path) -> List[Dict[str, Any]]:
             # Calcule le chemin relatif pour l'URL de service
             try:
                 # Essaie de calculer le chemin relatif par rapport aux dossiers configurés
-                relative_path = None
+                relative_path: Path | str | None = None
                 for folder_config in IMAGE_FOLDERS:
                     folder_root = Path(folder_config["path"]).resolve()
                     try:

@@ -141,6 +141,9 @@ def stop_service(service: str, timeout: int = 5) -> bool:
     if not running:
         return True
 
+    # Type narrow: pid must be int here since running is True
+    assert pid is not None
+
     try:
         # Try graceful shutdown first (SIGTERM)
         os.kill(pid, signal.SIGTERM)
@@ -181,7 +184,7 @@ def find_webui_package() -> Optional[Path]:
     """
     # 1. Try to import the webui package (pip install)
     try:
-        import sd_generator_webui
+        import sd_generator_webui  # type: ignore[import-untyped]
         webui_path = Path(sd_generator_webui.__file__).parent.parent.parent
         return webui_path
     except ImportError:

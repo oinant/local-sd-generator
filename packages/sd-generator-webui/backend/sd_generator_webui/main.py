@@ -12,7 +12,7 @@ from sd_generator_webui.api import images, auth, files, sessions  # generation t
 from sd_generator_webui.__about__ import __version__
 
 
-def get_frontend_path() -> Path:
+def get_frontend_path() -> Path | None:
     """
     Locate frontend build directory.
 

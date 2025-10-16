@@ -414,7 +414,7 @@ class ConfigValidator:
             base_path: Base path for resolution
             source_file: Source file for error reporting
         """
-        seen_keys = {}  # key -> source file where it was first seen
+        seen_keys: dict[str, str] = {}  # key -> source file where it was first seen
 
         for source in sources:
             # Skip inline strings (they get auto-generated keys)
