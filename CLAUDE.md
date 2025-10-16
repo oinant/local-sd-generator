@@ -2,7 +2,7 @@
 
 ## A Savoir :
 - le MCP Playwright est installé, sers-t'en!
-- **Lis la doc dans `/docs`** - Structure organisée par composant (CLI, WebApp, Tooling)
+- **📚 Documentation centralisée dans `/docs/`** - Single source of truth (pas de packages/docs/)
 - **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
 - Les tests sont dans `/CLI/tests` et utilisent pytest
 - url de l'api automatic1111: http://172.29.128.1:7860
@@ -245,20 +245,38 @@ echo "✓ Quality checks passed"
 
 ### 📁 Structure de la documentation
 
+**IMPORTANT:** La documentation est centralisée dans `/docs/` à la racine du projet (single source of truth).
+
+> ⚠️ **Note historique:** Le dossier `packages/docs/` a été supprimé (commit `8426e90`, Oct 17 2025) car il créait une duplication issue de la tentative de restructuration monorepo. Toute la documentation est maintenant dans `/docs/` uniquement.
+
 ```
-docs/
-├── cli/          # Documentation CLI
-│   ├── usage/    # Guides utilisateur
-│   └── technical/ # Documentation technique
-├── front/        # Documentation Frontend
-├── api/          # Documentation API
-├── tooling/      # Documentation outils dev
-└── roadmap/      # Planning des features
-    ├── done/     # Features terminées
-    ├── wip/      # En cours
-    ├── next/     # Prochaines tâches
-    └── future/   # Backlog futur
+/mnt/d/StableDiffusion/local-sd-generator/
+└── docs/                # 📚 Documentation centrale (SEUL EMPLACEMENT)
+    ├── cli/             # Documentation CLI
+    │   ├── guide/       # Getting started guides
+    │   ├── reference/   # CLI commands reference
+    │   ├── technical/   # Architecture & internals
+    │   └── usage/       # Usage guides
+    ├── webapp/          # Documentation Frontend
+    ├── backend/         # Documentation API/Backend
+    ├── tooling/         # Documentation outils dev
+    │   ├── CODE_REVIEW_GUIDELINES.md
+    │   ├── CODE_REVIEW_ACTION_TEMPLATES.md
+    │   ├── type-checking-guide.md
+    │   └── build-tool-usage.md
+    └── roadmap/         # Planning des features
+        ├── done/        # Features terminées
+        ├── wip/         # En cours (work in progress)
+        ├── next/        # Prochaines tâches
+        ├── future/      # Backlog futur
+        └── archive/     # Specs archivées
 ```
+
+**Principes:**
+- ✅ **Single source of truth:** Toute la doc est dans `/docs/`
+- ✅ **Organization par composant:** cli/, webapp/, backend/, tooling/
+- ✅ **Séparation technique/usage:** `/technical/` vs `/usage/` vs `/reference/`
+- ❌ **PAS de duplication** dans packages/ ou ailleurs
 
 ### 📝 Quand travailler sur une feature
 
