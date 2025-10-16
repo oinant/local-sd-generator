@@ -5,10 +5,13 @@ Commands:
 - start: Start all services (A1111 + backend + frontend)
 - stop: Stop all services
 - status: Show status of all services
+- config: Read/write configuration values
 - webui: Subcommands for WebUI only (backend + frontend)
 """
 
+import json
 import time
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -228,6 +231,103 @@ def status_command() -> None:
     # Show log locations
     console.print("\n[dim]Log files: ~/.sdgen/logs/[/dim]")
     console.print("[dim]PID files: ~/.sdgen/pids/[/dim]\n")
+
+
+def config_command(
+    key: Optional[str] = typer.Argument(None, help="Config key to read/write"),
+    value: Optional[str] = typer.Argument(None, help="Value to set (optional)"),
+    list_all: bool = typer.Option(False, "--list", "-l", help="List all config keys"),
+) -> None:
+    """
+    Read or write configuration values.
+
+    Examples:
+        sdgen config list              # List all config
+        sdgen config api_url           # Read api_url
+        sdgen config api_url http://... # Set api_url
+    """
+    # Define valid config keys
+    VALID_KEYS = ["api_url", "configs_dir", "output_dir", "webui_token"]
+
+    config_path = Path.cwd() / "sdgen_config.json"
+
+    # Check if config file exists
+    if not config_path.exists():
+        console.print("[red]✗ No config file found.[/red]")
+        console.print("[yellow]→ Run 'sdgen init' first.[/yellow]")
+        raise typer.Exit(code=1)
+
+    # Load config file
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+    except json.JSONDecodeError:
+        console.print("[red]✗ Config file is invalid.[/red]")
+        console.print("[yellow]→ Please fix or recreate with 'sdgen init'.[/yellow]")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(f"[red]✗ Error reading config: {e}[/red]")
+        raise typer.Exit(code=1)
+
+    # MODE 1: List all keys
+    if list_all or key == "list":
+        table = Table(title="Configuration", border_style="cyan")
+        table.add_column("Key", style="cyan")
+        table.add_column("Value", style="green")
+
+        for k in VALID_KEYS:
+            v = config_data.get(k)
+
+            # Mask webui_token if present
+            if k == "webui_token" and v:
+                if len(v) > 6:
+                    masked_value = f"{v[:3]}***{v[-3:]}"
+                else:
+                    masked_value = "***"
+                table.add_row(k, masked_value)
+            else:
+                display_value = str(v) if v is not None else "[dim]not set[/dim]"
+                table.add_row(k, display_value)
+
+        console.print(table)
+        console.print()
+        return
+
+    # MODE 2 & 3: Read or write a specific key
+    if key is None:
+        console.print("[red]✗ No key provided.[/red]")
+        console.print("[yellow]→ Usage: sdgen config <key> [value][/yellow]")
+        console.print(f"[yellow]→ Valid keys: {', '.join(VALID_KEYS)}[/yellow]")
+        raise typer.Exit(code=1)
+
+    # Validate key
+    if key not in VALID_KEYS:
+        console.print(f"[red]✗ Config key '{key}' does not exist.[/red]")
+        console.print(f"[yellow]→ Valid keys: {', '.join(VALID_KEYS)}[/yellow]")
+        raise typer.Exit(code=1)
+
+    # MODE 2: Read mode (no value provided)
+    if value is None:
+        current_value = config_data.get(key)
+        if current_value is not None:
+            console.print(str(current_value))
+        else:
+            console.print("[dim]not set[/dim]")
+        return
+
+    # MODE 3: Write mode (value provided)
+    config_data[key] = value
+
+    # Save updated config
+    try:
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=2, ensure_ascii=False)
+            f.write('\n')  # Add trailing newline
+
+        console.print(f"[green]✓ {key} set to {value}[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Error writing config: {e}[/red]")
+        raise typer.Exit(code=1)
 
 
 # WebUI subcommand group

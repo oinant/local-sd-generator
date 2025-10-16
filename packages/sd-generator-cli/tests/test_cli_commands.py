@@ -153,6 +153,16 @@ class TestCLICommands:
         assert result.returncode == 0
         assert "status" in result.stdout.lower()
 
+    def test_config_help(self):
+        """Test that 'config' command help works."""
+        result = subprocess.run(
+            ["sdgen", "config", "--help"],
+            capture_output=True,
+            text=True
+        )
+        assert result.returncode == 0
+        assert "config" in result.stdout.lower()
+
 
 class TestCLICommandErrors:
     """Test suite for CLI command error handling."""

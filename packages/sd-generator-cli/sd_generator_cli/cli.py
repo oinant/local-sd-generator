@@ -74,12 +74,14 @@ from sd_generator_cli.commands import (
     start_command,
     stop_command,
     status_command,
+    config_command,
     webui_app
 )
 
 app.command(name="start")(start_command)
 app.command(name="stop")(stop_command)
 app.command(name="status")(status_command)
+app.command(name="config")(config_command)
 app.add_typer(webui_app, name="webui")
 
 
