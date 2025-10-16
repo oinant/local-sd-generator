@@ -280,41 +280,63 @@ class BuildRunner:
 
         # Parse output for test counts and coverage
         output = result.stdout + result.stderr
-        passed = output.count(" passed")
-        failed = output.count(" failed")
 
-        # Extract coverage percentage
+        # Parse test summary line: "26 failed, 371 passed in 16.00s"
+        passed = 0
+        failed = 0
+        for line in output.split('\n'):
+            if 'passed' in line or 'failed' in line:
+                # Look for summary line
+                import re
+                # Match patterns like "26 failed, 371 passed" or "371 passed"
+                failed_match = re.search(r'(\d+)\s+failed', line)
+                passed_match = re.search(r'(\d+)\s+passed', line)
+
+                if failed_match:
+                    failed = int(failed_match.group(1))
+                if passed_match:
+                    passed = int(passed_match.group(1))
+
+        # Extract coverage percentage from TOTAL line
         coverage_pct = 0
         for line in output.split('\n'):
             if "TOTAL" in line:
+                # Line format: "TOTAL    2595   1035    60%"
                 parts = line.split()
-                for i, part in enumerate(parts):
-                    if part == "TOTAL" and i + 4 < len(parts):
-                        try:
-                            coverage_pct = int(parts[i + 4].rstrip('%'))
-                        except ValueError:
-                            pass
+                if len(parts) >= 4:
+                    try:
+                        # Last column is coverage percentage
+                        coverage_str = parts[-1].rstrip('%')
+                        coverage_pct = int(coverage_str)
+                    except (ValueError, IndexError):
+                        pass
 
+        total_tests = passed + failed
+
+        # Determine status
         if result.returncode == 0:
-            return StepResult(
-                name="Python Tests + Coverage",
-                status="success",
-                duration=0,
-                message=f"{passed} passed, {coverage_pct}% coverage",
-                details={
-                    "passed": passed,
-                    "failed": failed,
-                    "coverage_pct": coverage_pct
-                }
-            )
+            status = "success"
+            message = f"{passed} passed, {coverage_pct}% coverage"
         else:
-            return StepResult(
-                name="Python Tests + Coverage",
-                status="error",
-                duration=0,
-                message=f"{failed} failed",
-                details={"passed": passed, "failed": failed}
-            )
+            if failed > 0:
+                status = "error"
+                message = f"{failed} failed, {passed} passed, {coverage_pct}% coverage"
+            else:
+                status = "error"
+                message = "tests failed"
+
+        return StepResult(
+            name="Python Tests + Coverage",
+            status=status,
+            duration=0,
+            message=message,
+            details={
+                "passed": passed,
+                "failed": failed,
+                "total": total_tests,
+                "coverage_pct": coverage_pct
+            }
+        )
 
     def _analyze_complexity(self) -> StepResult:
         """Analyze cyclomatic complexity with radon"""
@@ -681,10 +703,15 @@ class BuildRunner:
                     actions.append(Action(
                         priority=7,
                         category="COVERAGE",
-                        description="Improve test coverage",
+                        description="Improve overall test coverage",
                         current_value=f"{coverage}%",
                         target_value="> 80%"
                     ))
+
+                # Add specific modules with low coverage
+                # Parse coverage output for modules < 80%
+                # This would require storing the full coverage table in details
+                # For now, just flag overall coverage
 
             # Dead code
             if result.name == "Dead Code Detection":
