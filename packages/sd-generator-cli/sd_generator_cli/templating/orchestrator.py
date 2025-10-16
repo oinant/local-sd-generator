@@ -94,10 +94,13 @@ class V2Pipeline:
         """
         # Load YAML
         path = Path(config_path)
+
         if not path.exists():
             raise FileNotFoundError(f"Config file not found: {path}")
 
-        data = self.loader.load_file(path, path.parent)
+        # Si path est absolu, ne pas passer de base_path pour éviter duplication
+        base_path = None if path.is_absolute() else path.parent
+        data = self.loader.load_file(path, base_path)
 
         # Parse into model
         config = self.parser.parse_prompt(data, path)

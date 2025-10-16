@@ -558,7 +558,7 @@ def generate_images(
             console.print(f"[red]✗ Error loading config:[/red] {e}")
             raise typer.Exit(code=1)
 
-        configs_dir = Path(global_config.configs_dir)
+        configs_dir = Path(global_config.configs_dir).resolve()
         api_url = api_url or global_config.api_url
 
         # Verify configs directory exists
