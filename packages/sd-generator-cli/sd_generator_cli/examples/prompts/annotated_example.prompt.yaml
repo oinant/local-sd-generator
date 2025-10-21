@@ -1,0 +1,61 @@
+version: '2.0'
+name: 'Character Sheet with Auto-Annotations'
+description: |
+  Example demonstrating automatic image annotations.
+
+  Generated images will automatically have a text overlay showing:
+  - HairCut
+  - HairColor
+  - Expression
+
+  Annotations are added in the background after generation completes,
+  so they don't slow down the image generation process.
+
+base_path: ../..
+
+imports:
+  HairCut: variations/hair_styles.yaml
+  HairColor: variations/haircolors.yaml
+  Expression: variations/expressions.yaml
+
+prompt: |
+  masterpiece, best quality, 1girl,
+  {HairCut}, {HairColor} hair, {Expression},
+  detailed portrait, sharp focus
+
+negative_prompt: |
+  low quality, worst quality, blurry,
+  bad anatomy, deformed
+
+generation:
+  mode: combinatorial
+  seed: 42
+  seed_mode: progressive
+  max_images: 12
+
+parameters:
+  width: 832
+  height: 1216
+  steps: 25
+  cfg_scale: 7
+  sampler: DPM++ 2M Karras
+
+output:
+  session_name: CharacterSheet_Annotated
+  filename_keys:
+    - HairCut
+    - Expression
+
+  # Auto-annotations configuration
+  annotations:
+    enabled: true  # Enable automatic annotations
+    keys:  # Which variations to display (empty = all)
+      - HairCut
+      - HairColor
+      - Expression
+    position: bottom-left  # top-left, top-right, bottom-left, bottom-right
+    font_size: 16
+    background_alpha: 180  # 0=transparent, 255=opaque
+    text_color: white
+    padding: 10  # Padding inside the text box
+    margin: 20   # Margin from image edges

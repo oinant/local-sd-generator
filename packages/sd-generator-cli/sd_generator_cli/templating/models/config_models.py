@@ -54,14 +54,33 @@ class ChunkConfig:
 
 
 @dataclass
+class AnnotationsConfig:
+    """
+    Configuration for automatic image annotations.
+
+    When enabled, adds text overlays to generated images showing
+    the variations used (haircut, haircolor, expression, etc.).
+    """
+    enabled: bool = False
+    keys: List[str] = field(default_factory=list)  # Which variation keys to display (empty = all)
+    position: str = "bottom-left"  # top-left, top-right, bottom-left, bottom-right
+    font_size: int = 16
+    background_alpha: int = 180  # 0-255 (0=transparent, 255=opaque)
+    text_color: str = "white"
+    padding: int = 10
+    margin: int = 20
+
+
+@dataclass
 class OutputConfig:
     """
     Configuration for output directory and file naming.
 
-    Controls session naming and which variation keys appear in filenames.
+    Controls session naming, filename patterns, and automatic annotations.
     """
     session_name: Optional[str] = None
     filename_keys: List[str] = field(default_factory=list)
+    annotations: Optional[AnnotationsConfig] = None
 
 
 @dataclass

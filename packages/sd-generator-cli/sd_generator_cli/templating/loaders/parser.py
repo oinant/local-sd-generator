@@ -14,7 +14,9 @@ from ..models.config_models import (
     GenerationConfig,
     ADetailerFileConfig,
     ADetailerDetector,
-    ADetailerConfig
+    ADetailerConfig,
+    OutputConfig,
+    AnnotationsConfig
 )
 import yaml
 
@@ -75,14 +77,7 @@ class ConfigParser:
         parsed_parameters = self._parse_parameters(parameters, source_file.parent)
 
         # Parse output configuration
-        output_config = None
-        output_data = data.get('output')
-        if output_data:
-            from sd_generator_cli.templating.models import OutputConfig
-            output_config = OutputConfig(
-                session_name=output_data.get('session_name'),
-                filename_keys=output_data.get('filename_keys', [])
-            )
+        output_config = self._parse_output_config(data.get('output'))
 
         return TemplateConfig(
             version=data.get('version', '1.0.0'),  # Default to 1.0.0 for backward compat
@@ -215,14 +210,7 @@ class ConfigParser:
         parsed_parameters = self._parse_parameters(parameters, source_file.parent)
 
         # Parse output configuration
-        output_config = None
-        output_data = data.get('output')
-        if output_data:
-            from sd_generator_cli.templating.models import OutputConfig
-            output_config = OutputConfig(
-                session_name=output_data.get('session_name'),
-                filename_keys=output_data.get('filename_keys', [])
-            )
+        output_config = self._parse_output_config(data.get('output'))
 
         return PromptConfig(
             version=data.get('version', '1.0.0'),
@@ -521,3 +509,43 @@ class ConfigParser:
         config = self.parse_adetailer_file(data, resolved_path)
 
         return config.detector
+
+    def _parse_output_config(self, output_data: Dict[str, Any]) -> OutputConfig:
+        """
+        Parse output configuration with annotations.
+
+        Args:
+            output_data: Raw output dict from YAML (can be None)
+
+        Returns:
+            OutputConfig object or None if no output_data
+        """
+        if not output_data:
+            return None
+
+        # Parse session_name
+        session_name = output_data.get('session_name')
+
+        # Parse filename_keys
+        filename_keys = output_data.get('filename_keys', [])
+
+        # Parse annotations if present
+        annotations_data = output_data.get('annotations')
+        annotations_config = None
+        if annotations_data:
+            annotations_config = AnnotationsConfig(
+                enabled=annotations_data.get('enabled', False),
+                keys=annotations_data.get('keys', []),
+                position=annotations_data.get('position', 'bottom-left'),
+                font_size=annotations_data.get('font_size', 16),
+                background_alpha=annotations_data.get('background_alpha', 180),
+                text_color=annotations_data.get('text_color', 'white'),
+                padding=annotations_data.get('padding', 10),
+                margin=annotations_data.get('margin', 20)
+            )
+
+        return OutputConfig(
+            session_name=session_name,
+            filename_keys=filename_keys,
+            annotations=annotations_config
+        )

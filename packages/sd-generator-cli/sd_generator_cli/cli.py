@@ -433,6 +433,61 @@ def _generate(
 
         console.print(f"[green]✓ Manifest updated incrementally ({success_count} images)[/green]\n")
 
+        # Annotate images if enabled (in background)
+        if not dry_run and config.output and config.output.annotations and config.output.annotations.enabled:
+            console.print("[cyan]Starting image annotation in background...[/cyan]")
+            try:
+                from sd_generator_cli.api.annotator import annotate_session_from_config
+                import subprocess
+                import sys
+
+                # Launch annotation in background subprocess
+                # This allows the user to continue/exit while annotation completes
+                python_exec = sys.executable
+                annotate_script = f"""
+import sys
+from pathlib import Path
+sys.path.insert(0, '{Path(__file__).parent.parent}')
+from sd_generator_cli.api.annotator import annotate_session_from_config
+from sd_generator_cli.templating.models import AnnotationsConfig
+
+session_dir = Path('{session_dir}')
+annotations_config = AnnotationsConfig(
+    enabled=True,
+    keys={config.output.annotations.keys},
+    position='{config.output.annotations.position}',
+    font_size={config.output.annotations.font_size},
+    background_alpha={config.output.annotations.background_alpha},
+    text_color='{config.output.annotations.text_color}',
+    padding={config.output.annotations.padding},
+    margin={config.output.annotations.margin}
+)
+
+count = annotate_session_from_config(session_dir, annotations_config)
+print(f'✓ Annotated {{count}} images')
+"""
+
+                # Write temp script
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+                    f.write(annotate_script)
+                    script_path = f.name
+
+                # Launch in background
+                subprocess.Popen(
+                    [python_exec, script_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True
+                )
+
+                console.print("[green]✓ Annotation started in background[/green]")
+            except ImportError:
+                console.print("[yellow]⚠ Pillow not installed, skipping annotations[/yellow]")
+                console.print("[dim]  Install with: pip install Pillow[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Could not start annotation: {e}[/yellow]")
+
         # Display final summary
         summary = f"""[bold]Total images:[/bold] {total_count}
 [bold green]Success:[/bold green] {success_count}
@@ -442,6 +497,8 @@ def _generate(
             summary += f"\n\n[yellow]Dry-run mode: API requests saved to:[/yellow]\n  {session_dir}"
         else:
             summary += f"\n\n[green]Images saved to:[/green]\n  {session_dir}"
+            if config.output and config.output.annotations and config.output.annotations.enabled:
+                summary += f"\n[cyan]Annotations:[/cyan] Processing in background..."
 
         console.print(Panel(summary, title="✓ Generation Complete (V2.0)", border_style="green"))
 

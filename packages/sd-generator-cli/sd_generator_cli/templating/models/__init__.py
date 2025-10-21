@@ -6,6 +6,7 @@ from .config_models import (
     PromptConfig,
     GenerationConfig,
     OutputConfig,
+    AnnotationsConfig,
     ResolvedContext
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     'PromptConfig',
     'GenerationConfig',
     'OutputConfig',
+    'AnnotationsConfig',
     'ResolvedContext',
 ]
