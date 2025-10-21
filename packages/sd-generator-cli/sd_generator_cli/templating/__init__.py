@@ -15,6 +15,7 @@ from .models.config_models import (
     ChunkConfig,
     PromptConfig,
     GenerationConfig,
+    OutputConfig,
     ResolvedContext
 )
 
@@ -24,5 +25,6 @@ __all__ = [
     'ChunkConfig',
     'PromptConfig',
     'GenerationConfig',
+    'OutputConfig',
     'ResolvedContext',
 ]

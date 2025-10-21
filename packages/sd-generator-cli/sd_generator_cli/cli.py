@@ -113,7 +113,8 @@ def _generate(
     count: Optional[int],
     api_url: str,
     dry_run: bool,
-    console: Console
+    console: Console,
+    session_name_override: Optional[str] = None
 ):
     """
     Generate images using Template System V2.0.
@@ -131,6 +132,7 @@ def _generate(
         api_url: SD API URL
         dry_run: Dry-run mode flag
         console: Rich console for output
+        session_name_override: CLI override for session name (highest priority)
     """
     from sd_generator_cli.templating.orchestrator import V2Pipeline
     from sd_generator_cli.api import SDAPIClient, BatchGenerator, SessionManager, ImageWriter, ProgressReporter
@@ -192,7 +194,16 @@ def _generate(
         console.print(f"[green]✓ Generated {len(prompts)} prompt variations[/green]\n")
 
         # Session setup
-        session_name = template_path.stem.lower().replace(" ", "_").replace("-", "_")
+        # Priority: CLI override > config.output.session_name > config.name > filename
+        if session_name_override:
+            session_name = session_name_override
+        elif config.output and config.output.session_name:
+            session_name = config.output.session_name
+        elif config.name:
+            session_name = config.name.replace(" ", "_").replace("-", "_")
+        else:
+            session_name = template_path.stem.lower().replace(" ", "_").replace("-", "_")
+
         output_base_dir = Path(global_config.output_dir)
 
         # Initialize API components
@@ -529,6 +540,11 @@ def generate_images(
         "--dry-run",
         help="Save API requests as JSON instead of generating images",
     ),
+    session_name: Optional[str] = typer.Option(
+        None,
+        "--session-name", "-sn",
+        help="Override session directory name",
+    ),
 ):
     """
     Generate images from YAML template using V2.0 Template System.
@@ -545,6 +561,7 @@ def generate_images(
         python3 template_cli_typer.py generate
         python3 template_cli_typer.py generate -t portrait.yaml
         python3 template_cli_typer.py generate -t test.yaml -n 10 --dry-run
+        python3 template_cli_typer.py generate -t test.yaml --session-name my_session
     """
     try:
         # Load global configuration
@@ -604,7 +621,8 @@ def generate_images(
             count=count,
             api_url=api_url,
             dry_run=dry_run,
-            console=console
+            console=console,
+            session_name_override=session_name
         )
 
     except typer.Exit:

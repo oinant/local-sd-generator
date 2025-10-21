@@ -19,7 +19,7 @@ class TemplateConfig:
     It can be inherited by other templates or prompts using implements:.
 
     Required fields: version, name, template
-    Optional fields: implements, parameters, imports, negative_prompt
+    Optional fields: implements, parameters, imports, negative_prompt, output
     """
     version: str
     name: str
@@ -29,6 +29,7 @@ class TemplateConfig:
     parameters: Dict[str, Any] = field(default_factory=dict)
     imports: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: str = ''
+    output: Optional['OutputConfig'] = None
 
 
 @dataclass
@@ -50,6 +51,17 @@ class ChunkConfig:
     imports: Dict[str, Any] = field(default_factory=dict)
     defaults: Dict[str, str] = field(default_factory=dict)
     chunks: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class OutputConfig:
+    """
+    Configuration for output directory and file naming.
+
+    Controls session naming and which variation keys appear in filenames.
+    """
+    session_name: Optional[str] = None
+    filename_keys: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -75,7 +87,7 @@ class PromptConfig:
     variations and generation settings to produce images.
 
     Required fields: version, name, generation, prompt
-    Optional fields: implements, imports, parameters, negative_prompt
+    Optional fields: implements, imports, parameters, negative_prompt, output
 
     Note: implements is optional to support standalone prompts.
     Note: The 'prompt' field contains the content to inject into the parent template's {prompt} placeholder.
@@ -89,6 +101,7 @@ class PromptConfig:
     imports: Dict[str, Any] = field(default_factory=dict)
     parameters: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: Optional[str] = None
+    output: Optional[OutputConfig] = None
     # After inheritance resolution, template will contain the fully resolved template
     template: Optional[str] = None
 

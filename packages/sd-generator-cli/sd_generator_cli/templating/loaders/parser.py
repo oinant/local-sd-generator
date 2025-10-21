@@ -74,6 +74,16 @@ class ConfigParser:
         parameters = data.get('parameters') or {}
         parsed_parameters = self._parse_parameters(parameters, source_file.parent)
 
+        # Parse output configuration
+        output_config = None
+        output_data = data.get('output')
+        if output_data:
+            from sd_generator_cli.templating.models import OutputConfig
+            output_config = OutputConfig(
+                session_name=output_data.get('session_name'),
+                filename_keys=output_data.get('filename_keys', [])
+            )
+
         return TemplateConfig(
             version=data.get('version', '1.0.0'),  # Default to 1.0.0 for backward compat
             name=data['name'],
@@ -82,7 +92,8 @@ class ConfigParser:
             implements=data.get('implements'),
             parameters=parsed_parameters,  # Use parsed parameters
             imports=data.get('imports') or {},
-            negative_prompt=data.get('negative_prompt') or ''
+            negative_prompt=data.get('negative_prompt') or '',
+            output=output_config
         )
 
     def parse_chunk(self, data: Dict[str, Any], source_file: Path) -> ChunkConfig:
@@ -203,6 +214,16 @@ class ConfigParser:
         parameters = data.get('parameters') or {}
         parsed_parameters = self._parse_parameters(parameters, source_file.parent)
 
+        # Parse output configuration
+        output_config = None
+        output_data = data.get('output')
+        if output_data:
+            from sd_generator_cli.templating.models import OutputConfig
+            output_config = OutputConfig(
+                session_name=output_data.get('session_name'),
+                filename_keys=output_data.get('filename_keys', [])
+            )
+
         return PromptConfig(
             version=data.get('version', '1.0.0'),
             name=data['name'],
@@ -212,7 +233,8 @@ class ConfigParser:
             implements=data.get('implements'),  # Optional: supports standalone prompts
             imports=data.get('imports') or {},
             parameters=parsed_parameters,  # Use parsed parameters
-            negative_prompt=data.get('negative_prompt')
+            negative_prompt=data.get('negative_prompt'),
+            output=output_config
         )
 
     def parse_variations(self, data: Dict[str, Any]) -> Dict[str, str]:
