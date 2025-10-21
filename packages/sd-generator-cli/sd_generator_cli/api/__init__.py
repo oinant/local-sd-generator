@@ -10,6 +10,7 @@ from .session_manager import SessionManager
 from .image_writer import ImageWriter
 from .progress_reporter import ProgressReporter, SilentProgressReporter
 from .batch_generator import BatchGenerator, create_batch_generator
+from .annotation_worker import AnnotationWorker, create_annotation_worker_from_config
 
 __all__ = [
     'SDAPIClient',
@@ -21,4 +22,6 @@ __all__ = [
     'SilentProgressReporter',
     'BatchGenerator',
     'create_batch_generator',
+    'AnnotationWorker',
+    'create_annotation_worker_from_config',
 ]

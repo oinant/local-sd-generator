@@ -18,6 +18,8 @@ Usage:
 import json
 import re
 import sys
+import signal
+import atexit
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Any, IO
@@ -28,6 +30,40 @@ from rich.table import Table
 from rich.panel import Panel
 
 from sd_generator_cli.config.global_config import load_global_config, ensure_global_config
+
+# Global reference to annotation worker for signal handlers
+_annotation_worker_instance: Optional[Any] = None
+
+
+def _cleanup_annotation_worker() -> None:
+    """Cleanup annotation worker on exit (Ctrl+C or normal exit)."""
+    global _annotation_worker_instance
+    if _annotation_worker_instance:
+        console = Console()
+        try:
+            pending = _annotation_worker_instance.pending_count
+            if pending > 0:
+                console.print(f"\n[cyan]⏳ Waiting for {pending} pending annotations to complete...[/cyan]")
+            _annotation_worker_instance.stop(timeout=30.0)
+            console.print("[green]✓ Annotation worker stopped gracefully[/green]")
+        except Exception as e:
+            console.print(f"[yellow]⚠ Error stopping annotation worker: {e}[/yellow]")
+        finally:
+            _annotation_worker_instance = None
+
+
+def _signal_handler(signum: int, frame: Any) -> None:
+    """Handle Ctrl+C gracefully."""
+    console = Console()
+    console.print("\n[yellow]⚠ Interrupted by user (Ctrl+C)[/yellow]")
+    _cleanup_annotation_worker()
+    sys.exit(0)
+
+
+# Register signal handlers and exit cleanup
+signal.signal(signal.SIGINT, _signal_handler)  # Ctrl+C
+signal.signal(signal.SIGTERM, _signal_handler)  # kill
+atexit.register(_cleanup_annotation_worker)  # Normal exit
 
 # Initialize Typer app and Rich console
 app = typer.Typer(
@@ -345,6 +381,20 @@ def _generate(
             )
             api_client.generation_config = gen_config
 
+        # Start annotation worker if enabled (background thread)
+        global _annotation_worker_instance
+        annotation_worker = None
+        if not dry_run and config.output and config.output.annotations and config.output.annotations.enabled:
+            try:
+                from sd_generator_cli.api.annotation_worker import create_annotation_worker_from_config
+                annotation_worker = create_annotation_worker_from_config(config.output.annotations)
+                if annotation_worker:
+                    _annotation_worker_instance = annotation_worker  # For signal handlers
+                    console.print("[cyan]✓ Annotation worker started (real-time mode)[/cyan]")
+            except ImportError:
+                console.print("[yellow]⚠ Pillow not installed, skipping annotations[/yellow]")
+                console.print("[dim]  Install with: pip install Pillow[/dim]")
+
         # Convert V2 prompts to PromptConfig list
         prompt_configs = []
         for idx, prompt_dict in enumerate(prompts):
@@ -398,6 +448,12 @@ def _generate(
             with open(manifest_path, 'w', encoding='utf-8') as f:
                 json.dump(current_manifest, f, indent=2, ensure_ascii=False)
 
+            # Submit to annotation worker (real-time annotation)
+            if annotation_worker:
+                image_path = session_dir / prompt_cfg.filename
+                variations = prompts[idx].get('variations', {})
+                annotation_worker.submit(image_path, variations)
+
         # Generate images with incremental manifest updates
         success_count, total_count = generator.generate_batch(
             prompt_configs=prompt_configs,
@@ -409,60 +465,15 @@ def _generate(
 
         console.print(f"[green]✓ Manifest updated incrementally ({success_count} images)[/green]\n")
 
-        # Annotate images if enabled (in background)
-        if not dry_run and config.output and config.output.annotations and config.output.annotations.enabled:
-            console.print("[cyan]Starting image annotation in background...[/cyan]")
-            try:
-                import subprocess
-                import sys
+        # Stop annotation worker and wait for pending jobs
+        if annotation_worker:
+            pending = annotation_worker.pending_count
+            if pending > 0:
+                console.print(f"[cyan]⏳ Waiting for {pending} pending annotations to complete...[/cyan]")
 
-                # Launch annotation in background subprocess
-                # This allows the user to continue/exit while annotation completes
-                python_exec = sys.executable
-                annotate_script = f"""
-import sys
-from pathlib import Path
-sys.path.insert(0, '{Path(__file__).parent.parent}')
-from sd_generator_cli.api.annotator import annotate_session_from_config
-from sd_generator_cli.templating.models import AnnotationsConfig
-
-session_dir = Path('{session_dir}')
-annotations_config = AnnotationsConfig(
-    enabled=True,
-    keys={config.output.annotations.keys},
-    position='{config.output.annotations.position}',
-    font_size={config.output.annotations.font_size},
-    background_alpha={config.output.annotations.background_alpha},
-    text_color='{config.output.annotations.text_color}',
-    padding={config.output.annotations.padding},
-    margin={config.output.annotations.margin}
-)
-
-count = annotate_session_from_config(session_dir, annotations_config)
-print(f'✓ Annotated {{count}} images')
-"""
-
-                # Write temp script
-                import tempfile
-                temp_f: IO[str]
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_f:  # type: ignore
-                    temp_f.write(annotate_script)
-                    script_path = temp_f.name
-
-                # Launch in background
-                subprocess.Popen(
-                    [python_exec, script_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True
-                )
-
-                console.print("[green]✓ Annotation started in background[/green]")
-            except ImportError:
-                console.print("[yellow]⚠ Pillow not installed, skipping annotations[/yellow]")
-                console.print("[dim]  Install with: pip install Pillow[/dim]")
-            except Exception as e:
-                console.print(f"[yellow]⚠ Could not start annotation: {e}[/yellow]")
+            annotation_worker.stop(timeout=60.0)
+            _annotation_worker_instance = None  # Clear global ref
+            console.print("[green]✓ All images annotated[/green]")
 
         # Display final summary
         summary = f"""[bold]Total images:[/bold] {total_count}
