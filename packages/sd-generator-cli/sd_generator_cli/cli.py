@@ -1105,5 +1105,99 @@ def list_adetailer_models(
         raise typer.Exit(code=1)
 
 
+@api_app.command(name="controlnet-models")
+def list_controlnet_models(
+    api_url: Optional[str] = typer.Option(
+        None,
+        "--api-url",
+        help="Override API URL from global config",
+    ),
+):
+    """List available ControlNet models and preprocessor modules."""
+    try:
+        from sd_generator_cli.api import SDAPIClient
+
+        if api_url is None:
+            global_config = load_global_config()
+            api_url = global_config.api_url
+
+        api_client = SDAPIClient(api_url=api_url)
+
+        console.print(f"[cyan]Connecting to SD API:[/cyan] {api_url}")
+        if not api_client.test_connection():
+            console.print("[red]✗ Failed to connect to SD API[/red]")
+            raise typer.Exit(code=1)
+        console.print("[green]✓ Connected[/green]\n")
+
+        data = api_client.get_controlnet_models()
+        models = data.get("models", [])
+        modules = data.get("modules", [])
+
+        # Models table
+        models_table = Table(title=f"ControlNet Models ({len(models)} found)")
+        models_table.add_column("#", style="cyan", width=4)
+        models_table.add_column("Model Name", style="green")
+        models_table.add_column("Type", style="blue")
+
+        for idx, model in enumerate(models, 1):
+            # Categorize model by name
+            model_lower = model.lower()
+            if "canny" in model_lower:
+                model_type = "Canny (Edges)"
+            elif "depth" in model_lower:
+                model_type = "Depth"
+            elif "openpose" in model_lower or "pose" in model_lower:
+                model_type = "Pose"
+            elif "lineart" in model_lower:
+                model_type = "Line Art"
+            elif "scribble" in model_lower:
+                model_type = "Scribble"
+            elif "seg" in model_lower:
+                model_type = "Segmentation"
+            elif "normal" in model_lower:
+                model_type = "Normal Map"
+            elif "mlsd" in model_lower:
+                model_type = "MLSD (Lines)"
+            else:
+                model_type = "Other"
+
+            models_table.add_row(str(idx), model, model_type)
+
+        console.print(models_table)
+        console.print()
+
+        # Modules table
+        modules_table = Table(title=f"Preprocessor Modules ({len(modules)} found)")
+        modules_table.add_column("#", style="cyan", width=4)
+        modules_table.add_column("Module Name", style="green")
+        modules_table.add_column("Category", style="blue")
+
+        for idx, module in enumerate(modules, 1):
+            # Categorize module
+            module_lower = module.lower()
+            if "canny" in module_lower:
+                category = "Edge Detection"
+            elif "depth" in module_lower:
+                category = "Depth Estimation"
+            elif "openpose" in module_lower or "pose" in module_lower:
+                category = "Pose Detection"
+            elif "lineart" in module_lower:
+                category = "Line Art Extraction"
+            elif "normal" in module_lower:
+                category = "Normal Map"
+            elif "seg" in module_lower:
+                category = "Segmentation"
+            else:
+                category = "Other"
+
+            modules_table.add_row(str(idx), module, category)
+
+        console.print(modules_table)
+
+    except Exception as e:
+        console.print(f"[red]✗ Error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()

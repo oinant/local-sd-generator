@@ -376,6 +376,11 @@ class ConfigParser:
             adetailer_value = parsed['adetailer']
             parsed['adetailer'] = self.parse_adetailer_parameter(adetailer_value, base_path)
 
+        # Special handling for controlnet parameter
+        if 'controlnet' in parsed:
+            controlnet_value = parsed['controlnet']
+            parsed['controlnet'] = self.parse_controlnet_parameter(controlnet_value, base_path)
+
         return parsed
 
     def parse_adetailer_parameter(
@@ -509,6 +514,125 @@ class ConfigParser:
         config = self.parse_adetailer_file(data, resolved_path)
 
         return config.detector
+
+    def parse_controlnet_parameter(
+        self,
+        controlnet_value: Any,
+        base_path: Path
+    ) -> "ControlNetConfig":
+        """
+        Parse parameters.controlnet from prompt YAML.
+
+        Supports three formats:
+        1. String (single file path):
+           controlnet: "../variations/controlnet/canny.controlnet.yaml"
+
+        2. List (multiple unit files + optional overrides):
+           controlnet:
+             - "../variations/controlnet/canny.controlnet.yaml"
+             - "../variations/controlnet/depth.controlnet.yaml"
+             - weight: 0.8  # Override first unit
+
+        3. Dict (inline configuration):
+           controlnet:
+             model: "control_v11p_sd15_canny"
+             module: "canny"
+             weight: 1.0
+
+        Args:
+            controlnet_value: Value from parameters.controlnet (string/list/dict)
+            base_path: Base path for resolving relative file paths
+
+        Returns:
+            ControlNetConfig with units loaded
+
+        Raises:
+            FileNotFoundError: If .controlnet.yaml file not found
+            ValueError: If format is invalid
+        """
+        from ..models.controlnet import ControlNetUnit, ControlNetConfig
+
+        units: List[ControlNetUnit] = []
+
+        if isinstance(controlnet_value, str):
+            # Single file import
+            config = self._load_controlnet_file(controlnet_value, base_path)
+            units.extend(config.units)
+
+        elif isinstance(controlnet_value, list):
+            # Multi-unit import (files + optional dict overrides)
+            overrides: Optional[Dict] = None
+
+            for item in controlnet_value:
+                if isinstance(item, str):
+                    # Load file
+                    config = self._load_controlnet_file(item, base_path)
+                    units.extend(config.units)
+                elif isinstance(item, dict):
+                    # Store overrides for first unit
+                    if overrides is None:
+                        overrides = item
+
+            # Apply overrides to first unit if present
+            if overrides and units:
+                for key, value in overrides.items():
+                    if hasattr(units[0], key):
+                        setattr(units[0], key, value)
+                    else:
+                        raise ValueError(
+                            f"Invalid override key '{key}' in parameters.controlnet. "
+                            f"Not a valid ControlNetUnit field."
+                        )
+
+        elif isinstance(controlnet_value, dict):
+            # Inline unit configuration
+            try:
+                unit = ControlNetUnit(**controlnet_value)
+                units.append(unit)
+            except TypeError as e:
+                raise ValueError(
+                    f"Invalid inline controlnet configuration: {e}"
+                )
+
+        else:
+            raise ValueError(
+                f"parameters.controlnet must be a string, list, or dict, "
+                f"got {type(controlnet_value).__name__}"
+            )
+
+        return ControlNetConfig(units=units)
+
+    def _load_controlnet_file(self, path: str, base_path: Path) -> "ControlNetConfig":
+        """
+        Load a .controlnet.yaml file and return its config.
+
+        Helper function for parse_controlnet_parameter().
+
+        Args:
+            path: Relative path to .controlnet.yaml file
+            base_path: Base path for resolving relative paths
+
+        Returns:
+            ControlNetConfig from the file
+
+        Raises:
+            FileNotFoundError: If file not found
+            ValueError: If file is invalid
+        """
+        from ..loaders.controlnet_parser import parse_controlnet_file
+
+        # Resolve path
+        resolved_path = (base_path / path).resolve()
+
+        if not resolved_path.exists():
+            raise FileNotFoundError(
+                f"ControlNet file not found:\n"
+                f"  Looked in: {base_path}\n"
+                f"  For: {path}"
+            )
+
+        # Parse and return config
+        return parse_controlnet_file(resolved_path)
 
     def _parse_output_config(self, output_data: Optional[Dict[str, Any]]) -> Optional[OutputConfig]:
         """

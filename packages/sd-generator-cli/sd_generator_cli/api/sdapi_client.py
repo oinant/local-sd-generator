@@ -193,6 +193,9 @@ class SDAPIClient:
             if self.generation_config.hr_second_pass_steps is not None:
                 payload["hr_second_pass_steps"] = self.generation_config.hr_second_pass_steps
 
+        # Build alwayson_scripts for extensions (ADetailer, ControlNet, etc.)
+        alwayson_scripts: dict[str, Any] = {}
+
         # Add ADetailer if configured in parameters
         if prompt_config.parameters and 'adetailer' in prompt_config.parameters:
             adetailer_config = prompt_config.parameters['adetailer']
@@ -200,7 +203,20 @@ class SDAPIClient:
             if hasattr(adetailer_config, 'to_api_dict'):
                 adetailer_payload = adetailer_config.to_api_dict()
                 if adetailer_payload:  # Only add if not None (i.e., enabled and has detectors)
-                    payload["alwayson_scripts"] = adetailer_payload
+                    alwayson_scripts.update(adetailer_payload)
+
+        # Add ControlNet if configured in parameters
+        if prompt_config.parameters and 'controlnet' in prompt_config.parameters:
+            controlnet_config = prompt_config.parameters['controlnet']
+            # controlnet_config should be a ControlNetConfig object with to_api_dict() method
+            if hasattr(controlnet_config, 'to_api_dict'):
+                controlnet_payload = controlnet_config.to_api_dict()
+                if controlnet_payload:  # Only add if not None (i.e., has units)
+                    alwayson_scripts.update(controlnet_payload)
+
+        # Only add alwayson_scripts if we have extensions configured
+        if alwayson_scripts:
+            payload["alwayson_scripts"] = alwayson_scripts
 
         return payload
 
@@ -400,3 +416,50 @@ class SDAPIClient:
         )
         response.raise_for_status()
         return response.json()
+
+    def get_controlnet_models(self, timeout: int = 5) -> dict[str, list[str]]:
+        """
+        Get list of available ControlNet models and modules
+
+        Returns:
+            Dictionary with 'models' and 'modules' lists
+
+        Example:
+            {
+                "models": [
+                    "control_v11p_sd15_canny",
+                    "control_v11p_sd15_depth",
+                    "control_v11p_sd15_openpose",
+                    ...
+                ],
+                "modules": [
+                    "canny",
+                    "depth_midas",
+                    "openpose_full",
+                    ...
+                ]
+            }
+
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        # Get models list
+        models_response = requests.get(
+            f"{self.api_url}/controlnet/model_list",
+            timeout=timeout
+        )
+        models_response.raise_for_status()
+        models_data = models_response.json()
+
+        # Get modules list
+        modules_response = requests.get(
+            f"{self.api_url}/controlnet/module_list",
+            timeout=timeout
+        )
+        modules_response.raise_for_status()
+        modules_data = modules_response.json()
+
+        return {
+            "models": models_data.get("model_list", []),
+            "modules": modules_data.get("module_list", [])
+        }

@@ -136,6 +136,12 @@ class ImportResolver:
             resolved_path.name.endswith('.adetailer.yml')
         )
 
+        # Check if this is a controlnet file by extension (.controlnet.yaml or .controlnet.yml)
+        is_controlnet = (
+            resolved_path.name.endswith('.controlnet.yaml') or
+            resolved_path.name.endswith('.controlnet.yml')
+        )
+
         if is_chunk:
             # Parse as ChunkConfig and return full config
             chunk_config = self.parser.parse_chunk(data, resolved_path)
@@ -151,6 +157,13 @@ class ImportResolver:
             adetailer_config = self.parser.parse_adetailer_file(data, resolved_path)
             # Return detector directly (will be used in parameters parsing)
             return adetailer_config.detector
+
+        if is_controlnet:
+            # Parse as ControlNetConfig and return it
+            from ..loaders.controlnet_parser import parse_controlnet_file
+            controlnet_config = parse_controlnet_file(resolved_path)
+            # Return config directly (will be used in parameters parsing)
+            return controlnet_config
 
         # Regular variation file - parse variations
         return self.parser.parse_variations(data)
