@@ -266,11 +266,12 @@ class BuildRunner:
             )
 
     def _test_python(self) -> StepResult:
-        """Run pytest with coverage"""
+        """Run pytest with coverage (excludes e2e tests requiring installation)"""
         cmd = [
             str(self.venv_bin / "pytest"),
             "tests/",
             "-v",
+            "--ignore=tests/e2e",  # Skip e2e tests (require pip install -e .)
             "--cov=sd_generator_cli",
             "--cov-report=term-missing"
         ]

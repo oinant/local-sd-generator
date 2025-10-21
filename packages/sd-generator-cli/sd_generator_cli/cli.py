@@ -20,7 +20,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, IO
 
 import typer
 from rich.console import Console
@@ -469,9 +469,10 @@ print(f'✓ Annotated {{count}} images')
 
                 # Write temp script
                 import tempfile
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-                    f.write(annotate_script)
-                    script_path = f.name
+                temp_f: IO[str]
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_f:  # type: ignore
+                    temp_f.write(annotate_script)
+                    script_path = temp_f.name
 
                 # Launch in background
                 subprocess.Popen(

@@ -7,14 +7,18 @@ Adds text annotations to generated images showing which variations were used
 
 import json
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from PIL import Image as PILImageModule, ImageDraw as PILImageDrawModule, ImageFont as PILImageFontModule
+    from ..templating.models.config_models import AnnotationsConfig
 
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
-    Image = None
-    ImageDraw = None
-    ImageFont = None
+    Image = None  # type: ignore
+    ImageDraw = None  # type: ignore
+    ImageFont = None  # type: ignore
 
 
 class ImageAnnotator:
@@ -94,11 +98,11 @@ class ImageAnnotator:
             Path to annotated image
         """
         # Load image
-        img = Image.open(image_path)
+        img: Any = Image.open(image_path)  # type: ignore
 
         # Convert to RGBA for transparency
         if img.mode != 'RGBA':
-            img = img.convert('RGBA')
+            img = img.convert('RGBA')  # type: ignore
 
         # Filter variations by keys
         if keys:
@@ -114,8 +118,8 @@ class ImageAnnotator:
         text = "\n".join(lines)
 
         # Create overlay
-        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
+        overlay: Any = Image.new('RGBA', img.size, (0, 0, 0, 0))  # type: ignore
+        draw: Any = ImageDraw.Draw(overlay)  # type: ignore
 
         # Get text bounding box
         bbox = draw.textbbox((0, 0), text, font=self.font)
@@ -153,11 +157,11 @@ class ImageAnnotator:
         )
 
         # Composite overlay
-        img = Image.alpha_composite(img, overlay)
+        img = Image.alpha_composite(img, overlay)  # type: ignore
 
         # Convert back to RGB for JPEG
         if output_path and output_path.suffix.lower() in ['.jpg', '.jpeg']:
-            img = img.convert('RGB')
+            img = img.convert('RGB')  # type: ignore
 
         # Save
         save_path = output_path or image_path
@@ -256,7 +260,7 @@ def annotate_session(
 
 def annotate_session_from_config(
     session_dir: Path,
-    annotations_config: 'AnnotationsConfig'
+    annotations_config: Any  # AnnotationsConfig from config_models
 ) -> int:
     """
     Annotate session using AnnotationsConfig from template.

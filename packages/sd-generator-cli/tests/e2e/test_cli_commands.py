@@ -1,12 +1,20 @@
 """
-Tests for CLI command mapping and help functionality.
+End-to-end tests for CLI command mapping and help functionality.
 
 These tests verify that all CLI commands are properly mapped and
 their help text can be displayed without errors.
+
+⚠️ REQUIREMENTS:
+- Package must be installed: pip install -e .
+- Tests use subprocess to call 'sdgen' command directly
+- Skip these tests in CI without installation with: pytest --ignore=tests/e2e/
 """
 
 import subprocess
 import pytest
+
+# Mark all tests in this module as e2e
+pytestmark = pytest.mark.e2e
 
 
 class TestCLICommands:

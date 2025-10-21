@@ -52,6 +52,9 @@ addopts = [
     "--strict-markers",
     "--tb=short",
 ]
+markers = [
+    "e2e: end-to-end tests requiring full package installation (pip install -e .)",
+]
 
 [tool.coverage.run]
 source = ["sd_generator_cli"]

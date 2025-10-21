@@ -6,7 +6,7 @@ It handles parsing of templates, chunks, prompts, and variation files.
 """
 
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..models.config_models import (
     TemplateConfig,
     ChunkConfig,
@@ -510,7 +510,7 @@ class ConfigParser:
 
         return config.detector
 
-    def _parse_output_config(self, output_data: Dict[str, Any]) -> OutputConfig:
+    def _parse_output_config(self, output_data: Optional[Dict[str, Any]]) -> Optional[OutputConfig]:
         """
         Parse output configuration with annotations.
 
