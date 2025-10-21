@@ -83,6 +83,59 @@ class TestSelectorParsing:
         assert selector.keys == ["BobCut", "LongHair"]
         assert selector.weight == 5
 
+    def test_parse_range_selector(self):
+        """Test parsing range selector [#0-5]."""
+        resolver = TemplateResolver()
+        selector = resolver._parse_selectors("#0-5")
+
+        assert selector.limit is None
+        assert selector.indexes == [0, 1, 2, 3, 4, 5]
+        assert selector.keys is None
+        assert selector.weight == 1
+
+    def test_parse_range_selector_large(self):
+        """Test parsing range selector [#10-19]."""
+        resolver = TemplateResolver()
+        selector = resolver._parse_selectors("#10-19")
+
+        assert selector.indexes == list(range(10, 20))
+        assert len(selector.indexes) == 10
+
+    def test_parse_range_selector_single(self):
+        """Test parsing range with same start/end [#5-5]."""
+        resolver = TemplateResolver()
+        selector = resolver._parse_selectors("#5-5")
+
+        assert selector.indexes == [5]
+        assert len(selector.indexes) == 1
+
+    def test_parse_range_selector_invalid(self):
+        """Test parsing invalid range [#10-5] (start > end)."""
+        resolver = TemplateResolver()
+        selector = resolver._parse_selectors("#10-5")
+
+        # Should be ignored, no indexes set
+        assert selector.indexes is None
+        assert selector.limit is None
+        assert selector.keys is None
+
+    def test_parse_range_with_weight(self):
+        """Test parsing range with weight [#0-10;$5]."""
+        resolver = TemplateResolver()
+        selector = resolver._parse_selectors("#0-10;$5")
+
+        assert selector.indexes == list(range(11))  # 0 to 10 inclusive
+        assert selector.weight == 5
+        assert selector.limit is None
+
+    def test_parse_range_with_weight_zero(self):
+        """Test parsing range with weight 0 [#0-5;$0]."""
+        resolver = TemplateResolver()
+        selector = resolver._parse_selectors("#0-5;$0")
+
+        assert selector.indexes == [0, 1, 2, 3, 4, 5]
+        assert selector.weight == 0
+
 
 class TestSelectorApplication:
     """Test applying selectors to variations."""

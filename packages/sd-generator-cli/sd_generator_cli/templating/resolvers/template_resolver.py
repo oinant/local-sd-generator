@@ -636,6 +636,7 @@ class TemplateResolver:
         Supports:
         - [15] - Limit to 15 random variations
         - [#1,3,5] - Select index 1, 3, 5
+        - [#0-10] - Select range of indexes 0 to 10 (inclusive)
         - [BobCut,LongHair] - Select by keys
         - [$8] - Weight 8 for combinatorial
         - [15;$8] - Combination (semicolon separator)
@@ -663,14 +664,34 @@ class TemplateResolver:
                     pass  # Ignore invalid weight
                 continue
 
-            # Index selector: #1,3,5
+            # Index selector: #1,3,5 or range selector: #start-end
             if part.startswith('#'):
                 index_str = part[1:]
-                try:
-                    indexes = [int(i.strip()) for i in index_str.split(',')]
-                    selector.indexes = indexes
-                except ValueError:
-                    pass  # Ignore invalid indexes
+
+                # Check for range syntax: start-end
+                if '-' in index_str and ',' not in index_str:
+                    try:
+                        # Split by first dash only (in case of negative numbers in future)
+                        parts_split = index_str.split('-', 1)
+                        if len(parts_split) == 2 and parts_split[0] and parts_split[1]:
+                            start_idx = int(parts_split[0].strip())
+                            end_idx = int(parts_split[1].strip())
+
+                            # Validate range
+                            if start_idx <= end_idx:
+                                # Generate range (inclusive)
+                                indexes = list(range(start_idx, end_idx + 1))
+                                selector.indexes = indexes
+                            # If start > end, ignore (invalid range)
+                    except ValueError:
+                        pass  # Ignore invalid range
+                else:
+                    # Comma-separated indexes: #1,3,5
+                    try:
+                        indexes = [int(i.strip()) for i in index_str.split(',')]
+                        selector.indexes = indexes
+                    except ValueError:
+                        pass  # Ignore invalid indexes
                 continue
 
             # Limit selector: 15 (pure number)
