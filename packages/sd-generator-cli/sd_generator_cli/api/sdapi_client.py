@@ -5,10 +5,10 @@ This client handles ONLY API communication - no filesystem operations,
 no progress reporting, no session management.
 """
 
-import re
 import requests
 from typing import Optional
 from dataclasses import dataclass, field
+from ..templating.normalizers.normalizer import PromptNormalizer
 
 
 @dataclass
@@ -66,6 +66,7 @@ class SDAPIClient:
         """
         self.api_url = api_url.rstrip('/')
         self.generation_config = GenerationConfig()
+        self._normalizer = PromptNormalizer()
 
     def set_generation_config(self, config: GenerationConfig):
         """
@@ -96,25 +97,21 @@ class SDAPIClient:
         except Exception:
             return False
 
-    def _normalize_prompt(self, prompt: str) -> str:
+    def _normalize_for_api(self, prompt: str) -> str:
         """
-        Normalize prompt by replacing newlines and cleaning up commas.
+        Normalize prompt for API submission (convert newlines + normalize).
 
         Args:
             prompt: Raw prompt string
 
         Returns:
-            Normalized prompt with clean comma separation
+            API-ready prompt (newlines → commas, normalized)
         """
-        # Replace newlines with ", "
-        normalized = prompt.replace('\n', ', ').replace('\r', '')
+        # Step 1: Replace newlines with ", "
+        single_line = prompt.replace('\n', ', ').replace('\r', '')
 
-        # Clean up multiple commas and spaces
-        normalized = re.sub(r',(\s*,)+', ',', normalized)  # Multiple commas with optional spaces
-        normalized = re.sub(r'\s+', ' ', normalized)        # Multiple spaces → single space
-        normalized = re.sub(r',\s+', ', ', normalized)      # Normalize space after comma
-        normalized = re.sub(r'\s+,', ',', normalized)       # Remove space before comma
-        normalized = normalized.strip()                      # Trim edges
+        # Step 2: Normalize with PromptNormalizer (commas, spacing, etc.)
+        normalized = self._normalizer.normalize_prompt(single_line)
 
         return normalized
 
@@ -156,9 +153,9 @@ class SDAPIClient:
         Returns:
             dict: API payload ready to send
         """
-        # Normalize prompts: replace newlines with ", " and clean up
-        prompt = self._normalize_prompt(prompt_config.prompt)
-        negative_prompt = self._normalize_prompt(prompt_config.negative_prompt)
+        # Normalize prompts for API: newlines → commas + cleanup
+        prompt = self._normalize_for_api(prompt_config.prompt)
+        negative_prompt = self._normalize_for_api(prompt_config.negative_prompt)
 
         payload = {
             "prompt": prompt,

@@ -26,32 +26,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from sd_generator_cli.config.global_config import load_global_config, ensure_global_config
-
-
-def normalize_prompt(prompt: str) -> str:
-    """
-    Normalize prompt by replacing newlines with commas and cleaning up.
-
-    Args:
-        prompt: Raw prompt string with possible newlines
-
-    Returns:
-        Normalized prompt with clean comma separation
-    """
-    # Replace newlines with ", "
-    normalized = prompt.replace('\n', ', ').replace('\r', '')
-
-    # Clean up multiple commas and spaces
-    normalized = re.sub(r',(\s*,)+', ',', normalized)  # Multiple commas with optional spaces
-    normalized = re.sub(r'\s+', ' ', normalized)        # Multiple spaces → single space
-    normalized = re.sub(r',\s+', ', ', normalized)      # Normalize space after comma
-    normalized = re.sub(r'\s+,', ',', normalized)       # Remove space before comma
-    normalized = normalized.strip()                      # Trim edges
-
-    return normalized
 
 # Initialize Typer app and Rich console
 app = typer.Typer(
@@ -437,7 +413,6 @@ def _generate(
         if not dry_run and config.output and config.output.annotations and config.output.annotations.enabled:
             console.print("[cyan]Starting image annotation in background...[/cyan]")
             try:
-                from sd_generator_cli.api.annotator import annotate_session_from_config
                 import subprocess
                 import sys
 

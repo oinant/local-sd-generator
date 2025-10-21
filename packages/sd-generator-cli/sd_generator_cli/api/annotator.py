@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from PIL import Image as PILImageModule, ImageDraw as PILImageDrawModule, ImageFont as PILImageFontModule
+    from PIL import Image as PILImageModule, ImageDraw as PILImageDrawModule, ImageFont as PILImageFontModule  # noqa: F401
     from ..templating.models.config_models import AnnotationsConfig
 
 try:
