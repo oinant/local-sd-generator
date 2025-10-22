@@ -49,9 +49,9 @@ class ControlNetUnit:
     control_mode: str = "Balanced"  # "Balanced", "My prompt is more important", "ControlNet is more important"
 
     # Advanced
-    pixel_perfect: bool = False  # Auto-calculate processor_res
-    lowvram: bool = False  # Low VRAM mode
-    guess_mode: bool = False  # Guess mode (ignore prompts)
+    pixel_perfect: bool = False
+    low_vram: bool = False
+    guess_mode: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to plain dict for JSON serialization (e.g., manifest files).
@@ -78,7 +78,7 @@ class ControlNetUnit:
             "resize_mode": self.resize_mode,
             "control_mode": self.control_mode,
             "pixel_perfect": self.pixel_perfect,
-            "lowvram": self.lowvram,
+            "low_vram": self.low_vram,
             "guess_mode": self.guess_mode,
         }
 
@@ -103,7 +103,7 @@ class ControlNetUnit:
             "weight": self.weight,
             "image": self.image,
             "resize_mode": self.resize_mode,
-            "lowvram": self.lowvram,
+            "low_vram": self.low_vram,
             "processor_res": self.processor_res,
             "threshold_a": self.threshold_a,
             "threshold_b": self.threshold_b,
