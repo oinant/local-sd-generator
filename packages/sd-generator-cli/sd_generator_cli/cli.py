@@ -320,9 +320,11 @@ def _generate(
         api_params = {}
         if prompts and 'parameters' in prompts[0]:
             params = prompts[0]['parameters'].copy()
-            # Remove non-serializable objects
+            # Remove non-serializable objects (they go into alwayson_scripts)
             if 'adetailer' in params:
                 del params['adetailer']  # Will be in alwayson_scripts if present
+            if 'controlnet' in params:
+                del params['controlnet']  # Will be in alwayson_scripts if present
             api_params = params
 
         # Create snapshot
@@ -406,6 +408,22 @@ def _generate(
                 parameters=prompt_dict.get('parameters', {})  # Pass parameters including adetailer
             )
             prompt_configs.append(prompt_cfg)
+
+        # Encode ControlNet images if present (paths → base64)
+        if not dry_run:
+            from sd_generator_cli.utils.image_encoder import ImageEncoder
+
+            for prompt_cfg in prompt_configs:
+                if prompt_cfg.parameters and 'controlnet' in prompt_cfg.parameters:
+                    controlnet_config = prompt_cfg.parameters['controlnet']
+                    if hasattr(controlnet_config, 'units'):
+                        for unit in controlnet_config.units:
+                            if unit.image and not ImageEncoder.is_base64_encoded(unit.image):
+                                try:
+                                    unit.image = ImageEncoder.encode_image_file_from_path(unit.image)
+                                except FileNotFoundError as e:
+                                    console.print(f"[red]✗ ControlNet image error:[/red] {e}")
+                                    raise typer.Exit(code=1)
 
         # Define callback to update manifest after each image
         def update_manifest_incremental(idx: int, prompt_cfg: PromptConfig, success: bool, api_response: Optional[dict]):
