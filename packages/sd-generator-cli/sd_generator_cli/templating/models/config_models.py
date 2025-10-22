@@ -212,6 +212,58 @@ class ADetailerDetector:
     ad_controlnet_guidance_start: float = 0.0
     ad_controlnet_guidance_end: float = 1.0
 
+    def to_dict(self) -> dict:
+        """
+        Convert to plain dict for JSON serialization (e.g., manifest files).
+
+        Returns:
+            dict: Dictionary representation of detector configuration
+        """
+        return {
+            "ad_model": self.ad_model,
+            "ad_model_classes": self.ad_model_classes,
+            "ad_tab_enable": self.ad_tab_enable,
+            "ad_prompt": self.ad_prompt,
+            "ad_negative_prompt": self.ad_negative_prompt,
+            "ad_confidence": self.ad_confidence,
+            "ad_mask_filter_method": self.ad_mask_filter_method,
+            "ad_mask_k_largest": self.ad_mask_k_largest,
+            "ad_mask_min_ratio": self.ad_mask_min_ratio,
+            "ad_mask_max_ratio": self.ad_mask_max_ratio,
+            "ad_dilate_erode": self.ad_dilate_erode,
+            "ad_x_offset": self.ad_x_offset,
+            "ad_y_offset": self.ad_y_offset,
+            "ad_mask_merge_invert": self.ad_mask_merge_invert,
+            "ad_mask_blur": self.ad_mask_blur,
+            "ad_denoising_strength": self.ad_denoising_strength,
+            "ad_inpaint_only_masked": self.ad_inpaint_only_masked,
+            "ad_inpaint_only_masked_padding": self.ad_inpaint_only_masked_padding,
+            "ad_use_inpaint_width_height": self.ad_use_inpaint_width_height,
+            "ad_inpaint_width": self.ad_inpaint_width,
+            "ad_inpaint_height": self.ad_inpaint_height,
+            "ad_use_steps": self.ad_use_steps,
+            "ad_steps": self.ad_steps,
+            "ad_use_cfg_scale": self.ad_use_cfg_scale,
+            "ad_cfg_scale": self.ad_cfg_scale,
+            "ad_use_checkpoint": self.ad_use_checkpoint,
+            "ad_checkpoint": self.ad_checkpoint,
+            "ad_use_vae": self.ad_use_vae,
+            "ad_vae": self.ad_vae,
+            "ad_use_sampler": self.ad_use_sampler,
+            "ad_sampler": self.ad_sampler,
+            "ad_scheduler": self.ad_scheduler,
+            "ad_use_noise_multiplier": self.ad_use_noise_multiplier,
+            "ad_noise_multiplier": self.ad_noise_multiplier,
+            "ad_use_clip_skip": self.ad_use_clip_skip,
+            "ad_clip_skip": self.ad_clip_skip,
+            "ad_restore_face": self.ad_restore_face,
+            "ad_controlnet_model": self.ad_controlnet_model,
+            "ad_controlnet_module": self.ad_controlnet_module,
+            "ad_controlnet_weight": self.ad_controlnet_weight,
+            "ad_controlnet_guidance_start": self.ad_controlnet_guidance_start,
+            "ad_controlnet_guidance_end": self.ad_controlnet_guidance_end,
+        }
+
     def to_api_dict(self) -> dict:
         """
         Convert to Adetailer API format.
@@ -275,6 +327,18 @@ class ADetailerConfig:
     """
     enabled: bool = False
     detectors: List[ADetailerDetector] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """
+        Convert to plain dict for JSON serialization (e.g., manifest files).
+
+        Returns:
+            dict: Dictionary representation of ADetailer configuration
+        """
+        return {
+            "enabled": self.enabled,
+            "detectors": [detector.to_dict() for detector in self.detectors]
+        }
 
     def to_api_dict(self) -> Optional[dict]:
         """

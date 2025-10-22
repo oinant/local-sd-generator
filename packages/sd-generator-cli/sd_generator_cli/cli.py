@@ -271,10 +271,22 @@ def _generate(
         template_for_extraction = resolved_config.template if resolved_config.template else ""
         placeholders_in_template = set(placeholder_pattern.findall(template_for_extraction))
 
-        # 2. Extract complete pool from context.imports (only for placeholders in template)
+        # Also detect placeholders in ControlNet images
+        placeholders_in_parameters = set()
+        if resolved_config.parameters and 'controlnet' in resolved_config.parameters:
+            controlnet_config = resolved_config.parameters['controlnet']
+            if hasattr(controlnet_config, 'units'):
+                for unit in controlnet_config.units:
+                    if unit.image and isinstance(unit.image, dict):
+                        # The dict keys are the import names
+                        placeholders_in_parameters.update(unit.image.keys())
+
+        all_placeholders = placeholders_in_template | placeholders_in_parameters
+
+        # 2. Extract complete pool from context.imports (only for placeholders in template or parameters)
         for placeholder_name, import_data in context.imports.items():
-            # Skip if placeholder doesn't appear in template
-            if placeholder_name not in placeholders_in_template:
+            # Skip if placeholder doesn't appear in template or parameters
+            if placeholder_name not in all_placeholders:
                 continue
 
             if isinstance(import_data, dict):
@@ -320,11 +332,11 @@ def _generate(
         api_params = {}
         if prompts and 'parameters' in prompts[0]:
             params = prompts[0]['parameters'].copy()
-            # Remove non-serializable objects (they go into alwayson_scripts)
-            if 'adetailer' in params:
-                del params['adetailer']  # Will be in alwayson_scripts if present
-            if 'controlnet' in params:
-                del params['controlnet']  # Will be in alwayson_scripts if present
+            # Convert extension configs to serializable dicts
+            if 'adetailer' in params and hasattr(params['adetailer'], 'to_dict'):
+                params['adetailer'] = params['adetailer'].to_dict()
+            if 'controlnet' in params and hasattr(params['controlnet'], 'to_dict'):
+                params['controlnet'] = params['controlnet'].to_dict()
             api_params = params
 
         # Create snapshot
@@ -400,30 +412,71 @@ def _generate(
         # Convert V2 prompts to PromptConfig list
         prompt_configs = []
         for idx, prompt_dict in enumerate(prompts):
+            # Resolve ControlNet image variations (but don't encode yet)
+            parameters = prompt_dict.get('parameters', {}).copy()
+            variations = prompt_dict.get('variations', {}).copy()  # Copy for enrichment
+
+            if 'controlnet' in parameters:
+                # Deep copy controlnet config to avoid sharing between prompts
+                import copy
+                controlnet_config = copy.deepcopy(parameters['controlnet'])
+                parameters['controlnet'] = controlnet_config
+
+                if hasattr(controlnet_config, 'units'):
+                    for unit_idx, unit in enumerate(controlnet_config.units):
+                        if unit.image:
+                            # Handle dict variations (key → path mapping)
+                            if isinstance(unit.image, dict):
+                                # Find which key was used in this variation
+                                # The dict has import name as key with None value
+                                # We need to look in variations dict for the actual value
+                                for import_name in unit.image.keys():
+                                    # For ControlNet images, we need to pick a variation manually
+                                    # since the generator doesn't handle parameters placeholders
+                                    if import_name in context.imports and isinstance(context.imports[import_name], dict):
+                                        # Pick a random variation (or first one if already in variations)
+                                        if import_name not in variations:
+                                            import random
+                                            image_path = random.choice(list(context.imports[import_name].values()))
+                                            variations[import_name] = image_path
+                                        else:
+                                            image_path = variations[import_name]
+
+                                        # Resolve path relative to template file
+                                        image_path_obj = Path(image_path)
+                                        if not image_path_obj.is_absolute():
+                                            # Resolve relative to the template's directory
+                                            template_dir = config.source_file.parent
+                                            resolved_path = (template_dir / image_path).resolve()
+                                            image_path = str(resolved_path)
+
+                                        # Store resolved path (will be encoded in sdapi_client)
+                                        unit.image = image_path
+                                        break
+                            # Handle direct string path
+                            elif isinstance(unit.image, str):
+                                # For direct paths, add to variations with a generated key
+                                variation_key = f"ControlNetImage_{unit_idx}"
+                                variations[variation_key] = unit.image
+
+                                # Resolve path relative to template file if needed
+                                image_path_obj = Path(unit.image)
+                                if not image_path_obj.is_absolute():
+                                    template_dir = config.source_file.parent
+                                    resolved_path = (template_dir / unit.image).resolve()
+                                    unit.image = str(resolved_path)
+
+            # Update variations in prompt_dict for manifest
+            prompt_dict['variations'] = variations
+
             prompt_cfg = PromptConfig(
                 prompt=prompt_dict['prompt'],
                 negative_prompt=prompt_dict.get('negative_prompt', ''),
                 seed=prompt_dict.get('seed', -1),
                 filename=f"{session_name}_{idx:04d}.png",
-                parameters=prompt_dict.get('parameters', {})  # Pass parameters including adetailer
+                parameters=parameters
             )
             prompt_configs.append(prompt_cfg)
-
-        # Encode ControlNet images if present (paths → base64)
-        if not dry_run:
-            from sd_generator_cli.utils.image_encoder import ImageEncoder
-
-            for prompt_cfg in prompt_configs:
-                if prompt_cfg.parameters and 'controlnet' in prompt_cfg.parameters:
-                    controlnet_config = prompt_cfg.parameters['controlnet']
-                    if hasattr(controlnet_config, 'units'):
-                        for unit in controlnet_config.units:
-                            if unit.image and not ImageEncoder.is_base64_encoded(unit.image):
-                                try:
-                                    unit.image = ImageEncoder.encode_image_file_from_path(unit.image)
-                                except FileNotFoundError as e:
-                                    console.print(f"[red]✗ ControlNet image error:[/red] {e}")
-                                    raise typer.Exit(code=1)
 
         # Define callback to update manifest after each image
         def update_manifest_incremental(idx: int, prompt_cfg: PromptConfig, success: bool, api_response: Optional[dict]):

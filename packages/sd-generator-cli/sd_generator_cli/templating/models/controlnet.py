@@ -53,6 +53,35 @@ class ControlNetUnit:
     lowvram: bool = False  # Low VRAM mode
     guess_mode: bool = False  # Guess mode (ignore prompts)
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to plain dict for JSON serialization (e.g., manifest files).
+
+        Returns:
+            Dictionary representation of ControlNet unit configuration.
+
+        Example:
+            >>> unit = ControlNetUnit(model="control_v11p_sd15_canny", module="canny")
+            >>> config_dict = unit.to_dict()
+            >>> config_dict["model"]
+            'control_v11p_sd15_canny'
+        """
+        return {
+            "model": self.model,
+            "image": self.image,
+            "module": self.module,
+            "weight": self.weight,
+            "guidance_start": self.guidance_start,
+            "guidance_end": self.guidance_end,
+            "processor_res": self.processor_res,
+            "threshold_a": self.threshold_a,
+            "threshold_b": self.threshold_b,
+            "resize_mode": self.resize_mode,
+            "control_mode": self.control_mode,
+            "pixel_perfect": self.pixel_perfect,
+            "lowvram": self.lowvram,
+            "guess_mode": self.guess_mode,
+        }
+
     def to_api_dict(self) -> dict[str, Any]:
         """Convert to SD WebUI ControlNet API format.
 
@@ -103,6 +132,23 @@ class ControlNetConfig:
     """
 
     units: list[ControlNetUnit] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to plain dict for JSON serialization (e.g., manifest files).
+
+        Returns:
+            Dictionary representation of ControlNet configuration.
+
+        Example:
+            >>> unit = ControlNetUnit(model="control_v11p_sd15_canny", module="canny")
+            >>> config = ControlNetConfig(units=[unit])
+            >>> config_dict = config.to_dict()
+            >>> len(config_dict["units"])
+            1
+        """
+        return {
+            "units": [unit.to_dict() for unit in self.units]
+        }
 
     def to_api_dict(self) -> Optional[dict[str, Any]]:
         """Convert to alwayson_scripts payload format.

@@ -210,6 +210,18 @@ class SDAPIClient:
             controlnet_config = prompt_config.parameters['controlnet']
             # controlnet_config should be a ControlNetConfig object with to_api_dict() method
             if hasattr(controlnet_config, 'to_api_dict'):
+                # Encode images just before sending (units contain file paths)
+                if hasattr(controlnet_config, 'units'):
+                    from sd_generator_cli.utils.image_encoder import ImageEncoder
+                    for unit in controlnet_config.units:
+                        if unit.image and isinstance(unit.image, str):
+                            # Only encode if it's a file path (not already base64)
+                            if not ImageEncoder.is_base64_encoded(unit.image):
+                                try:
+                                    unit.image = ImageEncoder.encode_image_file_from_path(unit.image)
+                                except FileNotFoundError as e:
+                                    raise RuntimeError(f"ControlNet image not found: {unit.image}") from e
+
                 controlnet_payload = controlnet_config.to_api_dict()
                 if controlnet_payload:  # Only add if not None (i.e., has units)
                     alwayson_scripts.update(controlnet_payload)
