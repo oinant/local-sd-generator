@@ -140,17 +140,29 @@ class V2Executor:
         }
 
         try:
+            # Resolve ADetailer placeholders if present
+            parameters = prompt_dict.get('parameters', {}).copy()
+            if 'adetailer' in parameters and 'variations' in prompt_dict:
+                from sd_generator_cli.templating.models.config_models import ADetailerConfig
+                adetailer = parameters['adetailer']
+                if isinstance(adetailer, ADetailerConfig):
+                    # Resolve placeholders in ad_prompt with current variations
+                    parameters['adetailer'] = adetailer.resolve_placeholders(
+                        prompt_dict['variations']
+                    )
+
             # Build API prompt config
             api_prompt = PromptConfig(
                 prompt=prompt_dict['prompt'],
                 negative_prompt=prompt_dict.get('negative_prompt', ''),
                 seed=prompt_dict.get('seed', -1),
-                filename=f"image_{image_number:04d}"
+                filename=f"image_{image_number:04d}",
+                parameters=parameters  # Include resolved parameters
             )
 
-            # Apply parameters if present
-            if 'parameters' in prompt_dict:
-                self._apply_parameters(prompt_dict['parameters'])
+            # Apply parameters if present (for backward compatibility with GenerationConfig)
+            if parameters:
+                self._apply_parameters(parameters)
 
             # Log the actual prompt being sent to API
             self._log_prompt(api_prompt, image_number)

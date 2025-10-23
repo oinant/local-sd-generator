@@ -340,6 +340,51 @@ class ADetailerConfig:
             "detectors": [detector.to_dict() for detector in self.detectors]
         }
 
+    def resolve_placeholders(self, variations: Dict[str, str]) -> 'ADetailerConfig':
+        """
+        Resolve placeholders in detector prompts with variation values.
+
+        Creates a new ADetailerConfig with placeholders in ad_prompt and
+        ad_negative_prompt replaced by actual variation values. This allows
+        ADetailer prompts to use the same placeholders as the main prompt
+        without affecting combinatorial generation.
+
+        Args:
+            variations: Dict mapping placeholder names to values
+                       (e.g., {"Expression": "smiling", "EyeColor": "blue"})
+
+        Returns:
+            New ADetailerConfig with resolved prompts
+
+        Example:
+            >>> config = ADetailerConfig(enabled=True, detectors=[
+            ...     ADetailerDetector(ad_prompt="face, {Expression}, {EyeColor} eyes")
+            ... ])
+            >>> variations = {"Expression": "smiling", "EyeColor": "blue"}
+            >>> resolved = config.resolve_placeholders(variations)
+            >>> resolved.detectors[0].ad_prompt
+            'face, smiling, blue eyes'
+        """
+        from sd_generator_cli.templating.utils.placeholder_resolver import resolve_text_placeholders
+
+        # Create new detectors with resolved prompts
+        resolved_detectors = []
+        for detector in self.detectors:
+            # Create copy of detector (dataclass copy)
+            from dataclasses import replace
+            resolved_detector = replace(
+                detector,
+                ad_prompt=resolve_text_placeholders(detector.ad_prompt, variations),
+                ad_negative_prompt=resolve_text_placeholders(detector.ad_negative_prompt, variations)
+            )
+            resolved_detectors.append(resolved_detector)
+
+        # Return new config with resolved detectors
+        return ADetailerConfig(
+            enabled=self.enabled,
+            detectors=resolved_detectors
+        )
+
     def to_api_dict(self) -> Optional[dict]:
         """
         Convert to alwayson_scripts format for SD WebUI API.

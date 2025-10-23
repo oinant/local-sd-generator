@@ -391,11 +391,11 @@ class ConfigParser:
         """
         Parse parameters.adetailer from prompt YAML.
 
-        Supports three formats:
+        Supports four formats:
         1. String (single file path):
            adetailer: "../variations/adetailer/face_hq.adetailer.yaml"
 
-        2. List (multiple detector files):
+        2. List (multiple detector files - simple paths):
            adetailer:
              - "../variations/adetailer/face_hq.adetailer.yaml"
              - "../variations/adetailer/hand_fix.adetailer.yaml"
@@ -406,6 +406,20 @@ class ConfigParser:
              override:
                ad_prompt: "custom prompt"
                ad_denoising_strength: 0.5
+
+        4. List with dicts (mixed paths and overrides):
+           adetailer:
+             - import: "../variations/adetailer/face_hq.adetailer.yaml"
+               override:
+                 ad_prompt: "detailed face, {Expression}"
+             - import: "../variations/adetailer/hand_fix.adetailer.yaml"
+               override:
+                 ad_prompt: "perfect hands"
+             - "../variations/adetailer/body.adetailer.yaml"  # Mix simple path OK
+
+        Override prompts support placeholders (e.g., {Expression}, {EyeColor})
+        which will be resolved to the same values used in the main prompt,
+        with NO combinatoric impact (same values, not new combinations).
 
         Args:
             adetailer_value: Value from parameters.adetailer (string/list/dict)
@@ -426,15 +440,51 @@ class ConfigParser:
             detectors.append(detector)
 
         elif isinstance(adetailer_value, list):
-            # Multi-detector import (array of paths)
+            # Multi-detector import (array of paths or dicts)
             for item in adetailer_value:
-                if not isinstance(item, str):
+                if isinstance(item, str):
+                    # Simple path
+                    detector = self._load_adetailer_file(item, base_path)
+                    detectors.append(detector)
+                elif isinstance(item, dict):
+                    # Dict with import + override
+                    if 'import' not in item:
+                        raise ValueError(
+                            "parameters.adetailer list item dict must have 'import' key. "
+                            "Example:\n"
+                            "  adetailer:\n"
+                            "    - import: path/to/config.adetailer.yaml\n"
+                            "      override:\n"
+                            "        ad_prompt: 'custom prompt'"
+                        )
+
+                    import_path = item['import']
+                    detector = self._load_adetailer_file(import_path, base_path)
+
+                    # Apply overrides if present
+                    if 'override' in item:
+                        overrides = item['override']
+                        if not isinstance(overrides, dict):
+                            raise ValueError(
+                                f"parameters.adetailer item override must be a dict, "
+                                f"got {type(overrides).__name__}"
+                            )
+
+                        for key, value in overrides.items():
+                            if hasattr(detector, key):
+                                setattr(detector, key, value)
+                            else:
+                                raise ValueError(
+                                    f"Invalid override key '{key}' in parameters.adetailer. "
+                                    f"Not a valid ADetailerDetector field."
+                                )
+
+                    detectors.append(detector)
+                else:
                     raise ValueError(
-                        f"parameters.adetailer array must contain file paths (strings), "
+                        f"parameters.adetailer array items must be strings or dicts, "
                         f"got {type(item).__name__}"
                     )
-                detector = self._load_adetailer_file(item, base_path)
-                detectors.append(detector)
 
         elif isinstance(adetailer_value, dict):
             # Import with override
