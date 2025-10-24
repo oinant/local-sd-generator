@@ -17,10 +17,12 @@ from typing import List, Dict, Any, Optional
 
 from sd_generator_cli.templating.loaders.yaml_loader import YamlLoader
 from sd_generator_cli.templating.loaders.parser import ConfigParser
+from sd_generator_cli.templating.loaders.theme_loader import ThemeLoader
 from sd_generator_cli.templating.validators.validator import ConfigValidator
 from sd_generator_cli.templating.resolvers.inheritance_resolver import InheritanceResolver
 from sd_generator_cli.templating.resolvers.import_resolver import ImportResolver
 from sd_generator_cli.templating.resolvers.template_resolver import TemplateResolver
+from sd_generator_cli.templating.resolvers.theme_resolver import ThemeResolver
 from sd_generator_cli.templating.normalizers.normalizer import PromptNormalizer
 from sd_generator_cli.templating.generators.generator import PromptGenerator
 from sd_generator_cli.templating.models.config_models import (
@@ -29,6 +31,7 @@ from sd_generator_cli.templating.models.config_models import (
     ChunkConfig,
     ResolvedContext
 )
+from sd_generator_cli.templating.models.theme_models import ThemeConfig
 
 
 class V2Pipeline:
@@ -78,6 +81,16 @@ class V2Pipeline:
             normalizer=self.normalizer
         )
 
+        # Themable Templates support (Phase 1)
+        self.theme_loader: Optional[ThemeLoader]
+        self.theme_resolver: Optional[ThemeResolver]
+        if self.configs_dir:
+            self.theme_loader = ThemeLoader(self.configs_dir)
+            self.theme_resolver = ThemeResolver(self.configs_dir)
+        else:
+            self.theme_loader = None
+            self.theme_resolver = None
+
     def load(self, config_path: str) -> PromptConfig:
         """
         Load and parse a prompt config file.
@@ -112,23 +125,31 @@ class V2Pipeline:
 
         return config
 
-    def resolve(self, config: PromptConfig) -> tuple[PromptConfig, ResolvedContext]:
+    def resolve(
+        self,
+        config: PromptConfig,
+        theme_name: Optional[str] = None,
+        style: str = "default"
+    ) -> tuple[PromptConfig, ResolvedContext]:
         """
         Resolve inheritance, imports, and templates.
 
         This performs:
         1. Inheritance resolution (implements: chain)
-        2. Import resolution (imports: declarations)
-        3. Parameter merging from inheritance chain
-        4. Phase 1 chunk injection (structural only, preserving placeholders)
+        2. Theme merging (if themable template + theme provided)
+        3. Import resolution (imports: declarations)
+        4. Parameter merging from inheritance chain
+        5. Phase 1 chunk injection (structural only, preserving placeholders)
 
         Args:
             config: Parsed PromptConfig
+            theme_name: Optional theme name (for themable templates)
+            style: Art style (default, cartoon, realistic, etc.)
 
         Returns:
             Tuple of (resolved_config, context)
             - resolved_config: PromptConfig with template field populated after injection
-            - context: ResolvedContext with all imports and chunks loaded
+            - context: ResolvedContext with all imports, chunks, and theme metadata
 
         Raises:
             ValueError: If resolution fails
@@ -143,11 +164,42 @@ class V2Pipeline:
         # Build simple chain for parameter merging (just use the resolved config)
         inheritance_chain = [resolved_config]
 
+        # Phase 3.5: Theme merging (if themable template)
+        # Check if this is a themable template (TemplateConfig with themable=True)
+        theme: Optional[ThemeConfig] = None
+        import_resolution_metadata: Dict[str, Any] = {}
+
+        # Check if themable (only TemplateConfig can be themable, not PromptConfig)
+        is_themable = (
+            hasattr(resolved_config, 'themable') and
+            getattr(resolved_config, 'themable', False)
+        )
+
+        if is_themable and isinstance(resolved_config, TemplateConfig):
+            if not self.theme_resolver:
+                raise ValueError("Theme support requires configs_dir to be set")
+
+            # Load theme if specified
+            if theme_name and self.theme_loader:
+                theme = self.theme_loader.load_theme(theme_name)
+
+            # Merge theme imports with template imports
+            merged_imports, import_resolution_metadata = self.theme_resolver.merge_imports(
+                template=resolved_config,
+                theme=theme,
+                style=style
+            )
+
+            # Replace template imports with merged imports
+            from copy import deepcopy
+            resolved_config = deepcopy(resolved_config)
+            resolved_config.imports = merged_imports
+
         # Phase 4: Resolve imports
         # Use the config's source file directory as base path for import resolution
         base_path = config.source_file.parent
         resolved_imports = self.import_resolver.resolve_imports(
-            config,
+            resolved_config,
             base_path
         )
 
@@ -158,7 +210,10 @@ class V2Pipeline:
         context = ResolvedContext(
             imports=resolved_imports,
             chunks={},  # Chunks will be available via imports
-            parameters=merged_params
+            parameters=merged_params,
+            # Theme metadata (Phase 1)
+            style=style,
+            import_resolution=import_resolution_metadata
         )
 
         # Phase 1: Inject chunks structurally (preserving placeholders)
@@ -227,12 +282,19 @@ class V2Pipeline:
 
         return prompts
 
-    def run(self, config_path: str) -> List[Dict[str, Any]]:
+    def run(
+        self,
+        config_path: str,
+        theme_name: Optional[str] = None,
+        style: str = "default"
+    ) -> List[Dict[str, Any]]:
         """
         End-to-end pipeline: load → resolve → generate.
 
         Args:
-            config_path: Path to .prompt.yaml file
+            config_path: Path to .prompt.yaml or .template.yaml file
+            theme_name: Optional theme name (for themable templates)
+            style: Art style (default, cartoon, realistic, etc.)
 
         Returns:
             List of generated prompts
@@ -244,8 +306,8 @@ class V2Pipeline:
         # Load config
         config = self.load(config_path)
 
-        # Resolve inheritance and imports
-        resolved_config, context = self.resolve(config)
+        # Resolve inheritance and imports (with theme support)
+        resolved_config, context = self.resolve(config, theme_name, style)
 
         # Generate prompts (use resolved_config with template field populated)
         prompts = self.generate(resolved_config, context)
@@ -254,7 +316,7 @@ class V2Pipeline:
 
     def _merge_parameters(
         self,
-        inheritance_chain: List
+        inheritance_chain: List[Any]
     ) -> Dict[str, Any]:
         """
         Merge parameters from inheritance chain.
@@ -365,7 +427,7 @@ class V2Pipeline:
         self,
         template: str,
         context: ResolvedContext
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """
         Get detailed statistics about variations used in template.
 
@@ -434,3 +496,95 @@ class V2Pipeline:
                         statistics['total_placeholders'] = total_ph + 1
 
         return statistics
+
+    # Themable Templates helper methods (Phase 1)
+
+    def list_themes(self) -> List[str]:
+        """
+        List all available themes.
+
+        Returns:
+            List of theme names
+
+        Raises:
+            ValueError: If theme support not initialized (requires configs_dir)
+        """
+        if not self.theme_loader:
+            raise ValueError("Theme support requires configs_dir to be set")
+
+        themes = self.theme_loader.discover_themes()
+        return [theme.name for theme in themes]
+
+    def get_theme_info(self, theme_name: str) -> Dict[str, Any]:
+        """
+        Get detailed information about a theme.
+
+        Args:
+            theme_name: Theme name
+
+        Returns:
+            Dict with theme info:
+            {
+                'name': str,
+                'path': Path,
+                'explicit': bool,
+                'imports': Dict[str, str],
+                'variations': List[str],
+                'styles': List[str]  # Auto-discovered from imports
+            }
+
+        Raises:
+            ValueError: If theme support not initialized or theme not found
+        """
+        if not self.theme_loader:
+            raise ValueError("Theme support requires configs_dir to be set")
+
+        theme = self.theme_loader.load_theme(theme_name)
+
+        # Auto-discover styles from imports
+        styles: set[str] = set()
+        for key in theme.imports.keys():
+            if '.' in key:
+                parts = key.split('.')
+                if len(parts) >= 2:
+                    styles.add(parts[-1])
+
+        return {
+            'name': theme.name,
+            'path': str(theme.path),
+            'explicit': theme.explicit,
+            'imports': theme.imports,
+            'variations': theme.variations,
+            'styles': sorted(styles)
+        }
+
+    def validate_theme_compatibility(
+        self,
+        config: TemplateConfig,
+        theme_name: str,
+        style: str = "default"
+    ) -> Dict[str, str]:
+        """
+        Validate theme compatibility with template.
+
+        Args:
+            config: Template configuration
+            theme_name: Theme name
+            style: Target style
+
+        Returns:
+            Dict mapping placeholder to status ("provided" | "missing" | "fallback")
+
+        Raises:
+            ValueError: If theme support not initialized
+        """
+        if not self.theme_resolver or not self.theme_loader:
+            raise ValueError("Theme support requires configs_dir to be set")
+
+        theme = self.theme_loader.load_theme(theme_name)
+
+        return self.theme_resolver.validate_theme_compatibility(
+            template=config,
+            theme=theme,
+            style=style
+        )
