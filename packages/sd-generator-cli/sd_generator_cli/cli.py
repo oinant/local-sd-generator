@@ -81,6 +81,13 @@ api_app = typer.Typer(
 )
 app.add_typer(api_app, name="api")
 
+# Create Theme subcommand group
+theme_app = typer.Typer(
+    name="theme",
+    help="Theme management commands (list, show, validate)"
+)
+app.add_typer(theme_app, name="theme")
+
 # Import environment management commands
 from sd_generator_cli.commands import (
     start_command,
@@ -1289,6 +1296,209 @@ def list_controlnet_models(
             modules_table.add_row(str(idx), module, category)
 
         console.print(modules_table)
+
+    except Exception as e:
+        console.print(f"[red]✗ Error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+
+# Theme management commands
+@theme_app.command(name="list")
+def list_themes():
+    """
+    List all available themes.
+
+    Examples:
+        sdgen theme list
+    """
+    try:
+        # Load global configuration
+        try:
+            global_config = load_global_config()
+        except FileNotFoundError:
+            console.print(f"[red]✗ No config found in current directory[/red]")
+            console.print("\n[yellow]Run[/yellow] [cyan]sdgen init[/cyan] [yellow]to create sdgen_config.json[/yellow]")
+            raise typer.Exit(code=1)
+
+        from sd_generator_cli.templating.orchestrator import V2Pipeline
+
+        # Initialize V2 Pipeline
+        pipeline = V2Pipeline(configs_dir=str(global_config.configs_dir))
+
+        # List themes
+        theme_names = pipeline.list_themes()
+
+        if not theme_names:
+            console.print("[yellow]No themes found[/yellow]")
+            console.print(f"\n[dim]Themes directory:[/dim] {global_config.configs_dir}/themes/")
+            return
+
+        # Display themes
+        console.print(Panel.fit(
+            f"[bold]Themes Directory:[/bold] {global_config.configs_dir}/themes/",
+            border_style="cyan"
+        ))
+
+        table = Table(title=f"Available Themes ({len(theme_names)})", border_style="cyan")
+        table.add_column("#", style="dim")
+        table.add_column("Theme Name", style="cyan")
+
+        for idx, theme_name in enumerate(theme_names, 1):
+            table.add_row(str(idx), theme_name)
+
+        console.print(table)
+
+    except Exception as e:
+        console.print(f"[red]✗ Error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+
+@theme_app.command(name="show")
+def show_theme(
+    name: str = typer.Argument(..., help="Theme name")
+):
+    """
+    Show detailed information about a theme.
+
+    Examples:
+        sdgen theme show cyberpunk
+        sdgen theme show scifi
+    """
+    try:
+        # Load global configuration
+        try:
+            global_config = load_global_config()
+        except FileNotFoundError:
+            console.print(f"[red]✗ No config found in current directory[/red]")
+            console.print("\n[yellow]Run[/yellow] [cyan]sdgen init[/cyan] [yellow]to create sdgen_config.json[/yellow]")
+            raise typer.Exit(code=1)
+
+        from sd_generator_cli.templating.orchestrator import V2Pipeline
+
+        # Initialize V2 Pipeline
+        pipeline = V2Pipeline(configs_dir=str(global_config.configs_dir))
+
+        # Get theme info
+        theme_info = pipeline.get_theme_info(name)
+
+        # Display theme info
+        console.print(Panel.fit(
+            f"[bold cyan]{theme_info['name']}[/bold cyan]",
+            border_style="cyan"
+        ))
+
+        table = Table(show_header=False, border_style="dim")
+        table.add_column("Property", style="cyan")
+        table.add_column("Value")
+
+        table.add_row("Path", theme_info['path'])
+        table.add_row("Type", "Explicit (theme.yaml)" if theme_info['explicit'] else "Implicit (inferred)")
+        table.add_row("Styles", ", ".join(theme_info['styles']) if theme_info['styles'] else "[dim]default only[/dim]")
+        table.add_row("Variations", ", ".join(theme_info['variations']) if theme_info['variations'] else "[dim]none[/dim]")
+        table.add_row("Imports", str(len(theme_info['imports'])))
+
+        console.print(table)
+
+        # Display imports
+        if theme_info['imports']:
+            console.print("\n[cyan]Theme Imports:[/cyan]")
+            imports_table = Table(border_style="dim")
+            imports_table.add_column("Placeholder", style="cyan")
+            imports_table.add_column("File")
+
+            for key, file_path in sorted(theme_info['imports'].items()):
+                imports_table.add_row(key, file_path)
+
+            console.print(imports_table)
+
+    except Exception as e:
+        console.print(f"[red]✗ Error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+
+@theme_app.command(name="validate")
+def validate_theme(
+    template: Path = typer.Argument(
+        ...,
+        help="Path to .template.yaml file",
+        exists=True,
+        file_okay=True,
+        dir_okay=False
+    ),
+    theme: str = typer.Argument(..., help="Theme name"),
+    style: str = typer.Option("default", "--style", help="Art style to validate"),
+):
+    """
+    Validate theme compatibility with a template.
+
+    Shows which imports the theme provides and which are missing.
+
+    Examples:
+        sdgen theme validate character.template.yaml cyberpunk
+        sdgen theme validate scene.template.yaml scifi --style realistic
+    """
+    try:
+        # Load global configuration
+        try:
+            global_config = load_global_config()
+        except FileNotFoundError:
+            console.print(f"[red]✗ No config found in current directory[/red]")
+            console.print("\n[yellow]Run[/yellow] [cyan]sdgen init[/cyan] [yellow]to create sdgen_config.json[/yellow]")
+            raise typer.Exit(code=1)
+
+        from sd_generator_cli.templating.orchestrator import V2Pipeline
+
+        # Initialize V2 Pipeline
+        pipeline = V2Pipeline(configs_dir=str(global_config.configs_dir))
+
+        # Load template
+        console.print(f"[cyan]Loading template:[/cyan] {template}")
+        config = pipeline.load(str(template))
+
+        # Check if themable
+        if not hasattr(config, 'themable') or not config.themable:
+            console.print(f"\n[yellow]⚠ Template is not themable[/yellow]")
+            console.print(f"[dim]Set 'themable: true' in template to use themes[/dim]")
+            raise typer.Exit(code=1)
+
+        # Validate compatibility
+        console.print(f"[cyan]Theme:[/cyan] {theme}")
+        console.print(f"[cyan]Style:[/cyan] {style}\n")
+
+        from sd_generator_cli.templating.models.config_models import TemplateConfig
+        if isinstance(config, TemplateConfig):
+            status = pipeline.validate_theme_compatibility(config, theme, style)
+
+            # Display results
+            table = Table(title="Theme Compatibility", border_style="cyan")
+            table.add_column("Placeholder", style="cyan")
+            table.add_column("Status")
+
+            for placeholder, placeholder_status in sorted(status.items()):
+                if placeholder_status == "provided":
+                    status_str = "[green]✓ Provided by theme[/green]"
+                elif placeholder_status == "fallback":
+                    status_str = "[yellow]⚠ Fallback (common/template)[/yellow]"
+                else:
+                    status_str = "[red]✗ Missing[/red]"
+
+                table.add_row(placeholder, status_str)
+
+            console.print(table)
+
+            # Summary
+            provided_count = sum(1 for s in status.values() if s == "provided")
+            fallback_count = sum(1 for s in status.values() if s == "fallback")
+            missing_count = sum(1 for s in status.values() if s == "missing")
+
+            console.print()
+            if missing_count > 0:
+                console.print(f"[red]✗ {missing_count} import(s) missing[/red]")
+                raise typer.Exit(code=1)
+            elif fallback_count > 0:
+                console.print(f"[yellow]⚠ {provided_count} provided, {fallback_count} using fallback[/yellow]")
+            else:
+                console.print(f"[green]✓ All imports provided by theme ({provided_count})[/green]")
 
     except Exception as e:
         console.print(f"[red]✗ Error:[/red] {e}")
