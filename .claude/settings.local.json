@@ -76,7 +76,8 @@
       "mcp__github__get_issue",
       "Bash(gh issue view:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": []
