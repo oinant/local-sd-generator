@@ -2,88 +2,93 @@
 
 Feature planning and implementation tracking for SD Image Generator.
 
-## 📊 Current Status
+## 📊 Project Planning - Now on GitHub Issues
 
-**Active Work:** Phase 2 YAML templating complete, API module refactored
-**Architecture:** New SRP-compliant `api/` module (5 classes)
-**Tests:** 199 passing ✅ (52 templating + 65 API + 82 other)
-**Last Update:** 2025-10-07
+**All roadmap items have been migrated to GitHub Issues** for better tracking, collaboration, and visibility.
 
-## 🗂️ Roadmap Organization
+🔗 **View Roadmap:** https://github.com/oinant/local-sd-generator/issues
 
-### [✅ Done](./done/)
-Completed features with full documentation and tests.
+## 🏷️ Issue Organization
 
-**Recent completions (2025-10-07):**
-- **API Module Refactoring** - SRP architecture with 5 focused classes (65 tests)
-- **Phase 1 to Legacy Migration** - Removed 5K+ lines of monolithic code
-- **Template CLI Migration** - Uses new API module architecture
-- JSON Config Phase 1: Enhanced File Naming & Metadata (49 tests)
-- JSON Config Phase 2: Global Config & Validation (86 tests)
-- Placeholder Priority System
+Issues are organized using labels:
 
-### [🔄 WIP](./wip/)
-Features currently being implemented.
+### Status Labels
+- `status: done` - Completed features (closed)
+- `status: next` - Priority features for current/next sprint (open)
+- `status: backlog` - Future features to be prioritized (open)
+- `status: wip` - Work in progress (open)
 
-**Active:**
-- (Nothing currently in active development)
+### Type Labels
+- `type: feature` - New functionality
+- `type: bug` - Bug fixes
+- `type: refactor` - Code refactoring
+- `type: chore` - Maintenance and tooling
+- `type: docs` - Documentation improvements
 
-### [⏭️ Next](./next/)
-Features planned for next sprint.
+### Priority Labels
+- `priority: critical` (P1-3) - Critical features/bugs
+- `priority: high` (P4-6) - Important enhancements
+- `priority: medium` (P7-8) - Nice-to-have features
+- `priority: low` (P9-10) - Research/experimental
 
-**Up next:**
-- **Numeric Slider Placeholders** - LoRA slider testing (`{DetailLevel:Unit:-1:3}`)
-- **Character Templates (Phase 2)** - Reusable character definitions with inheritance
-- JSON Config Phase 3: Config Selection & Execution (SF-2, SF-3)
+### Component Labels
+- `component: cli` - CLI tool
+- `component: api` - Backend API
+- `component: webapp` - Web UI
+- `component: tooling` - Development tools
 
-### [🔮 Future](./future/)
-Features planned for future iterations.
+### Area Labels (Sub-components)
+- `area: templating` - Template system
+- `area: execution` - Execution and orchestration
+- `area: api-client` - SD API client
+- `area: config` - Configuration management
 
-**Backlog:**
-- JSON Config Phase 4: Advanced features (SF-6, SF-8)
-- Inline variations in JSON
-- SQLite database for session tracking
-- Web app enhancements
-- WebP thumbnail generation
+## 📋 Quick Links
 
-## 📝 Feature Lifecycle
+### Current Work
+- [🚀 Next Sprint](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22status%3A+next%22)
+- [🔄 In Progress](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22status%3A+wip%22)
 
-```
-future/ → next/ → wip/ → done/
-```
+### Backlog
+- [📦 Backlog](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22status%3A+backlog%22)
+- [High Priority](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22priority%3A+high%22)
+- [Critical](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22priority%3A+critical%22)
 
-**When starting a feature:**
-1. Move spec from `next/` to `wip/`
-2. Update spec with implementation plan
-3. Create related technical docs in `docs/{cli|webapp|tooling}/technical/`
+### History
+- [✅ Completed Features](https://github.com/oinant/local-sd-generator/issues?q=is%3Aclosed+label%3A%22status%3A+done%22)
 
-**When completing a feature:**
-1. Move spec from `wip/` to `done/`
-2. Add completion date, test count, commits
-3. Update usage docs in `docs/{cli|webapp|tooling}/usage/`
-4. Link to technical documentation
+### By Component
+- [CLI Issues](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22component%3A+cli%22)
+- [Templating Issues](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22area%3A+templating%22)
+- [WebApp Issues](https://github.com/oinant/local-sd-generator/issues?q=is%3Aopen+label%3A%22component%3A+webapp%22)
 
-## 🎯 Priority Levels
+## 📝 Creating New Issues
 
-- **Priority 1-3**: Critical features (current sprint)
-- **Priority 4-6**: Important features (next sprint)
-- **Priority 7-8**: Nice-to-have features (future)
-- **Priority 9-10**: Research/experimental
+When creating a new feature request or bug report:
 
-## 📋 Roadmap Files
+1. **Use appropriate labels** (type, priority, component, area)
+2. **Include clear description** of what and why
+3. **Add acceptance criteria** for definition of done
+4. **Link related issues** if applicable
 
-Each roadmap file should contain:
-- **Status**: done/wip/next/future
-- **Priority**: 1-10
-- **Description**: What and why
-- **Implementation**: Technical approach
-- **Tasks**: Detailed task list
-- **Success Criteria**: Definition of done
-- **Tests**: Test coverage information
-- **Documentation**: Links to technical/usage docs
-- **Commits**: Related commit hashes (for done items)
+## 🎯 Priority Guidelines
 
-## 🔗 Related Documentation
+- **Critical (P1-3)**: Blocking bugs, essential features for current sprint
+- **High (P4-6)**: Important enhancements, planned for next sprint
+- **Medium (P7-8)**: Nice-to-have features, future consideration
+- **Low (P9-10)**: Research, experimental ideas
 
-- [CLI Roadmap Items](../cli/technical/design-decisions.md)
-- [Documentation Guidelines](../../CLAUDE.md#documentation-guidelines)
+## 📊 Statistics
+
+Total GitHub Issues: **45**
+- ✅ Completed: **29** (closed)
+- 🔄 Active: **16** (open)
+  - Next sprint: **3**
+  - Backlog: **12**
+  - Others: **1**
+
+_Last updated: 2025-10-24_
+
+## 📖 Local Notes
+
+- [braindump.md](../../.claude/braindump.md) - Ongoing ideas and notes (Claude Code sessions)
