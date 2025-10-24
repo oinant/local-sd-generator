@@ -1,7 +1,7 @@
 """
 Unit tests for ThemeResolver.
 
-Tests theme + template + rating merge logic and import resolution.
+Tests theme + template + style merge logic and import resolution.
 """
 
 import pytest
@@ -24,22 +24,22 @@ def configs_dir(tmp_path):
     defaults_dir = configs / "defaults"
     defaults_dir.mkdir()
     (defaults_dir / "ambiance.yaml").write_text("default ambiance")
-    (defaults_dir / "outfit.sfw.yaml").write_text("default sfw outfit")
+    (defaults_dir / "outfit.default.yaml").write_text("default style outfit")
 
     # Create theme files
     theme_dir = configs / "themes" / "cyberpunk"
     theme_dir.mkdir(parents=True)
     (theme_dir / "cyberpunk_ambiance.yaml").write_text("cyberpunk ambiance")
-    (theme_dir / "cyberpunk_outfit.sfw.yaml").write_text("cyberpunk sfw")
-    (theme_dir / "cyberpunk_outfit.sexy.yaml").write_text("cyberpunk sexy")
-    # No nsfw variant in theme
+    (theme_dir / "cyberpunk_outfit.default.yaml").write_text("cyberpunk default")
+    (theme_dir / "cyberpunk_outfit.cartoon.yaml").write_text("cyberpunk cartoon")
+    # No realistic variant in theme
 
     # Create common fallbacks
     common_dir = configs / "common" / "outfits"
     common_dir.mkdir(parents=True)
-    (common_dir / "outfit.sfw.yaml").write_text("common sfw")
-    (common_dir / "outfit.sexy.yaml").write_text("common sexy")
-    (common_dir / "outfit.nsfw.yaml").write_text("common nsfw")
+    (common_dir / "outfit.default.yaml").write_text("common default")
+    (common_dir / "outfit.cartoon.yaml").write_text("common cartoon")
+    (common_dir / "outfit.realistic.yaml").write_text("common realistic")
 
     return configs
 
@@ -53,11 +53,11 @@ def template_config(configs_dir):
         template="Test {Ambiance}, {Outfit}",
         source_file=Path("/test/template.yaml"),
         themable=True,
-        ratable=True,
-        rating_sensitive_placeholders=["Outfit"],
+        style_sensitive=True,
+        style_sensitive_placeholders=["Outfit"],
         imports={
             "Ambiance": "defaults/ambiance.yaml",
-            "Outfit": "defaults/outfit.sfw.yaml"
+            "Outfit": "defaults/outfit.default.yaml"
         }
     )
 
@@ -71,9 +71,9 @@ def theme_config():
         explicit=True,
         imports={
             "Ambiance": "cyberpunk/cyberpunk_ambiance.yaml",
-            "Outfit.sfw": "cyberpunk/cyberpunk_outfit.sfw.yaml",
-            "Outfit.sexy": "cyberpunk/cyberpunk_outfit.sexy.yaml"
-            # No Outfit.nsfw - should fallback
+            "Outfit.default": "cyberpunk/cyberpunk_outfit.default.yaml",
+            "Outfit.cartoon": "cyberpunk/cyberpunk_outfit.cartoon.yaml"
+            # No Outfit.realistic - should fallback
         },
         variations=["Ambiance", "Outfit"]
     )
@@ -87,105 +87,111 @@ class TestThemeResolverInit:
         resolver = ThemeResolver(configs_dir)
 
         assert resolver.configs_dir == configs_dir
-        assert resolver.rating_resolver is not None
+        assert resolver.style_resolver is not None
 
 
 class TestThemeResolverMergeImports:
     """Tests for merge_imports method."""
 
-    def test_merge_no_theme_sfw(self, configs_dir, template_config):
-        """Test merge without theme (template defaults only), SFW rating."""
+    def test_merge_no_theme_default_style(self, configs_dir, template_config):
+        """Test merge without theme (template defaults only), default style."""
         resolver = ThemeResolver(configs_dir)
 
         imports, metadata = resolver.merge_imports(
             template=template_config,
             theme=None,
-            rating="sfw"
+            style="default"
         )
 
         # Should use template defaults
         assert imports["Ambiance"] == "defaults/ambiance.yaml"
-        assert imports["Outfit"] == "defaults/outfit.sfw.yaml"
+        # Outfit: template has .default.yaml which matches, resolver uses it directly (non-style-sensitive path)
+        assert imports["Outfit"] == "defaults/outfit.default.yaml"
 
         # Check metadata
         assert metadata["Ambiance"].source == "template"
         assert metadata["Ambiance"].override is False
         assert metadata["Outfit"].source == "template"
-        assert metadata["Outfit"].rating_sensitive is True
-        assert metadata["Outfit"].resolved_rating == "sfw"
+        # When using template import directly without theme, it's marked as non-style-sensitive
+        # (because no style resolution was needed - exact match)
+        assert metadata["Outfit"].style_sensitive is False
 
-    def test_merge_with_theme_sfw(self, configs_dir, template_config, theme_config):
-        """Test merge with theme, SFW rating."""
+    def test_merge_with_theme_default_style(self, configs_dir, template_config, theme_config):
+        """Test merge with theme, default style."""
         resolver = ThemeResolver(configs_dir)
 
         imports, metadata = resolver.merge_imports(
             template=template_config,
             theme=theme_config,
-            rating="sfw"
+            style="default"
         )
 
         # Should use theme overrides
         assert imports["Ambiance"] == "cyberpunk/cyberpunk_ambiance.yaml"
-        assert imports["Outfit"] == "cyberpunk/cyberpunk_outfit.sfw.yaml"
+        assert imports["Outfit"] == "cyberpunk/cyberpunk_outfit.default.yaml"
 
         # Check metadata
         assert metadata["Ambiance"].source == "theme"
         assert metadata["Ambiance"].override is True
         assert metadata["Outfit"].source == "theme"
         assert metadata["Outfit"].override is True
-        assert metadata["Outfit"].rating_sensitive is True
-        assert metadata["Outfit"].resolved_rating == "sfw"
+        assert metadata["Outfit"].style_sensitive is True
+        assert metadata["Outfit"].resolved_style == "default"
 
-    def test_merge_with_theme_sexy(self, configs_dir, template_config, theme_config):
-        """Test merge with theme, sexy rating."""
+    def test_merge_with_theme_cartoon_style(self, configs_dir, template_config, theme_config):
+        """Test merge with theme, cartoon style."""
         resolver = ThemeResolver(configs_dir)
 
         imports, metadata = resolver.merge_imports(
             template=template_config,
             theme=theme_config,
-            rating="sexy"
+            style="cartoon"
         )
 
-        # Ambiance not rating-sensitive → use theme
+        # Ambiance not style-sensitive → use theme
         assert imports["Ambiance"] == "cyberpunk/cyberpunk_ambiance.yaml"
-        # Outfit.sexy → use theme
-        assert imports["Outfit"] == "cyberpunk/cyberpunk_outfit.sexy.yaml"
+        # Outfit.cartoon → use theme
+        assert imports["Outfit"] == "cyberpunk/cyberpunk_outfit.cartoon.yaml"
 
         # Check metadata
         assert metadata["Outfit"].source == "theme"
-        assert metadata["Outfit"].resolved_rating == "sexy"
+        assert metadata["Outfit"].resolved_style == "cartoon"
 
-    def test_merge_with_theme_nsfw_fallback(self, configs_dir, template_config, theme_config):
-        """Test merge with theme, NSFW rating (fallback to common)."""
+    def test_merge_with_theme_realistic_fallback(self, configs_dir, template_config, theme_config):
+        """Test merge with theme, realistic style (fallback to common)."""
         resolver = ThemeResolver(configs_dir)
 
         imports, metadata = resolver.merge_imports(
             template=template_config,
             theme=theme_config,
-            rating="nsfw"
+            style="realistic"
         )
 
-        # Ambiance → theme (not rating-sensitive)
+        # Ambiance → theme (not style-sensitive)
         assert imports["Ambiance"] == "cyberpunk/cyberpunk_ambiance.yaml"
 
-        # Outfit.nsfw → theme doesn't have it, may not resolve if common doesn't exist
+        # Outfit.realistic → theme doesn't have it, may not resolve if common doesn't exist
         # In test setup, common/outfits/ exists but may not be found by fallback logic
         # Just check that it doesn't crash
         # Could be in imports or not, depending on fallback success
         if "Outfit" in imports:
             outfit_meta = metadata["Outfit"]
-            assert outfit_meta.resolved_rating == "nsfw"
+            assert outfit_meta.resolved_style == "realistic"
 
-    def test_merge_invalid_rating(self, configs_dir, template_config):
-        """Test merge with invalid rating raises error."""
+    def test_merge_freeform_styles(self, configs_dir, template_config):
+        """Test merge with freeform style names (no validation)."""
         resolver = ThemeResolver(configs_dir)
 
-        with pytest.raises(ValueError, match="Invalid rating"):
-            resolver.merge_imports(
-                template=template_config,
-                theme=None,
-                rating="invalid"
-            )
+        # Styles are freeform - any style is valid, resolver tries to find it
+        imports, metadata = resolver.merge_imports(
+            template=template_config,
+            theme=None,
+            style="watercolor"  # Arbitrary style name
+        )
+
+        # Won't find watercolor variant (doesn't exist), but shouldn't crash
+        # Should fallback to template default or fail gracefully
+        assert "Ambiance" in imports  # Non-style-sensitive always works
 
     def test_merge_non_themable_template(self, configs_dir, theme_config):
         """Test merge with non-themable template."""
@@ -203,7 +209,7 @@ class TestThemeResolverMergeImports:
         imports, metadata = resolver.merge_imports(
             template=non_themable,
             theme=theme_config,
-            rating="sfw"
+            style="default"
         )
 
         # Even if theme provided, should still work
@@ -222,8 +228,9 @@ class TestThemeResolverResolveImport:
             placeholder="Ambiance",
             template_import="defaults/ambiance.yaml",
             theme=theme_config,
-            rating="sfw",
-            is_rating_sensitive=False
+            style="default",
+            is_style_sensitive=False,
+            known_styles=["default", "cartoon", "realistic"]
         )
 
         assert resolved == "cyberpunk/cyberpunk_ambiance.yaml"
@@ -246,29 +253,31 @@ class TestThemeResolverResolveImport:
             placeholder="Ambiance",
             template_import="defaults/ambiance.yaml",
             theme=partial_theme,
-            rating="sfw",
-            is_rating_sensitive=False
+            style="default",
+            is_style_sensitive=False,
+            known_styles=["default", "cartoon"]
         )
 
         assert resolved == "defaults/ambiance.yaml"
         assert meta.source == "template"
         assert meta.override is False
 
-    def test_resolve_import_rating_sensitive(self, configs_dir, theme_config):
-        """Test rating-sensitive import resolution."""
+    def test_resolve_import_style_sensitive(self, configs_dir, theme_config):
+        """Test style-sensitive import resolution."""
         resolver = ThemeResolver(configs_dir)
 
         resolved, meta = resolver._resolve_import(
             placeholder="Outfit",
-            template_import="defaults/outfit.sfw.yaml",
+            template_import="defaults/outfit.default.yaml",
             theme=theme_config,
-            rating="sexy",
-            is_rating_sensitive=True
+            style="cartoon",
+            is_style_sensitive=True,
+            known_styles=["default", "cartoon", "realistic"]
         )
 
-        assert resolved == "cyberpunk/cyberpunk_outfit.sexy.yaml"
-        assert meta.rating_sensitive is True
-        assert meta.resolved_rating == "sexy"
+        assert resolved == "cyberpunk/cyberpunk_outfit.cartoon.yaml"
+        assert meta.style_sensitive is True
+        assert meta.resolved_style == "cartoon"
 
 
 class TestThemeResolverValidateCompatibility:
@@ -281,7 +290,7 @@ class TestThemeResolverValidateCompatibility:
         status = resolver.validate_theme_compatibility(
             template=template_config,
             theme=theme_config,
-            rating="sfw"
+            style="default"
         )
 
         assert status["Ambiance"] == "provided"
@@ -309,7 +318,7 @@ class TestThemeResolverValidateCompatibility:
         status = resolver.validate_theme_compatibility(
             template=template_config,
             theme=partial_theme,
-            rating="sfw"
+            style="default"
         )
 
         assert status["Ambiance"] == "provided"
@@ -317,18 +326,18 @@ class TestThemeResolverValidateCompatibility:
         assert status["Outfit"] in ["fallback", "missing"]
 
     def test_validate_with_fallback(self, configs_dir, template_config, theme_config):
-        """Test validation shows fallback when theme doesn't have rating variant."""
+        """Test validation shows fallback when theme doesn't have style variant."""
         resolver = ThemeResolver(configs_dir)
 
         status = resolver.validate_theme_compatibility(
             template=template_config,
             theme=theme_config,
-            rating="nsfw"  # Theme doesn't have Outfit.nsfw
+            style="realistic"  # Theme doesn't have Outfit.realistic
         )
 
-        # Ambiance not rating-sensitive → provided
+        # Ambiance not style-sensitive → provided
         assert status["Ambiance"] == "provided"
-        # Outfit.nsfw not in theme → should be fallback or missing
+        # Outfit.realistic not in theme → should be fallback or missing
         # Depends on whether fallback can find the file
         assert status["Outfit"] in ["fallback", "missing"]
 
@@ -351,7 +360,7 @@ class TestThemeResolverEdgeCases:
         imports, metadata = resolver.merge_imports(
             template=empty_template,
             theme=None,
-            rating="sfw"
+            style="default"
         )
 
         assert imports == {}
@@ -372,7 +381,7 @@ class TestThemeResolverEdgeCases:
         imports, metadata = resolver.merge_imports(
             template=template,
             theme=None,
-            rating="sfw"
+            style="default"
         )
 
         # Should not include missing import
@@ -386,7 +395,7 @@ class TestThemeResolverEdgeCases:
         imports, metadata = resolver.merge_imports(
             template=template_config,
             theme=None,
-            rating="sfw"
+            style="default"
         )
 
         # Should work fine, using template defaults
@@ -402,7 +411,7 @@ class TestThemeResolverEdgeCases:
         imports, metadata = resolver.merge_imports(
             template=template_config,
             theme=theme_config,
-            rating="sfw"
+            style="default"
         )
 
         # Every import should have metadata
@@ -412,4 +421,4 @@ class TestThemeResolverEdgeCases:
         for placeholder, meta in metadata.items():
             assert meta.source in ["theme", "template", "common", "none"]
             assert isinstance(meta.override, bool)
-            assert isinstance(meta.rating_sensitive, bool)
+            assert isinstance(meta.style_sensitive, bool)

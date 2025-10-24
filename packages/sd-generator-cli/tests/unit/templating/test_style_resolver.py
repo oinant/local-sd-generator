@@ -1,210 +1,221 @@
 """
-Unit tests for RatingResolver.
+Unit tests for StyleResolver.
 
-Tests rating suffix replacement, extraction, and fallback resolution.
+Tests style suffix replacement, extraction, and fallback resolution.
 """
 
 import pytest
 from pathlib import Path
-from sd_generator_cli.templating.resolvers.rating_resolver import RatingResolver
+from sd_generator_cli.templating.resolvers.style_resolver import StyleResolver
 
 
-class TestRatingResolverValidation:
-    """Tests for rating validation."""
+class TestStyleResolverValidation:
+    """Tests for style validation (freeform, no hardcoded list)."""
 
-    def test_is_valid_rating_sfw(self):
-        """Test SFW rating is valid."""
-        assert RatingResolver.is_valid_rating("sfw") is True
+    def test_freeform_styles(self):
+        """Test that styles are freeform (no validation method)."""
+        # Styles are user-defined, so any string is valid
+        # No is_valid_style() method anymore
+        known_styles = ["cartoon", "realistic", "photorealistic", "minimalist"]
 
-    def test_is_valid_rating_sexy(self):
-        """Test sexy rating is valid."""
-        assert RatingResolver.is_valid_rating("sexy") is True
-
-    def test_is_valid_rating_nsfw(self):
-        """Test NSFW rating is valid."""
-        assert RatingResolver.is_valid_rating("nsfw") is True
-
-    def test_is_valid_rating_invalid(self):
-        """Test invalid rating."""
-        assert RatingResolver.is_valid_rating("invalid") is False
-        assert RatingResolver.is_valid_rating("pg13") is False
-        assert RatingResolver.is_valid_rating("") is False
+        # Verify detection works
+        assert StyleResolver.extract_style_from_path("file.cartoon.yaml", known_styles) == "cartoon"
+        assert StyleResolver.extract_style_from_path("file.realistic.yaml", known_styles) == "realistic"
+        assert StyleResolver.extract_style_from_path("file.unknown.yaml", known_styles) is None
 
 
-class TestRatingResolverSuffixReplacement:
-    """Tests for rating suffix replacement."""
+class TestStyleResolverSuffixReplacement:
+    """Tests for style suffix replacement."""
 
-    def test_replace_rating_sfw_to_sexy(self):
-        """Test replacing .sfw with .sexy."""
-        result = RatingResolver.replace_rating_suffix(
-            "outfit.sfw.yaml",
-            "sexy"
+    def test_replace_style_cartoon_to_realistic(self):
+        """Test replacing .cartoon with .realistic."""
+        result = StyleResolver.replace_style_suffix(
+            "outfit.cartoon.yaml",
+            "realistic",
+            known_styles=["cartoon", "realistic"]
         )
-        assert result == "outfit.sexy.yaml"
+        assert result == "outfit.realistic.yaml"
 
-    def test_replace_rating_sfw_to_nsfw(self):
-        """Test replacing .sfw with .nsfw."""
-        result = RatingResolver.replace_rating_suffix(
-            "outfit.sfw.yaml",
-            "nsfw"
+    def test_replace_style_cartoon_to_photorealistic(self):
+        """Test replacing .cartoon with .photorealistic."""
+        result = StyleResolver.replace_style_suffix(
+            "outfit.cartoon.yaml",
+            "photorealistic",
+            known_styles=["cartoon", "realistic", "photorealistic"]
         )
-        assert result == "outfit.nsfw.yaml"
+        assert result == "outfit.photorealistic.yaml"
 
-    def test_replace_rating_sexy_to_nsfw(self):
-        """Test replacing .sexy with .nsfw."""
-        result = RatingResolver.replace_rating_suffix(
-            "poses.sexy.yaml",
-            "nsfw"
+    def test_replace_style_realistic_to_photorealistic(self):
+        """Test replacing .realistic with .photorealistic."""
+        result = StyleResolver.replace_style_suffix(
+            "poses.realistic.yaml",
+            "photorealistic",
+            known_styles=["realistic", "photorealistic"]
         )
-        # sexy IS valid, so it should replace to nsfw
-        assert result == "poses.nsfw.yaml"
+        assert result == "poses.photorealistic.yaml"
 
-    def test_replace_rating_with_path(self):
-        """Test replacing rating in filepath with directory."""
-        result = RatingResolver.replace_rating_suffix(
-            "common/outfit.sfw.yaml",
-            "sexy"
+    def test_replace_style_with_path(self):
+        """Test replacing style in filepath with directory."""
+        result = StyleResolver.replace_style_suffix(
+            "common/outfit.cartoon.yaml",
+            "realistic",
+            known_styles=["cartoon", "realistic"]
         )
-        assert result == "common/outfit.sexy.yaml"
+        assert result == "common/outfit.realistic.yaml"
 
-    def test_replace_rating_multi_dot_filename(self):
-        """Test replacing rating in multi-dot filename."""
-        result = RatingResolver.replace_rating_suffix(
-            "poses.solo.sfw.yaml",
-            "sexy"
+    def test_replace_style_multi_dot_filename(self):
+        """Test replacing style in multi-dot filename."""
+        result = StyleResolver.replace_style_suffix(
+            "poses.solo.cartoon.yaml",
+            "realistic",
+            known_styles=["cartoon", "realistic"]
         )
-        assert result == "poses.solo.sexy.yaml"
+        assert result == "poses.solo.realistic.yaml"
 
-    def test_replace_rating_no_rating_in_filename(self):
-        """Test replacing when no rating suffix exists."""
-        result = RatingResolver.replace_rating_suffix(
+    def test_replace_style_no_style_in_filename(self):
+        """Test replacing when no style suffix exists."""
+        result = StyleResolver.replace_style_suffix(
             "ambiance.yaml",
-            "sexy"
+            "realistic",
+            known_styles=["cartoon", "realistic"]
         )
-        # Should return unchanged (no rating to replace)
+        # Should return unchanged (no known style to replace)
         assert result == "ambiance.yaml"
 
-    def test_replace_rating_preserves_path(self):
+    def test_replace_style_preserves_path(self):
         """Test that path structure is preserved."""
-        result = RatingResolver.replace_rating_suffix(
-            "common/interactions/teasing.sfw.yaml",
-            "nsfw"
+        result = StyleResolver.replace_style_suffix(
+            "common/interactions/teasing.cartoon.yaml",
+            "photorealistic",
+            known_styles=["cartoon", "photorealistic"]
         )
-        assert result == "common/interactions/teasing.nsfw.yaml"
+        assert result == "common/interactions/teasing.photorealistic.yaml"
 
 
-class TestRatingResolverAddSuffix:
-    """Tests for adding rating suffix."""
+class TestStyleResolverAddSuffix:
+    """Tests for adding style suffix."""
 
-    def test_add_rating_suffix_basic(self):
-        """Test adding rating to basic filename."""
-        result = RatingResolver.add_rating_suffix(
+    def test_add_style_suffix_basic(self):
+        """Test adding style to basic filename."""
+        result = StyleResolver.add_style_suffix(
             "outfit.yaml",
-            "sexy"
+            "realistic"
         )
-        assert result == "outfit.sexy.yaml"
+        assert result == "outfit.realistic.yaml"
 
-    def test_add_rating_suffix_with_path(self):
-        """Test adding rating with directory path."""
-        result = RatingResolver.add_rating_suffix(
+    def test_add_style_suffix_with_path(self):
+        """Test adding style with directory path."""
+        result = StyleResolver.add_style_suffix(
             "common/outfit.yaml",
-            "nsfw"
+            "photorealistic"
         )
-        assert result == "common/outfit.nsfw.yaml"
+        assert result == "common/outfit.photorealistic.yaml"
 
-    def test_add_rating_suffix_multi_dot(self):
-        """Test adding rating to multi-dot filename."""
-        result = RatingResolver.add_rating_suffix(
+    def test_add_style_suffix_multi_dot(self):
+        """Test adding style to multi-dot filename."""
+        result = StyleResolver.add_style_suffix(
             "poses.solo.yaml",
-            "sexy"
+            "realistic"
         )
-        assert result == "poses.solo.sexy.yaml"
+        assert result == "poses.solo.realistic.yaml"
 
 
-class TestRatingResolverExtractRating:
-    """Tests for extracting rating from path."""
+class TestStyleResolverExtractStyle:
+    """Tests for extracting style from path."""
 
-    def test_extract_rating_sfw(self):
-        """Test extracting SFW rating."""
-        rating = RatingResolver.extract_rating_from_path("outfit.sfw.yaml")
-        assert rating == "sfw"
+    def test_extract_style_cartoon(self):
+        """Test extracting cartoon style."""
+        known_styles = ["cartoon", "realistic", "photorealistic"]
+        style = StyleResolver.extract_style_from_path("outfit.cartoon.yaml", known_styles)
+        assert style == "cartoon"
 
-    def test_extract_rating_sexy(self):
-        """Test extracting sexy rating."""
-        rating = RatingResolver.extract_rating_from_path("poses.sexy.yaml")
-        assert rating == "sexy"
+    def test_extract_style_realistic(self):
+        """Test extracting realistic style."""
+        known_styles = ["cartoon", "realistic"]
+        style = StyleResolver.extract_style_from_path("poses.realistic.yaml", known_styles)
+        assert style == "realistic"
 
-    def test_extract_rating_nsfw(self):
-        """Test extracting NSFW rating."""
-        rating = RatingResolver.extract_rating_from_path("interaction.nsfw.yaml")
-        assert rating == "nsfw"
+    def test_extract_style_photorealistic(self):
+        """Test extracting photorealistic style."""
+        known_styles = ["photorealistic", "minimalist"]
+        style = StyleResolver.extract_style_from_path("interaction.photorealistic.yaml", known_styles)
+        assert style == "photorealistic"
 
-    def test_extract_rating_with_path(self):
-        """Test extracting rating from full path."""
-        rating = RatingResolver.extract_rating_from_path(
-            "common/interactions/teasing.sexy.yaml"
+    def test_extract_style_with_path(self):
+        """Test extracting style from full path."""
+        known_styles = ["realistic", "cartoon"]
+        style = StyleResolver.extract_style_from_path(
+            "common/interactions/teasing.realistic.yaml",
+            known_styles
         )
-        assert rating == "sexy"
+        assert style == "realistic"
 
-    def test_extract_rating_multi_dot(self):
-        """Test extracting rating from multi-dot filename."""
-        rating = RatingResolver.extract_rating_from_path("poses.solo.nsfw.yaml")
-        assert rating == "nsfw"
+    def test_extract_style_multi_dot(self):
+        """Test extracting style from multi-dot filename."""
+        known_styles = ["photorealistic", "cartoon"]
+        style = StyleResolver.extract_style_from_path("poses.solo.photorealistic.yaml", known_styles)
+        assert style == "photorealistic"
 
-    def test_extract_rating_no_rating(self):
-        """Test extracting rating when none exists."""
-        rating = RatingResolver.extract_rating_from_path("ambiance.yaml")
-        assert rating is None
+    def test_extract_style_no_style(self):
+        """Test extracting style when none exists."""
+        known_styles = ["cartoon", "realistic"]
+        style = StyleResolver.extract_style_from_path("ambiance.yaml", known_styles)
+        assert style is None
 
-    def test_extract_rating_invalid_rating(self):
-        """Test extracting when filename has non-rating suffix."""
-        rating = RatingResolver.extract_rating_from_path("file.backup.yaml")
-        assert rating is None
+    def test_extract_style_unknown_style(self):
+        """Test extracting when filename has unknown style suffix."""
+        known_styles = ["cartoon", "realistic"]
+        style = StyleResolver.extract_style_from_path("file.backup.yaml", known_styles)
+        assert style is None
 
 
-class TestRatingResolverFallback:
-    """Tests for rating fallback resolution."""
+class TestStyleResolverFallback:
+    """Tests for style fallback resolution."""
 
     @pytest.fixture
-    def configs_with_ratings(self, tmp_path):
-        """Create configs dir with rating variants."""
+    def configs_with_styles(self, tmp_path):
+        """Create configs dir with style variants."""
         configs = tmp_path / "configs"
         configs.mkdir()
 
         # Create theme files
         theme_dir = configs / "themes" / "cyberpunk"
         theme_dir.mkdir(parents=True)
-        (theme_dir / "cyberpunk_outfit.sfw.yaml").write_text("sfw")
-        (theme_dir / "cyberpunk_outfit.sexy.yaml").write_text("sexy")
-        # No nsfw variant
+        (theme_dir / "cyberpunk_outfit.cartoon.yaml").write_text("cartoon")
+        (theme_dir / "cyberpunk_outfit.realistic.yaml").write_text("realistic")
+        # No photorealistic variant
 
         # Create common fallbacks
         common_dir = configs / "common" / "outfits"
         common_dir.mkdir(parents=True)
-        (common_dir / "outfit.sfw.yaml").write_text("sfw")
-        (common_dir / "outfit.sexy.yaml").write_text("sexy")
-        (common_dir / "outfit.nsfw.yaml").write_text("nsfw")
+        (common_dir / "outfit.cartoon.yaml").write_text("cartoon")
+        (common_dir / "outfit.realistic.yaml").write_text("realistic")
+        (common_dir / "outfit.photorealistic.yaml").write_text("photorealistic")
 
         return configs
 
-    def test_resolve_rating_fallback_exact_match(self, configs_with_ratings):
+    def test_resolve_style_fallback_exact_match(self, configs_with_styles):
         """Test fallback resolution with exact match."""
-        result = RatingResolver.resolve_rating_fallback(
-            base_path="themes/cyberpunk/cyberpunk_outfit.sfw.yaml",
-            target_rating="sexy",
-            configs_dir=configs_with_ratings,
+        known_styles = ["cartoon", "realistic", "photorealistic"]
+        result = StyleResolver.resolve_style_fallback(
+            base_path="themes/cyberpunk/cyberpunk_outfit.cartoon.yaml",
+            target_style="realistic",
+            configs_dir=configs_with_styles,
+            known_styles=known_styles,
             fallback_dirs=None
         )
 
-        assert result == "themes/cyberpunk/cyberpunk_outfit.sexy.yaml"
+        assert result == "themes/cyberpunk/cyberpunk_outfit.realistic.yaml"
 
-    def test_resolve_rating_fallback_to_common(self, configs_with_ratings):
+    def test_resolve_style_fallback_to_common(self, configs_with_styles):
         """Test fallback to common directory."""
+        known_styles = ["cartoon", "realistic", "photorealistic"]
         # Simplified test: fallback logic is complex, just test it doesn't crash
-        result = RatingResolver.resolve_rating_fallback(
-            base_path="themes/cyberpunk/cyberpunk_outfit.sfw.yaml",
-            target_rating="nsfw",  # Not in theme
-            configs_dir=configs_with_ratings,
+        result = StyleResolver.resolve_style_fallback(
+            base_path="themes/cyberpunk/cyberpunk_outfit.cartoon.yaml",
+            target_style="photorealistic",  # Not in theme
+            configs_dir=configs_with_styles,
+            known_styles=known_styles,
             fallback_dirs=["common"]
         )
 
@@ -212,12 +223,14 @@ class TestRatingResolverFallback:
         # The important thing is it doesn't crash
         assert result is None or "common" in result or "cyberpunk" in result
 
-    def test_resolve_rating_fallback_not_found(self, configs_with_ratings):
+    def test_resolve_style_fallback_not_found(self, configs_with_styles):
         """Test fallback when file doesn't exist."""
-        result = RatingResolver.resolve_rating_fallback(
-            base_path="themes/nonexistent/file.sfw.yaml",
-            target_rating="sexy",
-            configs_dir=configs_with_ratings,
+        known_styles = ["cartoon", "realistic"]
+        result = StyleResolver.resolve_style_fallback(
+            base_path="themes/nonexistent/file.cartoon.yaml",
+            target_style="realistic",
+            configs_dir=configs_with_styles,
+            known_styles=known_styles,
             fallback_dirs=["common"]
         )
 
@@ -225,65 +238,73 @@ class TestRatingResolverFallback:
         # and base file doesn't exist
         assert result is None
 
-    def test_resolve_rating_fallback_base_file(self, tmp_path):
-        """Test fallback to base file (no rating suffix)."""
+    def test_resolve_style_fallback_base_file(self, tmp_path):
+        """Test fallback to base file (no style suffix)."""
         configs = tmp_path / "configs"
         configs.mkdir()
 
-        # Create base file without rating
+        # Create base file without style
         theme_dir = configs / "themes" / "minimal"
         theme_dir.mkdir(parents=True)
         (theme_dir / "ambiance.yaml").write_text("base")
 
-        result = RatingResolver.resolve_rating_fallback(
-            base_path="themes/minimal/ambiance.sfw.yaml",  # Asking for rated version
-            target_rating="sexy",
+        known_styles = ["cartoon", "realistic"]
+        result = StyleResolver.resolve_style_fallback(
+            base_path="themes/minimal/ambiance.cartoon.yaml",  # Asking for styled version
+            target_style="realistic",
             configs_dir=configs,
+            known_styles=known_styles,
             fallback_dirs=None
         )
 
-        # Should fallback to base file without rating
+        # Should fallback to base file without style
         assert result == "themes/minimal/ambiance.yaml"
 
 
-class TestRatingResolverEdgeCases:
+class TestStyleResolverEdgeCases:
     """Edge cases and error handling."""
 
-    def test_replace_rating_empty_string(self):
-        """Test replacing rating with empty filename."""
-        result = RatingResolver.replace_rating_suffix("", "sexy")
+    def test_replace_style_empty_string(self):
+        """Test replacing style with empty filename."""
+        result = StyleResolver.replace_style_suffix("", "realistic", known_styles=["cartoon"])
         # Empty string becomes "." with path handling
         assert result in ["", "."]
 
-    def test_add_rating_suffix_no_extension(self):
-        """Test adding rating to file without extension."""
-        result = RatingResolver.add_rating_suffix("outfit", "sexy")
-        assert result == "outfit.sexy"
+    def test_add_style_suffix_no_extension(self):
+        """Test adding style to file without extension."""
+        result = StyleResolver.add_style_suffix("outfit", "realistic")
+        assert result == "outfit.realistic"
 
-    def test_extract_rating_no_extension(self):
-        """Test extracting rating from file without extension."""
-        rating = RatingResolver.extract_rating_from_path("file.sfw")
-        # ".sfw" is treated as extension, not part of stem
-        # So this actually has no rating in the stem
-        assert rating in ["sfw", None]  # Depends on Path handling
+    def test_extract_style_no_extension(self):
+        """Test extracting style from file without extension."""
+        known_styles = ["cartoon", "realistic"]
+        style = StyleResolver.extract_style_from_path("file.cartoon", known_styles)
+        # ".cartoon" is treated as extension, not part of stem
+        # So this actually has no style in the stem
+        assert style in ["cartoon", None]  # Depends on Path handling
 
     def test_resolve_fallback_no_fallback_dirs(self, tmp_path):
         """Test fallback resolution without fallback directories."""
         configs = tmp_path / "configs"
         configs.mkdir()
 
-        result = RatingResolver.resolve_rating_fallback(
-            base_path="themes/test/file.sfw.yaml",
-            target_rating="sexy",
+        known_styles = ["cartoon", "realistic"]
+        result = StyleResolver.resolve_style_fallback(
+            base_path="themes/test/file.cartoon.yaml",
+            target_style="realistic",
             configs_dir=configs,
+            known_styles=known_styles,
             fallback_dirs=None  # No fallback dirs
         )
 
         assert result is None
 
-    def test_valid_ratings_constant(self):
-        """Test that VALID_RATINGS contains expected values."""
-        assert "sfw" in RatingResolver.VALID_RATINGS
-        assert "sexy" in RatingResolver.VALID_RATINGS
-        assert "nsfw" in RatingResolver.VALID_RATINGS
-        assert len(RatingResolver.VALID_RATINGS) == 3
+    def test_no_hardcoded_styles(self):
+        """Test that there's no VALID_STYLES constant (freeform styles)."""
+        # Styles are now freeform, no hardcoded list
+        assert not hasattr(StyleResolver, 'VALID_STYLES')
+
+        # Any style string is valid - it's just a user-defined convention
+        known_styles = ["watercolor", "minimalist", "sketch", "oil-painting"]
+        assert StyleResolver.extract_style_from_path("art.watercolor.yaml", known_styles) == "watercolor"
+        assert StyleResolver.extract_style_from_path("art.oil-painting.yaml", known_styles) == "oil-painting"
