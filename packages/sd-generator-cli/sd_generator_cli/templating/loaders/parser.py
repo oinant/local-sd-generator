@@ -88,7 +88,11 @@ class ConfigParser:
             parameters=parsed_parameters,  # Use parsed parameters
             imports=data.get('imports') or {},
             negative_prompt=data.get('negative_prompt') or '',
-            output=output_config
+            output=output_config,
+            # Themable Templates Extension
+            themable=data.get('themable', False),
+            style_sensitive=data.get('style_sensitive', False),
+            style_sensitive_placeholders=data.get('style_sensitive_placeholders', [])
         )
 
     def parse_chunk(self, data: Dict[str, Any], source_file: Path) -> ChunkConfig:

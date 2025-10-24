@@ -20,6 +20,11 @@ class TemplateConfig:
 
     Required fields: version, name, template
     Optional fields: implements, parameters, imports, negative_prompt, output
+
+    Themable Templates Extension:
+        themable: If True, template supports theme overrides
+        style_sensitive: If True, template supports style-based variants
+        style_sensitive_placeholders: List of placeholders that vary by style
     """
     version: str
     name: str
@@ -30,6 +35,10 @@ class TemplateConfig:
     imports: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: str = ''
     output: Optional['OutputConfig'] = None
+    # Themable Templates Extension
+    themable: bool = False
+    style_sensitive: bool = False
+    style_sensitive_placeholders: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -138,11 +147,16 @@ class ResolvedContext:
         chunks: Dict mapping chunk names to their ChunkConfig objects
         parameters: Merged SD WebUI parameters from inheritance chain
         variation_state: Current values for placeholders during generation
+        style: Active style for this resolution (e.g., "cartoon", "realistic", "watercolor")
+        import_resolution: Metadata about how each import was resolved
     """
     imports: Dict[str, Dict[str, str]]  # {import_name: {key: value}}
     chunks: Dict[str, ChunkConfig]      # {chunk_name: ChunkConfig}
     parameters: Dict[str, Any]
     variation_state: Dict[str, str] = field(default_factory=dict)
+    # Themable Templates Extension
+    style: str = "default"
+    import_resolution: Dict[str, 'ImportResolution'] = field(default_factory=dict)
 
 
 # ===== ADetailer Extension Support =====

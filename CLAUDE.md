@@ -3,8 +3,11 @@
 ## A Savoir :
 - le MCP Playwright est installé, sers-t'en!
 - **📚 Documentation centralisée dans `/docs/`** - Single source of truth (pas de packages/docs/)
+- **🎯 Roadmap sur GitHub Issues** - Voir `/docs/roadmap/README.md` pour organisation
+- **🤖 Agent PO disponible** - Utiliser `/po` pour feature/bug analysis
+- **🛠️ Build tool disponible** - `python3 tools/build.py` avant chaque commit important
 - **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
-- Les tests sont dans `/CLI/tests` et utilisent pytest
+- Les tests sont dans `/packages/sd-generator-cli/tests/` et utilisent pytest
 - url de l'api automatic1111: http://172.29.128.1:7860
 
 ## ⚠️ Configuration Critique
@@ -34,41 +37,64 @@ sdgen init
 
 ## 📁 Structure du Projet
 
-Le projet utilise la **structure src/ layout** (meilleure pratique Python moderne) :
+Le projet utilise une **structure monorepo avec packages/** :
 
 ```
 local-sd-generator/
-├── CLI/                    # Package CLI (générateur SD)
-│   ├── src/               # Code source (PYTHONPATH configuré sur src/)
-│   │   ├── api/          # Client API SD WebUI
-│   │   ├── templating/   # Template System V2.0
-│   │   │   ├── models/         # Data models (TemplateConfig, etc.)
-│   │   │   ├── loaders/        # YAML loading & parsing
-│   │   │   ├── validators/     # Template validation
-│   │   │   ├── resolvers/      # Inheritance, imports, template resolution
-│   │   │   ├── generators/     # Prompt generation (combinatorial/random)
-│   │   │   ├── normalizers/    # Prompt normalization
-│   │   │   ├── utils/          # Hash & path utilities
-│   │   │   └── orchestrator.py # V2Pipeline main orchestrator
-│   │   ├── config/       # Configuration globale
-│   │   └── execution/    # Exécution et orchestration
-│   ├── tests/            # Tests unitaires et d'intégration
-│   │   ├── api/          # Tests API client (76 tests)
-│   │   ├── templating/   # Tests parsing V2 (3 tests)
-│   │   ├── v2/           # Tests V2 complets (227 tests)
-│   │   │   ├── unit/           # Tests unitaires
-│   │   │   └── integration/    # Tests d'intégration
-│   │   └── legacy/       # Anciens tests fonctionnels
-│   ├── src/cli.py        # Point d'entrée CLI (Typer)
-│   └── pyproject.toml    # Configuration package CLI
-├── backend/              # Backend FastAPI (anciennement /api/)
-│   └── pyproject.toml
-├── front/                # Frontend (si existant)
-├── venv/                 # Virtual environment Python
-└── docs/                 # Documentation
+├── packages/
+│   ├── sd-generator-cli/           # Package CLI (générateur SD)
+│   │   ├── sd_generator_cli/       # Code source Python
+│   │   │   ├── api/               # Client API SD WebUI
+│   │   │   │   ├── sdapi_client.py
+│   │   │   │   └── session_manager.py
+│   │   │   ├── templating/        # Template System V2.0
+│   │   │   │   ├── models/        # Data models (TemplateConfig, etc.)
+│   │   │   │   ├── loaders/       # YAML loading & parsing
+│   │   │   │   ├── validators/    # Template validation
+│   │   │   │   ├── resolvers/     # Inheritance, imports, template resolution
+│   │   │   │   ├── generators/    # Prompt generation (combinatorial/random)
+│   │   │   │   ├── normalizers/   # Prompt normalization
+│   │   │   │   ├── utils/         # Hash & path utilities
+│   │   │   │   └── orchestrator.py # V2Pipeline main orchestrator
+│   │   │   ├── config/            # Configuration globale
+│   │   │   ├── execution/         # Exécution et orchestration
+│   │   │   │   ├── manifest.py    # Manifest generation
+│   │   │   │   └── executor.py
+│   │   │   ├── commands/          # Commandes CLI
+│   │   │   ├── cli.py             # Point d'entrée CLI (Typer)
+│   │   │   └── commands.py        # Commandes principales
+│   │   ├── tests/                 # Tests unitaires et d'intégration
+│   │   │   ├── unit/              # Tests unitaires
+│   │   │   │   ├── api/           # Tests API client
+│   │   │   │   ├── execution/     # Tests manifest, executor
+│   │   │   │   └── templating/    # Tests templating V2
+│   │   │   ├── integration/       # Tests d'intégration
+│   │   │   └── test_cli_commands.py
+│   │   └── pyproject.toml         # Configuration package CLI
+│   │
+│   └── sd-generator-webui/        # Package WebUI
+│       ├── backend/               # Backend FastAPI
+│       │   ├── sd_generator_webui/
+│       │   │   ├── api/
+│       │   │   │   ├── sessions.py
+│       │   │   │   └── images.py
+│       │   │   ├── services/
+│       │   │   ├── auth.py
+│       │   │   ├── config.py
+│       │   │   └── main.py
+│       │   └── pyproject.toml
+│       └── front/                 # Frontend Vue.js
+│           ├── src/
+│           ├── package.json
+│           └── vite.config.js
+│
+├── venv/                          # Virtual environment Python
+├── docs/                          # Documentation
+├── apioutput/                     # Dossier de sortie des sessions
+└── CLAUDE.md                      # Ce fichier
 ```
 
-**Note importante** : Le dossier backend était anciennement nommé `/api/`, ce qui créait un conflit de noms avec `/CLI/src/api/`. Il a été renommé en `/backend/` pour éviter les problèmes d'imports Python.
+**Note importante** : Structure monorepo avec packages séparés pour CLI et WebUI, permettant un développement indépendant tout en partageant le venv.
 
 ## 🎯 Template System V2.0
 
@@ -118,46 +144,43 @@ deactivate
 cd /mnt/d/StableDiffusion/local-sd-generator
 source venv/bin/activate
 
-# ÉTAPE 2 : Aller dans /CLI
-cd CLI
+# ÉTAPE 2 : Aller dans le package CLI
+cd packages/sd-generator-cli
 
 # ÉTAPE 3 : Lancer les tests
 
-# Tests V2 complets (227 tests) - 96.5% de réussite
-python3 -m pytest tests/v2/ -v
+# Tous les tests
+python3 -m pytest tests/ -v
 
-# Tests API client (76 tests) - 100% ✅
-python3 -m pytest tests/api/ -v
+# Tests unitaires seulement
+python3 -m pytest tests/unit/ -v
 
-# Tests templating/parsing (3 tests) - 100% ✅
-python3 -m pytest tests/templating/ -v
-
-# Tous les tests (sans legacy)
-python3 -m pytest tests/ --ignore=tests/legacy -v
+# Tests d'intégration seulement
+python3 -m pytest tests/integration/ -v
 
 # Avec couverture de code (pytest-cov)
-python3 -m pytest tests/v2/ --cov=templating --cov-report=term-missing -v
+python3 -m pytest tests/ --cov=sd_generator_cli --cov-report=term-missing -v
+
+# Tests CLI commands
+python3 -m pytest tests/test_cli_commands.py -v
 ```
 
 **Alternative sans activer le venv (moins pratique) :**
 ```bash
-cd /mnt/d/StableDiffusion/local-sd-generator/CLI
-../venv/bin/python3 -m pytest tests/v2/ -v
+cd /mnt/d/StableDiffusion/local-sd-generator/packages/sd-generator-cli
+../../venv/bin/python3 -m pytest tests/ -v
 ```
 
 **Structure des tests :**
 ```
-CLI/tests/
-├── api/               # Tests API client (76 tests) ✅
-├── templating/        # Tests parsing V2 (3 tests) ✅
-├── v2/                # Tests V2 système (227 tests) 🟢 96.5%
-│   ├── unit/          # Tests unitaires (générateurs, resolvers, etc.)
-│   └── integration/   # Tests d'intégration (API, executor)
-├── integration/       # Tests d'intégration globaux
-└── legacy/            # Anciens tests fonctionnels
+packages/sd-generator-cli/tests/
+├── unit/                      # Tests unitaires
+│   ├── api/                  # Tests API client (session_manager, sdapi_client)
+│   ├── execution/            # Tests manifest, executor
+│   └── templating/           # Tests templating V2
+├── integration/              # Tests d'intégration
+└── test_cli_commands.py      # Tests commandes CLI
 ```
-
-**Total : 306 tests (300 passent - 98%)**
 
 **Pourquoi `python3 -m pytest` ?**
 - `pytest` seul ne détecte pas toujours le bon PYTHONPATH
@@ -165,15 +188,11 @@ CLI/tests/
 - Résout les `ModuleNotFoundError` dans les imports
 - Sous WSL, toujours utiliser `python3` et pas `python`
 
-**Tests problématiques connus :**
-- 8 tests V2 échouent (caching et validation de conflits) - bugs pré-existants
-- `test_config_selector.py` - Peut bloquer (tests CLI interactive avec input() mocké)
-
 ### Code Quality Tools
 
 Le projet utilise plusieurs outils d'analyse de code pour maintenir la qualité :
 
-**Outils installés** (dans `CLI/pyproject.toml`, section `[project.optional-dependencies].dev`) :
+**Outils installés** (dans `packages/sd-generator-cli/pyproject.toml`) :
 - `flake8` - Style checker (PEP 8)
 - `radon` - Analyseur de complexité cyclomatique
 - `vulture` - Détecteur de code mort
@@ -182,8 +201,8 @@ Le projet utilise plusieurs outils d'analyse de code pour maintenir la qualité 
 
 **Installation des outils :**
 ```bash
-# Les outils sont déjà référencés dans CLI/pyproject.toml
-# Installer directement :
+# Les outils sont déjà dans le venv
+# Si besoin de réinstaller :
 venv/bin/pip install flake8 radon vulture bandit mypy
 ```
 
@@ -193,25 +212,22 @@ venv/bin/pip install flake8 radon vulture bandit mypy
 # Depuis la racine du projet
 
 # 1. Style checking (PEP 8)
-venv/bin/python3 -m flake8 CLI \
-  --exclude=tests,__pycache__,private_generators,example_* \
+venv/bin/python3 -m flake8 packages/sd-generator-cli/sd_generator_cli \
   --max-line-length=120 \
   --count --statistics
 
 # 2. Complexité cyclomatique
 # -a : moyenne, -nb : pas de note globale
-venv/bin/python3 -m radon cc CLI \
-  --exclude="tests,__pycache__,private_generators,example_*" \
+venv/bin/python3 -m radon cc packages/sd-generator-cli/sd_generator_cli \
   -a -nb
 
 # 3. Code mort (dead code)
-cd CLI && ../venv/bin/python3 -m vulture . \
-  --min-confidence=80 2>&1 | \
-  grep -v "tests/" | grep -v "example_"
+cd packages/sd-generator-cli && ../../venv/bin/python3 -m vulture sd_generator_cli \
+  --min-confidence=80
 
 # 4. Sécurité
 # -r : recursif, -ll : low/low severity (moins verbeux)
-venv/bin/python3 -m bandit -r CLI -ll -f txt
+venv/bin/python3 -m bandit -r packages/sd-generator-cli/sd_generator_cli -ll -f txt
 
 # 5. Type checking STRICT (détecte les erreurs d'attributs)
 # IMPORTANT: Activer strict mode dans pyproject.toml ([tool.mypy] strict = true)
@@ -224,8 +240,9 @@ venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli/commands.py 
 ```bash
 # Lancer tous les checks d'un coup
 cd /mnt/d/StableDiffusion/local-sd-generator
-venv/bin/python3 -m flake8 CLI --exclude=tests,private_generators --max-line-length=120 && \
-venv/bin/python3 -m radon cc CLI --exclude="tests,private_generators" -a && \
+venv/bin/python3 -m flake8 packages/sd-generator-cli/sd_generator_cli --max-line-length=120 && \
+venv/bin/python3 -m radon cc packages/sd-generator-cli/sd_generator_cli -a -nb && \
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes && \
 echo "✓ Quality checks passed"
 ```
 
@@ -362,6 +379,221 @@ future/ → next/ → wip/ → done/
 - **7-8** : Nice-to-have (futur)
 - **9-10** : Recherche/expérimental
 
+## 🤖 Product Owner Agent
+
+Le projet dispose d'un **agent PO autonome** pour gérer la roadmap et les spécifications fonctionnelles.
+
+**Architecture :**
+- 🤖 **Agent autonome** : `.claude/agents/po.md` (tourne en background)
+- ⚡ **Slash command** : `.claude/commands/po.md` (invocation explicite)
+- 📋 **Persistence** : `.claude/braindump.md` (survie au compactage)
+
+L'agent PO peut **tourner en background** et accumuler tes idées pendant que tu travailles, puis les structurer quand tu le demandes.
+
+**🧠 Mode "Product Memory" :**
+L'agent PO est ta mémoire produit - il sait ce qui existe déjà !
+- Avant d'ajouter une idée, il check GitHub Issues + braindump + code
+- Répond avec contexte : "On l'a déjà !" / "Ça n'existe pas" / "On a X mais pas Y"
+- Pose des questions proactives pour clarifier
+- Suggère des features liées que tu ne connais peut-être pas
+
+### 🧠 Mode Braindump Automatique
+
+**IMPORTANT : Détection automatique**
+
+Quand l'utilisateur dit des choses comme :
+- "Il faudrait que..."
+- "J'ai pensé à..."
+- "Tiens, on devrait..."
+- "Bug : ..."
+- "Idée : ..."
+- "Je me demande si..."
+
+**→ Tu DOIS automatiquement activer le mode Agent PO (braindump)**
+
+**Process :**
+1. **Accumuler** les idées dans `.claude/braindump.md` (section "🆕 Pending Analysis")
+   - **CRITIQUE** : Toujours écrire dans ce fichier pour survie au compactage de contexte
+2. **Si doute** → Demander : "Tu veux que je structure ça avec l'agent PO ?"
+3. Quand il a fini (ou qu'il demande explicitement), proposer :
+   - "J'ai noté X idées/bugs/features. Je les passe à l'agent PO pour structurer ?"
+4. Si l'utilisateur accepte → Simuler l'agent PO (ou utiliser `/po braindump:` si disponible)
+   - Déplacer items de "🆕 Pending" → "🔍 Being Analyzed"
+5. Parser, prioriser, catégoriser
+6. Proposer création GitHub issues
+7. **Mettre à jour** `.claude/braindump.md` avec liens vers issues créées
+   - Déplacer items de "🔍 Being Analyzed" → "📋 Tracked on GitHub"
+
+**Règle d'or : En cas de doute, demander à l'utilisateur avant d'activer l'agent PO.**
+
+**IMPORTANT : `.claude/braindump.md` est la source de vérité pour les idées en cours.**
+- Ce fichier survit au compactage de contexte
+- Toujours le lire au début d'une session pour voir les items pending
+- Toujours le mettre à jour quand on braindumpe
+
+**Exemple de flow naturel :**
+```
+User: "Ah tiens, faudrait qu'on ajoute un cache pour les prompts"
+Claude: *note l'idée* "Noté ! Autre chose ?"
+User: "Ouais, et y'a un bug avec les thumbnails sur mobile"
+Claude: *accumule* "Ok, bug thumbnails mobile. Continue ?"
+User: "Non c'est tout pour l'instant"
+Claude: "J'ai 2 items (1 feature, 1 bug). Je structure ça avec l'agent PO ?"
+User: "Go"
+Claude: *simule agent PO → parse, priorise, propose issues*
+```
+
+**Avantage :** Zéro friction cognitive - tu braindumpes naturellement, Claude gère le reste.
+
+### Utilisation de l'agent PO
+
+**Mode 1 : Naturel (recommandé) - Braindump pendant conversation**
+```
+User: "Ah tiens, faudrait ajouter un cache pour les prompts"
+Claude: *détecte et accumule* "Noté ! Autre chose ?"
+User: "Et y'a un bug avec les thumbnails mobile"
+Claude: "Ok. Je structure ça avec l'agent PO ?"
+User: "Go"
+Claude: *parse, priorise, propose issues*
+```
+
+**Mode 2 : Explicite - Commandes `/po`**
+```bash
+# 🧠 BRAINDUMP (décharge mentale en vrac)
+/po braindump: [description non-structurée d'idées/bugs/features]
+# → L'agent parse, trie, priorise et propose des GitHub issues
+
+# Analyser une nouvelle feature
+/po feature: ajouter support pour weighted prompts
+
+# Trier un bug
+/po bug: les seeds progressives ne s'incrémentent pas
+
+# Planifier un sprint
+/po plan: prioriser la backlog pour les 2 prochaines semaines
+
+# Auditer la roadmap
+/po audit: vérifier la cohérence roadmap/GitHub Issues
+```
+
+**💡 Tu n'as PAS besoin d'appeler `/po` explicitement !**
+Claude détecte automatiquement quand tu braindumpes et propose de structurer avec l'agent PO.
+
+### Ce que fait l'agent PO
+
+1. **Analyse fonctionnelle**
+   - Use cases, user stories
+   - Acceptance criteria (Given/When/Then)
+   - Questions de clarification
+   - Estimation valeur business (Low/Medium/High)
+
+2. **Création GitHub Issues**
+   - Via `gh` CLI (authentifié)
+   - Labels appropriés (type, status, priority, component, area)
+   - Description structurée avec acceptance criteria
+   - Lien avec issues existantes si pertinent
+
+3. **Priorisation**
+   - Matrice valeur × effort
+   - Recommandation P1-P10
+   - Justification de la priorité
+
+4. **Gestion bugs**
+   - Impact (severity × frequency)
+   - Steps to reproduce
+   - Pistes d'investigation
+
+### Output de l'agent
+
+L'agent génère :
+- **Analyse structurée** (problem statement, use cases, edge cases)
+- **Acceptance criteria** (format Given/When/Then)
+- **Proposition de GitHub issue** (titre, description, labels)
+- **Questions de clarification** si besoin
+- **Recommandation de priorité** avec justification
+
+### Intégration avec GitHub Issues
+
+- **Roadmap sur GitHub** : https://github.com/oinant/local-sd-generator/issues
+- **Organisation par labels** : Voir `/docs/roadmap/README.md`
+- **Workflow** : L'agent utilise `gh` CLI pour toutes les opérations GitHub
+
+### Commandes gh CLI utiles
+
+```bash
+# Lister issues par statut
+gh issue list --label "status: next" --state open
+gh issue list --label "status: backlog" --state open
+
+# Voir une issue spécifique
+gh issue view 123
+
+# Créer une issue (l'agent le fait automatiquement après validation)
+gh issue create --title "[Feature] Titre" --body "Description" \
+  --label "type: feature,priority: high,component: cli"
+
+# Éditer une issue
+gh issue edit 123 --add-label "status: wip"
+```
+
+### Workflow typique
+
+**Mode Braindump (recommandé) :**
+```
+1. Toi : "/po braindump:
+   J'ai pensé à plusieurs trucs :
+   - ajouter un cache pour les prompts résolus
+   - bug: les preview thumbnails sont cassées sur mobile
+   - refacto: commands.py est trop gros
+   - idée: système de plugins pour extensions
+   - faudrait documenter le workflow V2"
+
+2. Agent PO (analyse) :
+   → Parse et catégorise chaque item
+   → Priorise (High/Medium/Low)
+   → Estime effort (Small/Medium/Large)
+   → Détecte dépendances
+
+3. Agent PO (output structuré) :
+   🎯 High Priority:
+   - [Bug] Mobile thumbnails broken (P2, Small)
+   - [Refactor] Split commands.py (P4, Medium)
+
+   📋 Medium Priority:
+   - [Feature] Prompt cache (P6, Medium)
+   - [Docs] Document V2 workflow (P7, Small)
+
+   💡 Low Priority:
+   - [Idea] Plugin system (P9, Large)
+
+   "Should I create GitHub issues for High Priority items?"
+
+4. Toi : "Oui, crée les issues High + le doc aussi"
+
+5. Agent PO (création batch) :
+   → gh issue create × 3
+   → #46, #47, #48 créées
+   → "Done! Want me to plan a sprint with these?"
+```
+
+**Mode Feature direct :**
+```
+1. Toi : "/po feature: cache pour prompts"
+
+2. Agent PO (analyse en cours) :
+   - Analyse le besoin (use cases, acceptance criteria)
+   - Estime valeur + effort
+   - Propose priorité + labels
+   - Pose questions si nécessaire
+
+3. Toi : Valides ou ajustes la spec
+
+4. Agent PO (finalisation) :
+   - Crée la GitHub issue via gh CLI
+   - Notifie le numéro d'issue créé
+   - L'issue est maintenant trackable sur GitHub
+```
+
 ## 🔍 Code Review Guidelines
 
 Avant de commencer une code review, consulter ces documents :
@@ -402,17 +634,17 @@ Avant de commencer une code review, consulter ces documents :
 ### Outils automatiques recommandés
 ```bash
 # Style et qualité
-flake8 CLI/ --max-line-length=120
-mypy CLI/ --strict
+venv/bin/python3 -m flake8 packages/sd-generator-cli/sd_generator_cli --max-line-length=120
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --strict
 
 # Complexité
-radon cc CLI/ -a -nb
+venv/bin/python3 -m radon cc packages/sd-generator-cli/sd_generator_cli -a -nb
 
 # Code mort
-vulture CLI/
+cd packages/sd-generator-cli && ../../venv/bin/python3 -m vulture sd_generator_cli
 
 # Sécurité
-bandit -r CLI/
+venv/bin/python3 -m bandit -r packages/sd-generator-cli/sd_generator_cli
 ```
 
 ## 🔒 Type Checking (mypy strict mode)
@@ -463,52 +695,224 @@ Voir `docs/tooling/type-checking-guide.md` pour :
 
 ## 🚀 CLI Usage
 
+**Note:** Le CLI peut être utilisé de deux façons :
+- En mode développement : `python3 -m sd_generator_cli.cli` (depuis `packages/sd-generator-cli/`)
+- Installé : `sdgen` (après `pip install -e .`)
+
 ### Generate images from template
 
 ```bash
+# Depuis packages/sd-generator-cli/
+cd packages/sd-generator-cli
+
 # Interactive mode (liste les templates disponibles)
-python3 src/cli.py generate
+python3 -m sd_generator_cli.cli generate
 
 # Direct template
-python3 src/cli.py generate -t path/to/template.prompt.yaml
+python3 -m sd_generator_cli.cli generate -t path/to/template.prompt.yaml
 
 # Limit number of images
-python3 src/cli.py generate -t template.yaml -n 50
+python3 -m sd_generator_cli.cli generate -t template.yaml -n 50
 
 # Dry-run (save API payloads as JSON without generating)
-python3 src/cli.py generate -t template.yaml --dry-run
+python3 -m sd_generator_cli.cli generate -t template.yaml --dry-run
 ```
 
 ### Other commands
 
 ```bash
 # List all available templates
-python3 src/cli.py list
+python3 -m sd_generator_cli.cli list
 
 # Validate a template file
-python3 src/cli.py validate path/to/template.yaml
+python3 -m sd_generator_cli.cli validate path/to/template.yaml
 
 # Initialize global config
-python3 src/cli.py init
+python3 -m sd_generator_cli.cli init
 
 # API introspection
-python3 src/cli.py api samplers
-python3 src/cli.py api schedulers
-python3 src/cli.py api models
-python3 src/cli.py api upscalers
-python3 src/cli.py api model-info
+python3 -m sd_generator_cli.cli api samplers
+python3 -m sd_generator_cli.cli api schedulers
+python3 -m sd_generator_cli.cli api models
+python3 -m sd_generator_cli.cli api upscalers
+python3 -m sd_generator_cli.cli api model-info
 ```
+
+### Installed usage (après pip install -e .)
+
+```bash
+# Si le package est installé en mode éditable
+cd packages/sd-generator-cli
+pip install -e .
+
+# Ensuite, utiliser directement la commande
+sdgen generate
+sdgen list
+sdgen api models
+# etc.
+```
+
+## 🛠️ Build Tool
+
+Le projet dispose d'un **build tool complet** dans `tools/build.py` qui exécute automatiquement tous les checks qualité.
+
+### Ce que fait le build tool
+
+**Checks automatiques :**
+- ✅ **Python linting** (flake8) - Style PEP 8
+- ✅ **Type checking** (mypy strict) - Détection erreurs de types
+- ✅ **Tests + Coverage** (pytest) - Tests unitaires et intégration
+- ✅ **Complexity analysis** (radon) - Complexité cyclomatique
+- ✅ **Dead code detection** (vulture) - Code mort
+- ✅ **Security scan** (bandit) - Vulnérabilités de sécurité
+- ✅ **Frontend linting & build** - ESLint + Vite build
+- ✅ **Python packaging** (poetry) - Validation package
+
+**Output intelligent :**
+- 📊 **Table résumé** avec statuts (✓ success / ⚠ warning / ✗ error)
+- 🎯 **Top 5 priority actions** avec locations et valeurs cibles
+- ⏱️ **Durée totale** d'exécution
+
+### Quand utiliser le build tool
+
+**🎯 Recommandation : Utiliser AVANT chaque commit important**
+
+| Situation | Commande recommandée | Pourquoi |
+|-----------|---------------------|----------|
+| **Avant commit** | `python3 tools/build.py` | Check complet avant push |
+| **Quick check pendant dev** | `python3 tools/build.py --skip-tests --skip-frontend` | Lint + types + complexity rapide |
+| **Après refactoring** | `python3 tools/build.py` | Valider que rien n'est cassé |
+| **Avant PR** | `python3 tools/build.py --verbose` | Full check avec détails |
+| **CI/CD simulation** | `python3 tools/build.py --fail-fast` | Reproduire comportement CI |
+| **Debug build failure** | `python3 tools/build.py --verbose` | Voir outputs complets |
+
+### Workflow recommandé
+
+```bash
+# 1. Pendant le dev : checks rapides individuels
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes
+
+# 2. Avant commit : build complet
+python3 tools/build.py
+
+# 3. Si erreurs → Fix et re-run
+python3 tools/build.py
+
+# 4. Si OK → Commit
+git add . && git commit -m "feat: ..."
+```
+
+### Usage complet
+
+```bash
+# Depuis la racine du projet
+cd /mnt/d/StableDiffusion/local-sd-generator
+
+# Build complet (recommandé avant commit)
+python3 tools/build.py
+
+# Build rapide (skip tests + frontend)
+python3 tools/build.py --skip-tests --skip-frontend
+
+# Build sans tests (plus rapide pour checks rapides)
+python3 tools/build.py --skip-tests
+
+# Build sans frontend
+python3 tools/build.py --skip-frontend
+
+# Build sans packaging
+python3 tools/build.py --skip-package
+
+# Build verbose (voir tous les outputs des commandes)
+python3 tools/build.py --verbose
+
+# Fail-fast (s'arrête à la première erreur)
+python3 tools/build.py --fail-fast
+```
+
+### Exemple d'output
+
+```
+╭─────────────── Build Results ───────────────╮
+│ Step               Status    Duration       │
+│ ───────────────── ──────── ────────────    │
+│ Python Linting      ✓        2.3s          │
+│ Type Checking       ✓        4.1s          │
+│ Unit Tests          ✓       12.5s          │
+│ Complexity          ⚠        1.2s          │
+│ Dead Code           ✓        0.8s          │
+│ Security Scan       ✓        3.4s          │
+╰─────────────────────────────────────────────╯
+
+🎯 Top 5 Priority Actions:
+1. [P10] COMPLEXITY: resolver.py - resolve_template() (CC: 15 → target: 10)
+2. [P8]  COVERAGE: executor.py - Branch coverage 78% (target: 90%)
+3. [P6]  COMPLEXITY: orchestrator.py - orchestrate() (CC: 12 → target: 10)
+
+⏱️ Total duration: 24.3s
+```
+
+### Intégration avec pre-commit
+
+Pour automatiser le build avant chaque commit :
+
+```bash
+# .git/hooks/pre-commit (optionnel)
+#!/bin/bash
+python3 tools/build.py --skip-frontend --fail-fast
+```
+
+### Troubleshooting
+
+**Erreur : "rich library not found"**
+```bash
+venv/bin/pip install rich
+```
+
+**Erreur : "mypy not found"**
+```bash
+cd packages/sd-generator-cli
+../../venv/bin/pip install -e .
+```
+
+**Build trop lent**
+```bash
+# Skip tests pendant dev actif
+python3 tools/build.py --skip-tests --skip-frontend
+```
+
+### Alternative : Checks individuels
+
+**⚠️ Moins recommandé** - Utiliser le build tool complet quand possible.
+
+### Checks individuels (si nécessaire)
+
+Si vous devez lancer un check spécifique rapidement :
+
+```bash
+# Depuis la racine du projet
+
+# Lint (style)
+venv/bin/python3 -m flake8 packages/sd-generator-cli/sd_generator_cli --max-line-length=120
+
+# Lint (types - strict mode)
+venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes
+
+# Tests
+cd packages/sd-generator-cli && ../../venv/bin/python3 -m pytest tests/ -v
+
+# Coverage
+cd packages/sd-generator-cli && ../../venv/bin/python3 -m pytest tests/ --cov=sd_generator_cli --cov-report=term-missing -v
+
+# Package build
+cd packages/sd-generator-cli && poetry build
+```
+
+**Note :** Ces commandes sont déjà intégrées dans `python3 tools/build.py`.
 
 ## 📦 Project Status
 
 **Current version:** V2.0 (stable)
 **Template system:** V2.0 only (V1 removed)
-**Tests:** 306 total (98% pass rate)
 **Last major migration:** 2025-10-10 (V1→V2 complete)
-
-## Commands
-- **Lint (style):** `venv/bin/python3 -m flake8 packages/sd-generator-cli --max-line-length=120 --exclude=tests`
-- **Lint (types):** `venv/bin/python3 -m mypy packages/sd-generator-cli/sd_generator_cli --show-error-codes` (strict mode enabled)
-- **Test:** `cd packages/sd-generator-cli && ../../venv/bin/python3 -m pytest tests/ -v`
-- **Coverage:** `cd packages/sd-generator-cli && ../../venv/bin/python3 -m pytest tests/ --cov=sd_generator_cli --cov-report=term-missing`
-- **Build:** `cd packages/sd-generator-cli && poetry build`
+**Build tool:** `tools/build.py` (voir section "🛠️ Build Tool")

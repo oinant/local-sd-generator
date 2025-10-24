@@ -89,6 +89,15 @@ Total GitHub Issues: **45**
 
 _Last updated: 2025-10-24_
 
-## 📖 Local Notes
+## 📖 Local Notes & Braindump
 
-- [braindump.md](../../.claude/braindump.md) - Ongoing ideas and notes (Claude Code sessions)
+**Ongoing ideas and braindump tracking:**
+- 📋 [braindump.md](../../.claude/braindump.md) - Captures ideas during Claude Code sessions
+  - Survives context compaction
+  - Tracks items through lifecycle: 🆕 Pending → 🔍 Analyzing → 📋 Tracked → ✅ Done
+  - Always check "🆕 Pending Analysis" section for ideas awaiting structuring
+
+**Usage:**
+- Add rough ideas to "💭 Unstructured Notes"
+- Agent PO processes "🆕 Pending" items into GitHub Issues
+- Links back to GitHub Issues once created

@@ -69,7 +69,11 @@
       "Bash(../../venv/bin/python3 -m pytest:*)",
       "Bash(curl:*)",
       "Read(//home/oinant/.sdgen/logs/**)",
-      "Bash(venv/bin/python3:*)"
+      "Bash(venv/bin/python3:*)",
+      "Bash(sort:*)",
+      "mcp__github__list_issues",
+      "Bash(gh auth:*)",
+      "mcp__github__get_issue"
     ],
     "deny": [],
     "ask": []

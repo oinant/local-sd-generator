@@ -10,6 +10,11 @@ from .config_models import (
     ResolvedContext
 )
 
+from .theme_models import (
+    ThemeConfig,
+    ImportResolution
+)
+
 __all__ = [
     'TemplateConfig',
     'ChunkConfig',
@@ -18,4 +23,6 @@ __all__ = [
     'OutputConfig',
     'AnnotationsConfig',
     'ResolvedContext',
+    'ThemeConfig',
+    'ImportResolution',
 ]
