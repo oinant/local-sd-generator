@@ -367,7 +367,10 @@ def _generate(
             },
             "generation_params": generation_params,
             "api_params": api_params,
-            "variations": variations_map
+            "variations": variations_map,
+            # Themable Templates metadata (Phase 2)
+            "theme_name": theme_name,
+            "style": style
         }
 
         # Save temporary snapshot (will be updated after generation with real seeds)

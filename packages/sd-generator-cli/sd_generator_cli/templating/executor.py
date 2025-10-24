@@ -410,7 +410,9 @@ class V2Executor:
         negative_prompt: str,
         parameters: Dict[str, Any],
         generation_params: Dict[str, Any],
-        prompts: List[Dict[str, Any]]
+        prompts: List[Dict[str, Any]],
+        theme_name: Optional[str] = None,
+        style: str = "default"
     ) -> dict:
         """
         Create complete snapshot for manifest V2.
@@ -421,6 +423,8 @@ class V2Executor:
             parameters: API parameters
             generation_params: Generation parameters (mode, seed_mode, etc.)
             prompts: List of generated prompts
+            theme_name: Optional theme name (for themable templates)
+            style: Art style (default, cartoon, realistic, etc.)
 
         Returns:
             Complete snapshot dictionary
@@ -442,7 +446,10 @@ class V2Executor:
             },
             "generation_params": generation_params,
             "api_params": parameters,
-            "variations": variations
+            "variations": variations,
+            # Themable Templates metadata (Phase 2)
+            "theme_name": theme_name,
+            "style": style
         }
 
         return snapshot
