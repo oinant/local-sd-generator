@@ -126,7 +126,9 @@ def _generate(
     api_url: str,
     dry_run: bool,
     console: Console,
-    session_name_override: Optional[str] = None
+    session_name_override: Optional[str] = None,
+    theme_name: Optional[str] = None,
+    style: str = "default"
 ):
     """
     Generate images using Template System V2.0.
@@ -136,6 +138,7 @@ def _generate(
     - Modular imports with imports:
     - Reusable chunks
     - Advanced selectors and weights
+    - Themable templates with style variants (Phase 1)
 
     Args:
         template_path: Path to template file
@@ -145,6 +148,8 @@ def _generate(
         dry_run: Dry-run mode flag
         console: Rich console for output
         session_name_override: CLI override for session name (highest priority)
+        theme_name: Optional theme name (for themable templates)
+        style: Art style (default, cartoon, realistic, etc.)
     """
     from sd_generator_cli.templating.orchestrator import V2Pipeline
     from sd_generator_cli.api import SDAPIClient, BatchGenerator, SessionManager, ImageWriter, ProgressReporter
@@ -157,8 +162,13 @@ def _generate(
 
         # Load and process template
         console.print(f"[cyan]Loading template:[/cyan] {template_path}")
+        if theme_name:
+            console.print(f"[cyan]Theme:[/cyan] {theme_name}")
+        if style != "default":
+            console.print(f"[cyan]Style:[/cyan] {style}")
+
         config = pipeline.load(str(template_path))
-        resolved_config, context = pipeline.resolve(config)
+        resolved_config, context = pipeline.resolve(config, theme_name, style)
         prompts = pipeline.generate(resolved_config, context)
 
         # Display variation statistics
@@ -634,10 +644,20 @@ def generate_images(
     template: Optional[Path] = typer.Option(
         None,
         "--template", "-t",
-        help="Path to .prompt.yaml template file",
+        help="Path to .prompt.yaml or .template.yaml file",
         exists=True,
         file_okay=True,
         dir_okay=False,
+    ),
+    theme: Optional[str] = typer.Option(
+        None,
+        "--theme",
+        help="Theme name (for themable templates)",
+    ),
+    style: str = typer.Option(
+        "default",
+        "--style",
+        help="Art style (default, cartoon, realistic, etc.)",
     ),
     count: Optional[int] = typer.Option(
         None,
@@ -671,12 +691,15 @@ def generate_images(
     - Modular imports with imports:
     - Reusable chunks
     - Advanced selectors and weights
+    - Themable templates with style variants
 
     Examples:
-        python3 template_cli_typer.py generate
-        python3 template_cli_typer.py generate -t portrait.yaml
-        python3 template_cli_typer.py generate -t test.yaml -n 10 --dry-run
-        python3 template_cli_typer.py generate -t test.yaml --session-name my_session
+        sdgen generate
+        sdgen generate -t portrait.yaml
+        sdgen generate -t test.yaml -n 10 --dry-run
+        sdgen generate -t test.yaml --session-name my_session
+        sdgen generate -t character.template.yaml --theme cyberpunk --style realistic
+        sdgen generate -t scene.template.yaml --theme scifi --style cartoon
     """
     try:
         # Load global configuration
@@ -737,7 +760,9 @@ def generate_images(
             api_url=api_url,
             dry_run=dry_run,
             console=console,
-            session_name_override=session_name
+            session_name_override=session_name,
+            theme_name=theme,
+            style=style
         )
 
     except typer.Exit:
