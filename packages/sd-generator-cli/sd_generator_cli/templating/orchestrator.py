@@ -115,8 +115,11 @@ class V2Pipeline:
         base_path = None if path.is_absolute() else path.parent
         data = self.loader.load_file(path, base_path)
 
-        # Parse into model
-        config = self.parser.parse_prompt(data, path)
+        # Parse into model (detect type from extension)
+        if '.template.' in path.name:
+            config = self.parser.parse_template(data, path)
+        else:
+            config = self.parser.parse_prompt(data, path)
 
         # Validate
         validation_result = self.validator.validate(config)
@@ -157,9 +160,9 @@ class V2Pipeline:
         # Phase 3: Resolve inheritance chain
         resolved_config = self.inheritance_resolver.resolve_implements(config)
 
-        # Type narrow: ensure we got back a PromptConfig (should always be true when input is PromptConfig)
-        if not isinstance(resolved_config, PromptConfig):
-            raise ValueError(f"Expected PromptConfig after resolution, got {type(resolved_config).__name__}")
+        # Type narrow: ensure we got back a PromptConfig or TemplateConfig
+        if not isinstance(resolved_config, (PromptConfig, TemplateConfig)):
+            raise ValueError(f"Expected PromptConfig or TemplateConfig after resolution, got {type(resolved_config).__name__}")
 
         # Build simple chain for parameter merging (just use the resolved config)
         inheritance_chain = [resolved_config]

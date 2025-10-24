@@ -74,7 +74,9 @@
       "mcp__github__list_issues",
       "Bash(gh auth:*)",
       "mcp__github__get_issue",
-      "Bash(gh issue view:*)"
+      "Bash(gh issue view:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
