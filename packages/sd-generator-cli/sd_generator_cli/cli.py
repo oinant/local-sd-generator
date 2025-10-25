@@ -135,6 +135,7 @@ def _generate(
     console: Console,
     session_name_override: Optional[str] = None,
     theme_name: Optional[str] = None,
+    theme_file: Optional[Path] = None,
     style: str = "default"
 ):
     """
@@ -175,7 +176,7 @@ def _generate(
             console.print(f"[cyan]Style:[/cyan] {style}")
 
         config = pipeline.load(str(template_path))
-        resolved_config, context = pipeline.resolve(config, theme_name, style)
+        resolved_config, context = pipeline.resolve(config, theme_name, theme_file, style)
         prompts = pipeline.generate(resolved_config, context)
 
         # Display variation statistics
@@ -662,7 +663,15 @@ def generate_images(
     theme: Optional[str] = typer.Option(
         None,
         "--theme",
-        help="Theme name (for themable templates)",
+        help="Theme name (must be defined in template's themes: block)",
+    ),
+    theme_file: Optional[Path] = typer.Option(
+        None,
+        "--theme-file",
+        help="Path to theme.yaml file (bypasses template's themes: block)",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
     ),
     style: str = typer.Option(
         "default",
@@ -712,6 +721,12 @@ def generate_images(
         sdgen generate -t scene.template.yaml --theme scifi --style cartoon
     """
     try:
+        # Validate theme options (mutually exclusive)
+        if theme and theme_file:
+            console.print("[red]✗ Cannot use both --theme and --theme-file[/red]")
+            console.print("\n[yellow]Use --theme for themes defined in the template, or --theme-file for custom theme files[/yellow]")
+            raise typer.Exit(code=1)
+
         # Load global configuration
         try:
             global_config = load_global_config()
@@ -772,6 +787,7 @@ def generate_images(
             console=console,
             session_name_override=session_name,
             theme_name=theme,
+            theme_file=theme_file,
             style=style
         )
 

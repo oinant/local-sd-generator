@@ -23,29 +23,26 @@ from sd_generator_cli.templating.models import TemplateConfig, ThemeConfig
 @pytest.fixture
 def temp_configs_dir(tmp_path):
     """
-    Create a complete test configs directory structure.
+    Create a simplified test configs directory structure.
 
     Structure:
         configs/
-        ├── defaults/
-        │   ├── ambiance.yaml
-        │   └── outfit.default.yaml
         ├── themes/
         │   └── cyberpunk/
+        │       ├── theme.yaml
         │       ├── cyberpunk_ambiance.yaml
         │       ├── cyberpunk_outfit.default.yaml
         │       └── cyberpunk_outfit.cartoon.yaml
-        └── templates/
-            └── character.template.yaml
+        ├── defaults/
+        │   ├── ambiance.yaml
+        │   └── outfit.default.yaml
+        └── character.template.yaml
     """
     configs = tmp_path / "configs"
     configs.mkdir()
 
-    # Create defaults (must be in templates/ for relative imports to work)
-    templates_dir = configs / "templates"
-    templates_dir.mkdir()
-
-    defaults_dir = templates_dir / "defaults"
+    # Create defaults directory at root level
+    defaults_dir = configs / "defaults"
     defaults_dir.mkdir()
     (defaults_dir / "ambiance.yaml").write_text(
         "default_ambiance: calm atmosphere\n"
@@ -54,31 +51,23 @@ def temp_configs_dir(tmp_path):
         "default_outfit: casual clothes\n"
     )
 
-    # Create theme
+    # Create theme directory
     theme_dir = configs / "themes" / "cyberpunk"
     theme_dir.mkdir(parents=True)
 
-    # Theme config
-    theme_config = {
-        "name": "cyberpunk",
-        "explicit": True,
-        "imports": {
-            "Ambiance": "cyberpunk/cyberpunk_ambiance.yaml",
-            "Outfit.default": "cyberpunk/cyberpunk_outfit.default.yaml",
-            "Outfit.cartoon": "cyberpunk/cyberpunk_outfit.cartoon.yaml"
-        },
-        "variations": ["Ambiance", "Outfit"]
-    }
+    # Theme config - imports are relative to configs dir
+    # Note: Without explicit style suffix, uses default style
     (theme_dir / "theme.yaml").write_text(
-        f"# Cyberpunk Theme\n"
-        f"name: {theme_config['name']}\n"
-        f"imports:\n"
-        f"  Ambiance: {theme_config['imports']['Ambiance']}\n"
-        f"  Outfit.default: {theme_config['imports']['Outfit.default']}\n"
-        f"  Outfit.cartoon: {theme_config['imports']['Outfit.cartoon']}\n"
-        f"variations:\n"
-        f"  - Ambiance\n"
-        f"  - Outfit\n"
+        "version: '1.0'\n"
+        "name: cyberpunk\n"
+        "imports:\n"
+        "  Ambiance: themes/cyberpunk/cyberpunk_ambiance.yaml\n"
+        "  Outfit: themes/cyberpunk/cyberpunk_outfit.default.yaml\n"
+        "  Outfit.default: themes/cyberpunk/cyberpunk_outfit.default.yaml\n"
+        "  Outfit.cartoon: themes/cyberpunk/cyberpunk_outfit.cartoon.yaml\n"
+        "variations:\n"
+        "  - Ambiance\n"
+        "  - Outfit\n"
     )
 
     # Theme variation files
@@ -95,7 +84,15 @@ def temp_configs_dir(tmp_path):
         "chibi: chibi cyberpunk clothing\n"
     )
 
-    # Create template (templates_dir already exists from above)
+    # Create base template (simple, no prompt placeholder)
+    base_template_content = """version: "2.0"
+name: character_base
+template: "masterpiece, {prompt}, detailed"
+negative_prompt: "low quality, blurry"
+"""
+    (configs / "base.template.yaml").write_text(base_template_content)
+
+    # Create themable template that implements base
     template_content = """version: "2.0"
 name: character
 themable: true
@@ -103,11 +100,12 @@ style_sensitive: true
 style_sensitive_placeholders:
   - Outfit
 
-template: "{prompt}"
-negative_prompt: "low quality, blurry"
+implements: base.template.yaml
+
+prompt: "{Ambiance}, {Outfit}"
 
 prompts:
-  default: "masterpiece, {Ambiance}, {Outfit}, detailed"
+  default: ""
 
 imports:
   Ambiance: defaults/ambiance.yaml
@@ -119,7 +117,7 @@ generation:
   seed: 42
   max_images: 10
 """
-    (templates_dir / "character.template.yaml").write_text(template_content)
+    (configs / "character.template.yaml").write_text(template_content)
 
     return configs
 
@@ -139,7 +137,7 @@ class TestV2PipelineThemeIntegration:
 
     def test_pipeline_without_theme(self, pipeline, temp_configs_dir):
         """Test generation without theme (template defaults only)."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         # Load and resolve without theme
         config = pipeline.load(str(template_path))
@@ -157,7 +155,7 @@ class TestV2PipelineThemeIntegration:
 
     def test_pipeline_with_theme_default_style(self, pipeline, temp_configs_dir):
         """Test generation with theme and default style."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         # Load and resolve with theme
         config = pipeline.load(str(template_path))
@@ -174,8 +172,8 @@ class TestV2PipelineThemeIntegration:
 
         # Check import resolution metadata
         assert "Ambiance" in context.import_resolution
-        assert context.import_resolution["Ambiance"]["source"] == "theme"
-        assert context.import_resolution["Ambiance"]["override"] is True
+        assert context.import_resolution["Ambiance"].source == "theme"
+        assert context.import_resolution["Ambiance"].override is True
 
         # Generate prompts
         prompts = pipeline.generate(resolved_config, context)
@@ -183,7 +181,7 @@ class TestV2PipelineThemeIntegration:
 
     def test_pipeline_with_theme_cartoon_style(self, pipeline, temp_configs_dir):
         """Test generation with theme and cartoon style."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         # Load and resolve with theme + cartoon style
         config = pipeline.load(str(template_path))
@@ -196,8 +194,8 @@ class TestV2PipelineThemeIntegration:
         # Should use cartoon variant for Outfit
         assert context.style == "cartoon"
         assert "Outfit" in context.import_resolution
-        assert context.import_resolution["Outfit"]["style_sensitive"] is True
-        assert context.import_resolution["Outfit"]["resolved_style"] == "cartoon"
+        assert context.import_resolution["Outfit"].style_sensitive is True
+        assert context.import_resolution["Outfit"].resolved_style == "cartoon"
 
         # Generate prompts
         prompts = pipeline.generate(resolved_config, context)
@@ -205,7 +203,7 @@ class TestV2PipelineThemeIntegration:
 
     def test_pipeline_theme_fallback(self, pipeline, temp_configs_dir):
         """Test fallback when theme doesn't have style variant."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         # Load and resolve with theme + realistic style (not in theme)
         config = pipeline.load(str(template_path))
@@ -248,7 +246,7 @@ class TestThemeManagement:
 
     def test_validate_theme_compatibility(self, pipeline, temp_configs_dir):
         """Test theme compatibility validation."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
         config = pipeline.load(str(template_path))
 
         # Should be compatible
@@ -271,7 +269,7 @@ class TestManifestEnrichment:
 
     def test_manifest_contains_theme_metadata(self, pipeline, temp_configs_dir, tmp_path):
         """Test that generated manifest includes theme_name and style."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         # Load and resolve with theme
         config = pipeline.load(str(template_path))
@@ -317,7 +315,7 @@ class TestManifestEnrichment:
 
     def test_manifest_without_theme(self, pipeline, temp_configs_dir):
         """Test manifest when no theme is used."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         config = pipeline.load(str(template_path))
         resolved_config, context = pipeline.resolve(config)
@@ -344,7 +342,7 @@ class TestEndToEnd:
 
     def test_full_pipeline_with_theme(self, pipeline, temp_configs_dir):
         """Test complete pipeline: load → resolve → generate with theme."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         # Run full pipeline
         prompts = pipeline.run(
@@ -369,7 +367,7 @@ class TestEndToEnd:
 
     def test_full_pipeline_without_theme(self, pipeline, temp_configs_dir):
         """Test complete pipeline without theme."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         # Run without theme
         prompts = pipeline.run(str(template_path))
@@ -381,7 +379,7 @@ class TestEndToEnd:
 
     def test_statistics_with_theme(self, pipeline, temp_configs_dir):
         """Test variation statistics with theme."""
-        template_path = temp_configs_dir / "templates" / "character.template.yaml"
+        template_path = temp_configs_dir / "character.template.yaml"
 
         config = pipeline.load(str(template_path))
         resolved_config, context = pipeline.resolve(

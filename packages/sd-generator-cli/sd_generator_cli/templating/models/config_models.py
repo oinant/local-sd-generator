@@ -19,12 +19,14 @@ class TemplateConfig:
     It can be inherited by other templates or prompts using implements:.
 
     Required fields: version, name, template
-    Optional fields: implements, parameters, imports, negative_prompt, output
+    Optional fields: implements, parameters, imports, negative_prompt, output, themes
 
-    Themable Templates Extension:
-        themable: If True, template supports theme overrides
+    Themes Extension:
+        themes: Dict mapping theme names to theme file paths (ex: {"cyberpunk": "./themes/cyberpunk/theme.yaml"})
         style_sensitive: If True, template supports style-based variants
         style_sensitive_placeholders: List of placeholders that vary by style
+
+    Note: All templates/prompts are themable by default. Use --theme or --theme-file to apply themes.
     """
     version: str
     name: str
@@ -35,8 +37,8 @@ class TemplateConfig:
     imports: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: str = ''
     output: Optional['OutputConfig'] = None
-    # Themable Templates Extension
-    themable: bool = False
+    # Themes Extension
+    themes: Dict[str, str] = field(default_factory=dict)  # theme_name -> theme_file_path
     style_sensitive: bool = False
     style_sensitive_placeholders: List[str] = field(default_factory=list)
 
@@ -115,10 +117,14 @@ class PromptConfig:
     variations and generation settings to produce images.
 
     Required fields: version, name, generation, prompt
-    Optional fields: implements, imports, parameters, negative_prompt, output
+    Optional fields: implements, imports, parameters, negative_prompt, output, themes
+
+    Themes Extension:
+        themes: Dict mapping theme names to theme file paths (ex: {"cyberpunk": "./themes/cyberpunk/theme.yaml"})
 
     Note: implements is optional to support standalone prompts.
     Note: The 'prompt' field contains the content to inject into the parent template's {prompt} placeholder.
+    Note: All prompts are themable by default. Use --theme or --theme-file to apply themes.
     """
     version: str
     name: str
@@ -130,6 +136,8 @@ class PromptConfig:
     parameters: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: Optional[str] = None
     output: Optional[OutputConfig] = None
+    # Themes Extension
+    themes: Dict[str, str] = field(default_factory=dict)  # theme_name -> theme_file_path
     # After inheritance resolution, template will contain the fully resolved template
     template: Optional[str] = None
 
@@ -148,15 +156,18 @@ class ResolvedContext:
         parameters: Merged SD WebUI parameters from inheritance chain
         variation_state: Current values for placeholders during generation
         style: Active style for this resolution (e.g., "cartoon", "realistic", "watercolor")
-        import_resolution: Metadata about how each import was resolved
+        import_resolution: Metadata about how each import was resolved (theme source, override status, etc.)
+        import_sources: Dict mapping placeholder names to the file that provided the variations
+                       (e.g., {"HairCut": "themes/cyberpunk/cyberpunk_haircut.yaml"})
     """
     imports: Dict[str, Dict[str, str]]  # {import_name: {key: value}}
     chunks: Dict[str, ChunkConfig]      # {chunk_name: ChunkConfig}
     parameters: Dict[str, Any]
     variation_state: Dict[str, str] = field(default_factory=dict)
-    # Themable Templates Extension
+    # Themes Extension
     style: str = "default"
     import_resolution: Dict[str, 'ImportResolution'] = field(default_factory=dict)
+    import_sources: Dict[str, str] = field(default_factory=dict)  # placeholder -> file path
 
 
 # ===== ADetailer Extension Support =====

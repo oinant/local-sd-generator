@@ -10,6 +10,25 @@
 - Les tests sont dans `/packages/sd-generator-cli/tests/` et utilisent pytest
 - url de l'api automatic1111: http://172.29.128.1:7860
 
+## 📖 Terminologie
+
+- **Run** : Une exécution de `sdgen generate`. Produit une session avec N variants.
+- **Variant** : Une image générée avec une combinaison spécifique de variations.
+- **Variation** : Une valeur possible pour un placeholder (ex: "punk_mohawk" pour {HairCut}).
+- **Placeholder** : Variable dans le template (ex: {HairCut}, {HairColor}).
+- **Theme** : Ensemble cohérent de fichiers de variations (ex: cyberpunk, pirates).
+- **Session** : Dossier de sortie d'une run, contient les variants + manifest.json.
+
+**Exemple** :
+```bash
+sdgen generate -t template.yaml --theme cyberpunk -n 100
+```
+→ 1 **run** génère 1 **session** avec 100 **variants**
+
+Chaque **variant** a ses propres **variations** :
+- Variant 001 : HairCut=punk_mohawk, HairColor=neon_blue
+- Variant 002 : HairCut=cyber_bob, HairColor=electric_pink
+
 ## ⚠️ Configuration Critique
 
 **Le fichier `sdgen_config.json` est dans le répertoire courant !**

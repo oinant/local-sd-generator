@@ -26,6 +26,17 @@ _Items braindumped but not yet processed by Agent PO_
   - Requires: SQLite database?
 - **[Feature]** WebUI: Filter/sort images by variation options from manifest
 - **[Chore]** CORE: Upgrade manifest to v4.0
+- **[Feature]** Multi-themes dans une seule run: `sdgen generate --theme cyberpunk,fantasy,starwars -n 100`
+  - Questions de design à résoudre:
+    1. **Répartition des variants**: Équitable (100/3=33 chacun)? Proportionnelle (selon nb combinaisons)? Configurable (`--theme cyberpunk:50,fantasy:30,starwars:20`)?
+    2. **Mode combinatorial**: Theme = dimension supplémentaire (explosion)? Ou combinatorial par theme puis concat?
+    3. **Naming de session**: Format `TemplateName_cyberpunk+fantasy+starwars_default/`?
+    4. **Manifest structure**: Comment tracker quel theme pour chaque variant?
+    5. **Garantie d'isolation**: Variations d'un variant doivent TOUTES venir du même theme (pas de mélange!)
+  - Architecture possible:
+    - Generator multi-themes aware (List[ResolvedContext])
+    - Ou Pipeline multi-runs interne (agrégation)
+  - Phase: Future (après Phase 2 mono-theme)
 
 <!-- Add new items here during braindump sessions -->
 

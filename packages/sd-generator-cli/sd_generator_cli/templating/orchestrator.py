@@ -264,11 +264,24 @@ class V2Pipeline:
         # Use config.template (the final template after inheritance)
         template = config.template if config.template else ""
 
+        # Get generation config (with default for TemplateConfig)
+        from sd_generator_cli.templating.models import GenerationConfig
+        if hasattr(config, 'generation') and config.generation:
+            generation_config = config.generation
+        else:
+            # Default generation for standalone templates (used in tests)
+            generation_config = GenerationConfig(
+                mode='combinatorial',
+                seed=42,
+                seed_mode='progressive',
+                max_images=10
+            )
+
         # Generate prompts
         prompts = self.generator.generate_prompts(
             template=template,
             context=context,
-            generation=config.generation
+            generation=generation_config
         )
 
         # Add negative prompt if specified
