@@ -97,6 +97,36 @@ class ThemeLoader:
         else:
             return self.load_implicit_theme(theme_dir, theme_name)
 
+    def load_theme_from_file(self, theme_path: str) -> ThemeConfig:
+        """
+        Load a theme from a specific file path (for --theme-file option).
+
+        Args:
+            theme_path: Path to theme.yaml file (absolute or relative)
+
+        Returns:
+            ThemeConfig
+
+        Raises:
+            FileNotFoundError: If theme file doesn't exist
+            ValueError: If theme file is invalid
+
+        Example:
+            >>> loader = ThemeLoader(Path("/configs"))
+            >>> theme = loader.load_theme_from_file("./custom/my_theme.yaml")
+            >>> theme.name
+            'my_theme'
+        """
+        theme_file = Path(theme_path)
+        if not theme_file.exists():
+            raise FileNotFoundError(f"Theme file not found: {theme_path}")
+
+        # Get theme directory and infer name from file
+        theme_dir = theme_file.parent
+        theme_name = theme_file.stem.replace("_theme", "").replace(".theme", "")
+
+        return self.load_explicit_theme(theme_dir, theme_name)
+
     def load_explicit_theme(self, theme_dir: Path, theme_name: str) -> ThemeConfig:
         """
         Load an explicit theme from theme.yaml.

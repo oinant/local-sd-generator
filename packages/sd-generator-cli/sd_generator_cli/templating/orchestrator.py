@@ -132,6 +132,7 @@ class V2Pipeline:
         self,
         config: PromptConfig,
         theme_name: Optional[str] = None,
+        theme_file: Optional[Path] = None,
         style: str = "default"
     ) -> tuple[PromptConfig, ResolvedContext]:
         """
@@ -167,36 +168,53 @@ class V2Pipeline:
         # Build simple chain for parameter merging (just use the resolved config)
         inheritance_chain = [resolved_config]
 
-        # Phase 3.5: Theme merging (if themable template)
-        # Check if this is a themable template (TemplateConfig with themable=True)
+        # Phase 3.5: Theme resolution (if theme specified)
+        # All templates/prompts are themable by default - just apply if theme is provided
         theme: Optional[ThemeConfig] = None
+        import_sources: Dict[str, str] = {}  # Track which file provides each placeholder
         import_resolution_metadata: Dict[str, Any] = {}
 
-        # Check if themable (only TemplateConfig can be themable, not PromptConfig)
-        is_themable = (
-            hasattr(resolved_config, 'themable') and
-            getattr(resolved_config, 'themable', False)
-        )
-
-        if is_themable and isinstance(resolved_config, TemplateConfig):
-            if not self.theme_resolver:
+        if theme_name or theme_file:
+            if not self.theme_resolver or not self.theme_loader:
                 raise ValueError("Theme support requires configs_dir to be set")
 
-            # Load theme if specified
-            if theme_name and self.theme_loader:
-                theme = self.theme_loader.load_theme(theme_name)
+            # Load theme (either from theme_file or from config.themes dict)
+            if theme_file:
+                # Direct theme file path provided
+                theme = self.theme_loader.load_theme_from_file(str(theme_file))
+            elif theme_name:
+                # Theme name provided - must be in config.themes dict
+                if not hasattr(resolved_config, 'themes') or not resolved_config.themes:
+                    raise ValueError(
+                        f"❌ No 'themes:' block found in {resolved_config.name}\n"
+                        f"💡 Use --theme-file to specify theme path directly, or add a themes: block to your template"
+                    )
+                if theme_name not in resolved_config.themes:
+                    available = ', '.join(resolved_config.themes.keys()) if resolved_config.themes else '(none)'
+                    raise ValueError(
+                        f"❌ Theme '{theme_name}' not found in template\n"
+                        f"💡 Available themes: {available}\n"
+                        f"   Or use --theme-file to load a custom theme"
+                    )
 
-            # Merge theme imports with template imports
-            merged_imports, import_resolution_metadata = self.theme_resolver.merge_imports(
-                template=resolved_config,
-                theme=theme,
-                style=style
-            )
+                # Load theme from path in themes dict
+                theme_path = resolved_config.themes[theme_name]
+                # Resolve relative to config file's directory
+                if not Path(theme_path).is_absolute():
+                    theme_path = str(resolved_config.source_file.parent / theme_path)
+                theme = self.theme_loader.load_theme_from_file(theme_path)
 
-            # Replace template imports with merged imports
+            # Apply theme - COMPLETE substitution (not merge)
+            # Theme imports replace template imports entirely
             from copy import deepcopy
             resolved_config = deepcopy(resolved_config)
-            resolved_config.imports = merged_imports
+
+            # Substitution complète
+            resolved_config.imports = theme.imports.copy()
+
+            # Track sources for manifest
+            for placeholder in theme.imports.keys():
+                import_sources[placeholder] = f"theme:{theme.name}"
 
         # Phase 4: Resolve imports
         # Use the config's source file directory as base path for import resolution
@@ -214,9 +232,10 @@ class V2Pipeline:
             imports=resolved_imports,
             chunks={},  # Chunks will be available via imports
             parameters=merged_params,
-            # Theme metadata (Phase 1)
+            # Themes metadata
             style=style,
-            import_resolution=import_resolution_metadata
+            import_resolution=import_resolution_metadata,
+            import_sources=import_sources  # Track which file provides each placeholder
         )
 
         # Phase 1: Inject chunks structurally (preserving placeholders)
