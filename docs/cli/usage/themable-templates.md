@@ -1,6 +1,6 @@
 # Themable Templates - Usage Guide
 
-Guide utilisateur pour les templates thématiques avec support de styles.
+Guide utilisateur complet pour les templates thématiques avec découverte automatique des themes.
 
 ## Table des matières
 
@@ -11,24 +11,40 @@ Guide utilisateur pour les templates thématiques avec support de styles.
 - [Using Themes](#using-themes)
 - [CLI Commands](#cli-commands)
 - [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+- [Best Practices](#best-practices)
 
 ---
 
 ## Concepts
 
-### Qu'est-ce qu'un Themable Template ?
+### 🎯 Qu'est-ce qu'un Themable Template ?
 
 Un **themable template** est un template réutilisable qui peut être combiné avec différents **themes** pour générer des variations thématiques sans dupliquer le code.
 
 **Avantage principal :** DRY (Don't Repeat Yourself)
 - 1 template × N themes = N variations sans duplication
 
-### Dimensions orthogonales
+### 📐 Architecture
+
+**Template + Theme = Variations**
+
+```
+Template (structure)   +   Theme (variations)   =   Generated Prompts
+    ↓                           ↓                         ↓
+{HairCut}, {Outfit}      cyberpunk_haircut.yaml    neon mohawk, cybersuit
+                         cyberpunk_outfit.yaml
+
+{HairCut}, {Outfit}   +  pirates_haircut.yaml  =  bandana, pirate coat
+                         pirates_outfit.yaml
+```
+
+### 🎨 Dimensions orthogonales
 
 1. **Theme** - Aspects visuels et thématiques (cyberpunk, rockstar, pirates, etc.)
 2. **Style** - Style artistique freeform (cartoon, realistic, photorealistic, etc.)
 
-### Exemple concret
+### 💡 Exemple concret
 
 **Sans themable templates** (duplication) :
 ```
@@ -41,36 +57,49 @@ Un **themable template** est un template réutilisable qui peut être combiné a
 ```
 ├── _tpl_teasing.template.yaml           # Template unique
 ├── themes/
-│   ├── cyberpunk/theme.yaml
-│   ├── rockstar/theme.yaml
-│   └── pirates/theme.yaml
-└── teasing.prompt.yaml                  # Prompt simple (pas d'imports)
+│   ├── cyberpunk/
+│   │   ├── theme.yaml
+│   │   └── cyberpunk-*.yaml
+│   ├── rockstar/
+│   │   ├── theme.yaml
+│   │   └── rockstar-*.yaml
+│   └── pirates/
+│       ├── theme.yaml
+│       └── pirates-*.yaml
+└── teasing.prompt.yaml                  # Prompt simple (implements template)
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Utiliser un template themable existant
+### 1. Découvrir les themes disponibles
 
 ```bash
-# Lister les themes disponibles
-sdgen theme list
+# Lister tous les themes disponibles pour un template
+sdgen list-themes -t _tpl_teasing.template.yaml
 
-# Générer avec un theme
+# Lister tous les themes du système
+sdgen theme list
+```
+
+### 2. Générer avec un theme
+
+```bash
+# Theme seul (style default)
 sdgen generate -t _tpl_teasing.template.yaml --theme pirates
 
-# Générer avec un theme + style
+# Theme + style
 sdgen generate -t _tpl_teasing.template.yaml --theme cyberpunk --style cartoon
 ```
 
-### 2. Voir les détails d'un theme
+### 3. Valider compatibilité
 
 ```bash
-# Afficher les informations du theme
+# Voir les détails d'un theme
 sdgen theme show cyberpunk
 
-# Valider compatibilité theme/template
+# Valider qu'un theme est compatible avec un template
 sdgen theme validate _tpl_teasing.template.yaml cyberpunk
 ```
 
@@ -85,16 +114,14 @@ sdgen theme validate _tpl_teasing.template.yaml cyberpunk
 version: "2.0"
 name: "Character Portrait Template"
 
-# 🆕 Activer le support des themes
-themable: true
+# 🆕 Phase 2: Theme configuration block
+themes:
+  enable_autodiscovery: true                 # Enable theme autodiscovery
+  search_paths: [./themes/, ../shared/]     # Where to look for themes
+  explicit:                                  # Manual theme declarations (optional)
+    custom: ../custom/theme.yaml
 
-# 🆕 (Optionnel) Support des styles
-style_sensitive: true
-style_sensitive_placeholders:
-  - Rendering
-  - Outfit
-
-# Template avec placeholders
+# Template avec placeholders thématiques
 template: |
   masterpiece, {Rendering},
   {Ambiance}, {Location},
@@ -104,12 +131,12 @@ template: |
 prompts:
   default: "high quality"
 
-# Imports par défaut (overridables par themes)
+# Imports par défaut (peuvent être remplacés par themes)
 imports:
-  # Variations communes (partagées)
+  # Variations communes (ne changent pas par theme)
   EyeColor: common/body/eyecolors.yaml
 
-  # Variations thématiques (avec defaults)
+  # Variations thématiques (avec defaults utilisés si theme ne les fournit pas)
   Ambiance:    defaults/ambiance.yaml
   Location:    defaults/locations.yaml
   HairCut:     defaults/haircut.yaml
@@ -127,7 +154,46 @@ generation:
   max_images: 100
 ```
 
-### Placeholders thématiques vs communs
+### 🔧 Configuration du bloc `themes:`
+
+Le bloc `themes:` définit comment découvrir et charger les themes. Il existe 3 modes :
+
+#### Mode 1 : Explicit only (défaut)
+
+Déclarer uniquement les themes manuellement :
+
+```yaml
+themes:
+  explicit:
+    pirates: ./pirates/theme.yaml
+    cyberpunk: ./cyberpunk/theme.yaml
+```
+
+#### Mode 2 : Autodiscovery only
+
+Découvrir automatiquement tous les themes dans un dossier :
+
+```yaml
+themes:
+  enable_autodiscovery: true
+  search_paths: [./themes/]    # Optionnel, défaut: ['.']
+```
+
+#### Mode 3 : Hybrid (recommandé)
+
+Combiner découverte automatique + déclarations manuelles :
+
+```yaml
+themes:
+  enable_autodiscovery: true
+  search_paths: [./themes/, ../shared/]
+  explicit:
+    custom: ../custom/my_theme.yaml
+```
+
+**💡 Priorité :** Les themes `explicit` ont priorité sur les themes autodiscovered.
+
+### 📝 Placeholders thématiques vs communs
 
 **Thématiques** (varient selon le theme) :
 - `Ambiance` - Palette couleurs, mood, lighting
@@ -138,7 +204,7 @@ generation:
 - `Accessories` - Accessoires du theme
 - `TechAspect` - Éléments technologiques/fantastiques
 
-**Communs** (universels, non-overridés) :
+**Communs** (universels, partagés entre themes) :
 - `Poses` - Poses corporelles
 - `Expression` - Expressions faciales
 - `BodyType` - Types de corps
@@ -149,82 +215,121 @@ generation:
 
 ## Creating Themes
 
-### Theme explicite (recommandé)
+### 📁 Structure d'un theme
+
+```
+themes/pirates/
+├── theme.yaml                      # Theme configuration (explicit)
+├── pirates-haircut.yaml            # Hair variations
+├── pirates-outfit.yaml             # Default outfit style
+├── pirates-outfit.cartoon.yaml     # Cartoon outfit style
+├── pirates-outfit.realistic.yaml   # Realistic outfit style
+└── pirates-location.yaml           # Pirate locations
+```
+
+### 📐 Convention de nommage des fichiers
+
+**IMPORTANT** : Les fichiers de variations suivent cette convention stricte :
+
+**Format base :** `{theme_name}-{placeholder_name}.yaml` (avec **tiret**)
+
+**Format avec style :** `{theme_name}-{placeholder_name}.{style_name}.yaml`
+
+**Exemples corrects :**
+```
+pirates-haircut.yaml                # ✅ Base placeholder
+pirates-outfit.yaml                 # ✅ Default style
+pirates-outfit.cartoon.yaml         # ✅ Cartoon style
+pirates-outfit.realistic.yaml       # ✅ Realistic style
+cyberpunk-tech-aspect.yaml          # ✅ Multi-word placeholder
+```
+
+**Exemples incorrects :**
+```
+pirates_haircut.yaml                # ❌ Underscore au lieu de tiret
+pirateshaircut.yaml                 # ❌ Pas de séparateur
+haircut-pirates.yaml                # ❌ Ordre inversé
+pirates-haircut-cartoon.yaml        # ❌ Style avec tiret au lieu de point
+```
+
+### 🎨 Theme explicite (recommandé)
 
 Créer un fichier `theme.yaml` dans le dossier du theme :
 
 ```yaml
 # themes/cyberpunk/theme.yaml
+type: theme_config
 version: "1.0"
-name: cyberpunk
 
 imports:
-  # Variations thématiques
-  Ambiance:    cyberpunk/cyberpunk_ambiance.yaml
-  Location:    cyberpunk/cyberpunk_location.yaml
-  HairCut:     cyberpunk/cyberpunk_haircut.yaml
-  HairColor:   cyberpunk/cyberpunk_haircolor.yaml
-  Outfit:      cyberpunk/cyberpunk_outfit.yaml
-  Accessories: cyberpunk/cyberpunk_accessories.yaml
+  # Variations thématiques de base
+  Ambiance:    cyberpunk/cyberpunk-ambiance.yaml
+  Location:    cyberpunk/cyberpunk-location.yaml
+  HairCut:     cyberpunk/cyberpunk-haircut.yaml
+  HairColor:   cyberpunk/cyberpunk-haircolor.yaml
+  Outfit:      cyberpunk/cyberpunk-outfit.yaml
+  Accessories: cyberpunk/cyberpunk-accessories.yaml
 
-  # Style-sensitive (variants)
-  Rendering.default:   cyberpunk/cyberpunk_rendering.default.yaml
-  Rendering.cartoon:   cyberpunk/cyberpunk_rendering.cartoon.yaml
-  Rendering.realistic: cyberpunk/cyberpunk_rendering.realistic.yaml
-
-variations:
-  - Ambiance
-  - Location
-  - HairCut
-  - HairColor
-  - Outfit
-  - Accessories
-  - Rendering
+  # Style-sensitive variants (optional)
+  Rendering.default:   cyberpunk/cyberpunk-rendering.yaml
+  Rendering.cartoon:   cyberpunk/cyberpunk-rendering.cartoon.yaml
+  Rendering.realistic: cyberpunk/cyberpunk-rendering.realistic.yaml
 ```
 
-### Theme implicite (auto-découverte)
+**💡 Avantages du theme explicite :**
+- Contrôle total sur les imports
+- Support des styles explicite
+- Documentation claire
+- Validation plus stricte
 
-Si `theme.yaml` n'existe pas, le système infère les imports depuis les fichiers `{theme}_*.yaml` :
+### 🤖 Theme implicite (auto-découverte)
+
+Si `theme.yaml` n'existe pas, le système infère automatiquement les imports depuis les fichiers :
 
 ```
 themes/pirates/
-├── pirates_ambiance.yaml
-├── pirates_location.yaml
-├── pirates_haircut.yaml
-└── pirates_outfit.yaml
+├── pirates-haircut.yaml
+├── pirates-location.yaml
+├── pirates-outfit.yaml
+└── pirates-outfit.cartoon.yaml
 ```
 
-→ Auto-détection :
+→ **Auto-détection** :
 ```yaml
 imports:
-  Ambiance: pirates/pirates_ambiance.yaml
-  Location: pirates/pirates_location.yaml
-  HairCut:  pirates/pirates_haircut.yaml
-  Outfit:   pirates/pirates_outfit.yaml
+  HairCut:         pirates/pirates-haircut.yaml
+  Location:        pirates/pirates-location.yaml
+  Outfit:          pirates/pirates-outfit.yaml
+  Outfit.cartoon:  pirates/pirates-outfit.cartoon.yaml
 ```
 
-### Convention de nommage
+**💡 Avantages du theme implicite :**
+- Moins de configuration
+- Idéal pour prototypage rapide
+- Convention over configuration
 
-**Format :** `{theme}_{placeholder}.yaml`
+### ⚠️ Validation de la convention
 
-**Exemples :**
-- `cyberpunk_ambiance.yaml`
-- `rockstar_haircut.yaml`
-- `pirates_location.yaml`
+Le système valide automatiquement les noms de fichiers :
 
-**Avec styles :**
-- `cyberpunk_outfit.default.yaml`
-- `cyberpunk_outfit.cartoon.yaml`
-- `rockstar_rendering.realistic.yaml`
+```bash
+# Lister les themes et voir leurs imports découverts
+sdgen list-themes -t template.yaml
+```
+
+**Erreurs courantes détectées :**
+- Fichiers avec underscore au lieu de tiret
+- Format de style incorrect
+- Fichiers manquants déclarés dans theme.yaml
 
 ---
 
 ## Using Themes
 
-### Générer avec un theme
+### 🚀 Générer avec un theme
 
 ```bash
-# Theme seul (style par défaut)
+# Theme seul (style default)
 sdgen generate -t _tpl_character.template.yaml --theme cyberpunk
 
 # Theme + style
@@ -234,20 +339,26 @@ sdgen generate -t _tpl_character.template.yaml --theme cyberpunk --style cartoon
 sdgen generate -t _tpl_character.template.yaml
 ```
 
-### Ordre de résolution des imports
+### 🔄 Ordre de résolution des imports
 
-**Priorité :** theme → template → common fallback
+**Priorité :** prompt > theme > template
 
-**Exemple :**
+| Source | Description | Exemple |
+|--------|-------------|---------|
+| **Prompt** | Imports explicites dans le fichier .prompt.yaml | `imports: {Ambiance: custom/my_ambiance.yaml}` |
+| **Theme** | Variations fournies par le theme | `cyberpunk/cyberpunk-ambiance.yaml` |
+| **Template** | Defaults déclarés dans le template | `defaults/ambiance.yaml` |
 
-| Placeholder | Theme fourni ? | Résolution |
-|-------------|----------------|------------|
-| `Ambiance` | ✓ | `themes/cyberpunk/cyberpunk_ambiance.yaml` |
-| `Outfit` | ✓ (style=cartoon) | `themes/cyberpunk/cyberpunk_outfit.cartoon.yaml` |
-| `Rendering` | ✗ | `common/rendering/rendering.cartoon.yaml` (fallback) |
-| `EyeColor` | ✗ | `common/body/eyecolors.yaml` (commun) |
+**Exemple complet :**
 
-### Styles freeform
+| Placeholder | Prompt override? | Theme fourni? | Résolution finale |
+|-------------|------------------|---------------|-------------------|
+| `Ambiance` | ❌ | ✅ | `themes/cyberpunk/cyberpunk-ambiance.yaml` |
+| `Outfit` | ❌ | ✅ (style=cartoon) | `themes/cyberpunk/cyberpunk-outfit.cartoon.yaml` |
+| `Rendering` | ✅ | ❌ | `custom/my_rendering.yaml` (prompt override) |
+| `EyeColor` | ❌ | ❌ | `common/body/eyecolors.yaml` (template default) |
+
+### 🎨 Styles freeform
 
 Les styles sont **définis par l'utilisateur**, pas hardcodés.
 
@@ -261,34 +372,86 @@ Les styles sont **définis par l'utilisateur**, pas hardcodés.
 - `sketch` - Esquisse
 
 **Créer un style personnalisé :**
-```bash
-# Créer des fichiers avec le suffix du style
-common/rendering/rendering.cyberpunk-noir.yaml
-common/lighting/lighting.cyberpunk-noir.yaml
 
-# Utiliser
-sdgen generate -t template.yaml --style cyberpunk-noir
+```bash
+# 1. Créer des fichiers avec le suffix du style
+# Format: {theme}-{placeholder}.{style}.yaml
+cyberpunk-outfit.neon-noir.yaml
+cyberpunk-rendering.neon-noir.yaml
+
+# 2. Utiliser le style
+sdgen generate -t template.yaml --theme cyberpunk --style neon-noir
 ```
 
 ---
 
 ## CLI Commands
 
+### `sdgen list-themes`
+
+Liste les themes disponibles pour un template spécifique :
+
+```bash
+# Syntaxe
+sdgen list-themes -t <template_path>
+
+# Exemples
+sdgen list-themes -t ./prompts/template.yaml
+sdgen list-themes -t template.yaml --configs-dir /path/to/configs
+```
+
+**Output :**
+```
+📋 Theme Configuration
+├─ Autodiscovery: ✓ Enabled
+├─ Search paths:
+│  ├─ • ./themes/
+│  └─ • ../shared/
+└─ Explicit themes: 1
+   └─ • custom
+
+🎨 pirates (autodiscovered)
+├─ Path: ./themes/pirates/theme.yaml
+└─ Imports: 8
+   ├─ ✓ HairCut → pirates/pirates-haircut.yaml
+   ├─ ✓ Outfit → pirates/pirates-outfit.yaml
+   └─ ✓ Location → pirates/pirates-location.yaml
+
+🎨 cyberpunk (explicit)
+├─ Path: ../custom/cyberpunk.yaml
+└─ Imports: 12
+   ├─ ✓ Ambiance → cyberpunk/cyberpunk-ambiance.yaml
+   ├─ ✗ TechAspect → cyberpunk/tech.yaml (missing)
+   └─ ...
+
+Summary: 2 theme(s) found
+  • 1 explicit
+  • 1 autodiscovered
+```
+
 ### `sdgen generate` avec themes
 
 ```bash
 # Syntaxe complète
-sdgen generate --template <path> --theme <name> --style <style>
+sdgen generate --template <path> --theme <name> [--theme-file <path>] [--style <style>]
 
 # Exemples
 sdgen generate -t _tpl_teasing.template.yaml --theme pirates
 sdgen generate -t _tpl_teasing.template.yaml --theme cyberpunk --style cartoon
+sdgen generate -t _tpl_teasing.template.yaml --theme-file ../custom/my_theme.yaml
 sdgen generate -t _tpl_teasing.template.yaml --theme rockstar --style realistic -n 50
 ```
 
+**Options :**
+- `--theme <name>` : Nom du theme (défini dans le bloc themes:)
+- `--theme-file <path>` : Chemin direct vers un theme.yaml (bypass le bloc themes:)
+- `--style <style>` : Style artistique (default, cartoon, realistic, etc.)
+
+**⚠️ Important :** `--theme` et `--theme-file` sont mutuellement exclusifs.
+
 ### `sdgen theme list`
 
-Liste tous les themes disponibles :
+Liste tous les themes du système :
 
 ```bash
 sdgen theme list
@@ -319,14 +482,14 @@ Type: Explicit
 Path: ./themes/cyberpunk/
 
 Imports:
-  HairCut          → cyberpunk/cyberpunk_haircut.yaml
-  HairColor        → cyberpunk/cyberpunk_haircolor.yaml
-  TechAspect       → cyberpunk/cyberpunk_tech-aspect.yaml
-  FemaleCharacter  → cyberpunk/cyberpunk_girl.yaml
+  HairCut          → cyberpunk/cyberpunk-haircut.yaml
+  HairColor        → cyberpunk/cyberpunk-haircolor.yaml
+  TechAspect       → cyberpunk/cyberpunk-tech-aspect.yaml
+  FemaleCharacter  → cyberpunk/cyberpunk-girl.yaml
   ...
 
 Variations: 8
-Styles detected: default
+Styles detected: default, cartoon, realistic
 ```
 
 ### `sdgen theme validate <template> <theme>`
@@ -361,7 +524,7 @@ Theme provides:
 sdgen generate -t _tpl_teasing.template.yaml --theme cyberpunk -n 50
 ```
 
-**Output:** `YYYYMMDD_HHMMSS_Teasing_cyberpunk/`
+**Output:** `YYYYMMDD_HHMMSS_Teasing_cyberpunk_default/`
 
 ### Example 2: Theme + Style
 
@@ -424,39 +587,111 @@ sdgen generate -t teasing-pirates.prompt.yaml --theme cyberpunk
 sdgen generate -t teasing-pirates.prompt.yaml --theme rockstar
 ```
 
+### Example 6: Custom theme file
+
+```bash
+# Use a theme file outside the standard discovery paths
+sdgen generate -t template.yaml --theme-file ~/my-themes/custom/theme.yaml
+```
+
+### Example 7: Discover themes for a template
+
+```bash
+# See all available themes before generating
+sdgen list-themes -t _tpl_teasing.template.yaml
+
+# Then generate with one of them
+sdgen generate -t _tpl_teasing.template.yaml --theme pirates
+```
+
 ---
 
 ## Troubleshooting
 
-### "Theme not found"
+### ❌ "No 'themes:' block found"
 
 ```
-❌ Error: Theme 'unknown' not found
+❌ No 'themes:' block found in TemplateName
+💡 Use --theme-file to specify theme path directly, or add a themes: block to your template
 ```
 
-**Solution :** Vérifier les themes disponibles avec `sdgen theme list`
+**Solution 1 :** Ajouter un bloc `themes:` au template :
+```yaml
+themes:
+  enable_autodiscovery: true
+  search_paths: [./themes/]
+```
 
-### "Missing import for placeholder"
+**Solution 2 :** Utiliser `--theme-file` pour bypass le bloc themes:
+```bash
+sdgen generate -t template.yaml --theme-file ./themes/pirates/theme.yaml
+```
+
+### ❌ "Theme not found"
+
+```
+❌ Theme 'unknown' not found
+💡 Available themes: pirates, cyberpunk, rockstar
+   Or use --theme-file to load a custom theme
+```
+
+**Solution :**
+```bash
+# Lister les themes disponibles
+sdgen list-themes -t template.yaml
+
+# Utiliser un theme existant
+sdgen generate -t template.yaml --theme pirates
+```
+
+### ⚠️ "Missing import for placeholder"
 
 ```
 ⚠ Warning: Theme 'cyberpunk' missing Outfit.realistic, using fallback
 ```
 
-**Solution :** Normal si le theme ne fournit pas tous les styles. Le système utilise le fallback automatiquement.
+**Explication :** Normal si le theme ne fournit pas tous les styles. Le système utilise automatiquement le fallback (template default ou common).
 
-### "File not found"
+**Fix (optionnel) :** Créer le fichier manquant :
+```bash
+# Créer cyberpunk-outfit.realistic.yaml
+cp themes/cyberpunk/cyberpunk-outfit.yaml \
+   themes/cyberpunk/cyberpunk-outfit.realistic.yaml
+```
+
+### ❌ "File not found"
 
 ```
-❌ Error: File not found: themes/cyberpunk/cyberpunk_outfit.yaml
+❌ Error: File not found: themes/cyberpunk/cyberpunk-outfit.yaml
 ```
 
-**Solution :** Vérifier que le fichier existe et que le chemin dans `theme.yaml` est correct.
+**Solution :** Vérifier que :
+1. Le fichier existe : `ls themes/cyberpunk/`
+2. Le chemin dans `theme.yaml` est correct (relatif à `configs_dir`)
+3. La convention de nommage est respectée (tiret, pas underscore)
+
+### ⚠️ "Cannot use both --theme and --theme-file"
+
+```
+✗ Cannot use both --theme and --theme-file
+
+Use --theme for themes defined in the template, or --theme-file for custom theme files
+```
+
+**Solution :** Choisir une seule option :
+```bash
+# Option A: Use theme name (from template's themes: block)
+sdgen generate -t template.yaml --theme pirates
+
+# Option B: Use direct theme file path
+sdgen generate -t template.yaml --theme-file ./my_theme.yaml
+```
 
 ---
 
 ## Best Practices
 
-### 1. Structure des dossiers
+### 1. 📁 Structure des dossiers
 
 ```
 configs/
@@ -465,27 +700,46 @@ configs/
 ├── themes/
 │   ├── cyberpunk/
 │   │   ├── theme.yaml
-│   │   └── cyberpunk_*.yaml
+│   │   ├── cyberpunk-haircut.yaml
+│   │   ├── cyberpunk-outfit.yaml
+│   │   └── cyberpunk-outfit.cartoon.yaml
 │   ├── rockstar/
 │   │   ├── theme.yaml
-│   │   └── rockstar_*.yaml
+│   │   └── rockstar-*.yaml
 │   └── pirates/
 │       ├── theme.yaml
-│       └── pirates_*.yaml
+│       └── pirates-*.yaml
 └── common/
     ├── body/
     ├── poses/
     └── rendering/
 ```
 
-### 2. Naming conventions
+### 2. 📝 Naming conventions
+
+**CRUCIAL** : Respecter la convention de nommage avec **tirets** :
 
 - **Templates :** `_tpl_{name}.template.yaml`
 - **Themes :** `themes/{name}/theme.yaml`
-- **Variations :** `{theme}_{placeholder}.yaml`
-- **Styles :** `{basename}.{style}.yaml`
+- **Variations :** `{theme}-{placeholder}.yaml` (**tiret**, pas underscore)
+- **Styles :** `{basename}.{style}.yaml` (**point** pour le style)
 
-### 3. Séparation thématique vs commun
+**✅ Correct :**
+```
+pirates-haircut.yaml
+cyberpunk-outfit.cartoon.yaml
+fantasy-tech-aspect.yaml
+```
+
+**❌ Incorrect :**
+```
+pirates_haircut.yaml          # Underscore au lieu de tiret
+piratesHaircut.yaml           # PascalCase
+haircut-pirates.yaml          # Ordre inversé
+pirates-haircut-cartoon.yaml  # Style avec tiret
+```
+
+### 3. 🎯 Séparation thématique vs commun
 
 **Thématiques** (dans themes/) :
 - Changent radicalement selon le theme
@@ -495,7 +749,7 @@ configs/
 - Universels, partagés entre themes
 - Exemple : body types, facial expressions
 
-### 4. Documentation des themes
+### 4. 📖 Documentation des themes
 
 Ajouter des commentaires dans `theme.yaml` :
 
@@ -503,15 +757,54 @@ Ajouter des commentaires dans `theme.yaml` :
 # Cyberpunk Theme
 # Neon-lit dystopian future aesthetic
 # Supports styles: default, cartoon, realistic
+type: theme_config
 version: "1.0"
-name: cyberpunk
-# ...
+imports:
+  # Core variations
+  Ambiance: cyberpunk/cyberpunk-ambiance.yaml
+  # ...
 ```
+
+### 5. ✅ Validation avant génération
+
+```bash
+# 1. Lister les themes disponibles
+sdgen list-themes -t template.yaml
+
+# 2. Valider compatibilité
+sdgen theme validate template.yaml cyberpunk
+
+# 3. Dry-run pour vérifier
+sdgen generate -t template.yaml --theme cyberpunk --dry-run
+
+# 4. Générer
+sdgen generate -t template.yaml --theme cyberpunk -n 100
+```
+
+### 6. 🔄 Mode hybride recommandé
+
+Pour les gros projets, utiliser le mode hybride :
+
+```yaml
+themes:
+  enable_autodiscovery: true
+  search_paths: [./themes/, ../shared-themes/]
+  explicit:
+    # Themes custom ou avec path spécial
+    custom: ../custom/my_theme.yaml
+    experimental: ./experimental/test_theme.yaml
+```
+
+**Avantages :**
+- Autodiscovery pour themes standards
+- Explicit pour themes custom/experimentaux
+- Flexibilité maximale
 
 ---
 
 ## See Also
 
-- [Technical Documentation](../technical/themable-templates.md) - Architecture interne
+- [Technical Documentation](../technical/themable-templates.md) - Architecture interne et algorithmes
 - [CLI Reference](../reference/themable-templates.md) - Référence complète des commandes
-- [Template System V2](./template-system-v2.md) - Système de templates V2
+- [Template System V2](../guide/4-templates-advanced.md) - Système de templates V2
+- [Variation Files](./variation-files.md) - Format des fichiers de variations
