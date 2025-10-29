@@ -31,7 +31,9 @@ class SessionManager:
     def __init__(self,
                  base_output_dir: str = "apioutput",
                  session_name: Optional[str] = None,
-                 dry_run: bool = False):
+                 dry_run: bool = False,
+                 theme_name: Optional[str] = None,
+                 style: str = "default"):
         """
         Initialize session manager
 
@@ -39,10 +41,14 @@ class SessionManager:
             base_output_dir: Base directory for all sessions
             session_name: Optional name suffix for session directory
             dry_run: If True, creates sessions in /dryrun subdirectory
+            theme_name: Optional theme name (for themable templates)
+            style: Art style (default, cartoon, realistic, etc.)
         """
         self.base_output_dir = base_output_dir
         self.session_name = session_name
         self.dry_run = dry_run
+        self.theme_name = theme_name
+        self.style = style
         self.session_start_time = datetime.now()
         self._output_dir: Optional[Path] = None
 
@@ -64,17 +70,33 @@ class SessionManager:
         """
         Build session directory path
 
-        Format: {base_dir}/[dryrun/]{timestamp}[_{session_name}]/
+        Format: {base_dir}/[dryrun/]{timestamp}-{session_name}[-{theme}][-{style}]/
+
+        Examples:
+            - 20251029_143022-teasing-cyberpunk-cartoon
+            - 20251029_143522-portrait-default (no theme)
+            - 20251029_144012-character (no theme, default style omitted if alone)
 
         Returns:
             Path: Session directory path (not yet created)
         """
-        timestamp = self.session_start_time.strftime("%Y-%m-%d_%H%M%S")
+        timestamp = self.session_start_time.strftime("%Y%m%d_%H%M%S")
+
+        # Build components: timestamp-session_name-theme-style
+        components = [timestamp]
 
         if self.session_name:
-            session_dir_name = f"{timestamp}_{self.session_name}"
-        else:
-            session_dir_name = timestamp
+            components.append(self.session_name)
+
+        if self.theme_name:
+            components.append(self.theme_name)
+            # Always include style when theme is present
+            components.append(self.style)
+        elif self.style != "default":
+            # Include style only if non-default and no theme
+            components.append(self.style)
+
+        session_dir_name = "-".join(components)
 
         # In dry-run mode, use /dryrun subdirectory
         if self.dry_run:

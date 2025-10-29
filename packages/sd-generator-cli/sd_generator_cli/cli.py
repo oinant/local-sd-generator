@@ -241,7 +241,9 @@ def _generate(
         session_manager = SessionManager(
             base_output_dir=str(output_base_dir),
             session_name=session_name,
-            dry_run=dry_run
+            dry_run=dry_run,
+            theme_name=theme_name,
+            style=style
         )
         image_writer = ImageWriter(session_manager.output_dir)
         progress_reporter = ProgressReporter(
