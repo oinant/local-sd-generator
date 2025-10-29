@@ -852,6 +852,180 @@ def list_templates(
         raise typer.Exit(code=1)
 
 
+@app.command(name="list-themes")
+def list_themes(
+    template: str = typer.Option(
+        ...,
+        "-t", "--template",
+        help="Path to template file to discover themes for",
+    ),
+    configs_dir: Optional[Path] = typer.Option(
+        None,
+        "--configs-dir",
+        help="Configs directory (overrides global config)",
+    ),
+):
+    """
+    List available themes for a themable template with resolved file paths.
+
+    Shows:
+    - Discovered themes (explicit + autodiscovered)
+    - Import mappings for each theme
+    - Missing files highlighted in red
+    - Source of each import (explicit/autodiscovered)
+
+    Examples:
+        sdgen list-themes -t ./prompts/template.yaml
+        sdgen list-themes -t template.yaml --configs-dir /path/to/configs
+    """
+    try:
+        from sd_generator_cli.templating.orchestrator import V2Pipeline
+        from sd_generator_cli.templating.loaders.theme_loader import ThemeLoader
+        from rich.tree import Tree
+        from rich.text import Text
+
+        # Load global config if needed
+        if configs_dir is None:
+            global_config = load_global_config()
+            configs_dir = Path(global_config.configs_dir)
+
+        # Resolve template path
+        template_path = Path(template)
+        if not template_path.is_absolute():
+            # Try as-is first (relative to current directory)
+            if template_path.exists():
+                template_path = template_path.resolve()
+            else:
+                # Try relative to configs_dir
+                alt_path = configs_dir / template
+                if alt_path.exists():
+                    template_path = alt_path.resolve()
+                else:
+                    console.print(f"[red]✗ Template not found:[/red] {template}")
+                    console.print(f"   Tried: {template_path}")
+                    console.print(f"   Tried: {alt_path}")
+                    raise typer.Exit(code=1)
+        elif not template_path.exists():
+            console.print(f"[red]✗ Template not found:[/red] {template_path}")
+            raise typer.Exit(code=1)
+
+        # Load template or prompt
+        pipeline = V2Pipeline(configs_dir=configs_dir)
+
+        # Load the config (could be TemplateConfig or PromptConfig)
+        from sd_generator_cli.templating.models.config_models import TemplateConfig, PromptConfig
+
+        path = Path(template_path)
+        if '.template.' in path.name:
+            # Load as template directly
+            data = pipeline.loader.load_file(path, None if path.is_absolute() else path.parent)
+            config = pipeline.parser.parse_template(data, path)
+        else:
+            # Load as prompt (default behavior)
+            config = pipeline.load(str(template_path))
+
+        # Resolve inheritance to get final themes config
+        if isinstance(config, (TemplateConfig, PromptConfig)):
+            config = pipeline.inheritance_resolver.resolve_implements(config)
+
+        # Check if template is themable
+        if not config.themes:
+            console.print(f"[yellow]⚠ Template '{config.name}' is not themable[/yellow]")
+            console.print("💡 Add a 'themes:' block to make it themable")
+            raise typer.Exit(code=0)
+
+        # Discover available themes
+        theme_loader = ThemeLoader(configs_dir)
+        available_themes = theme_loader.discover_available_themes(
+            config.source_file,
+            config.themes
+        )
+
+        if not available_themes:
+            console.print(f"[yellow]No themes found for template '{config.name}'[/yellow]")
+            if config.themes.enable_autodiscovery:
+                search_paths = config.themes.search_paths or ['.']
+                console.print(f"💡 Searched in: {', '.join(search_paths)}")
+            raise typer.Exit(code=0)
+
+        # Build rich output
+        console.print(f"\n[bold cyan]Themes for '{config.name}'[/bold cyan]")
+        # Show template path (try relative to cwd or show absolute)
+        try:
+            rel_path = template_path.relative_to(Path.cwd())
+            console.print(f"Template: [blue]{rel_path}[/blue]\n")
+        except ValueError:
+            console.print(f"Template: [blue]{template_path}[/blue]\n")
+
+        # Configuration info
+        info_tree = Tree("📋 [bold]Theme Configuration[/bold]")
+        info_tree.add(f"Autodiscovery: {'✓ Enabled' if config.themes.enable_autodiscovery else '✗ Disabled'}")
+        if config.themes.search_paths:
+            paths_node = info_tree.add("Search paths:")
+            for p in config.themes.search_paths:
+                paths_node.add(f"• {p}")
+        if config.themes.explicit:
+            explicit_node = info_tree.add(f"Explicit themes: {len(config.themes.explicit)}")
+            for name in config.themes.explicit.keys():
+                explicit_node.add(f"• {name}")
+        console.print(info_tree)
+        console.print()
+
+        # List each theme with details
+        for theme_name in sorted(available_themes.keys()):
+            theme_path = available_themes[theme_name]
+
+            # Determine source
+            is_explicit = theme_name in (config.themes.explicit or {})
+            source_label = "[cyan]explicit[/cyan]" if is_explicit else "[green]autodiscovered[/green]"
+
+            # Load theme to get imports
+            try:
+                theme = theme_loader.load_theme_from_file(theme_path)
+
+                # Create tree for this theme
+                theme_tree = Tree(f"🎨 [bold yellow]{theme_name}[/bold yellow] ({source_label})")
+                theme_tree.add(f"Path: [blue]{theme_path}[/blue]")
+
+                # Add imports with file existence check
+                imports_node = theme_tree.add(f"Imports: [cyan]{len(theme.imports)}[/cyan]")
+
+                for placeholder, import_path in sorted(theme.imports.items()):
+                    # Resolve path relative to theme directory's parent
+                    # (theme.yaml uses paths relative to configs_dir, not theme dir itself)
+                    full_path = Path(theme.path).parent / import_path
+
+                    if full_path.exists():
+                        imports_node.add(f"✓ [green]{placeholder}[/green] → {import_path}")
+                    else:
+                        imports_node.add(f"✗ [red]{placeholder}[/red] → {import_path} [red](missing)[/red]")
+
+                console.print(theme_tree)
+                console.print()
+
+            except Exception as e:
+                console.print(f"[red]✗ Error loading theme '{theme_name}':[/red] {e}\n")
+
+        # Summary
+        total = len(available_themes)
+        explicit_count = len([n for n in available_themes.keys() if n in (config.themes.explicit or {})])
+        auto_count = total - explicit_count
+
+        console.print(f"[bold]Summary:[/bold] {total} theme(s) found")
+        if explicit_count:
+            console.print(f"  • {explicit_count} explicit")
+        if auto_count:
+            console.print(f"  • {auto_count} autodiscovered")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"[red]✗ Error listing themes:[/red] {e}")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(code=1)
+
+
 @app.command(name="init")
 def init_config(
     force: bool = typer.Option(

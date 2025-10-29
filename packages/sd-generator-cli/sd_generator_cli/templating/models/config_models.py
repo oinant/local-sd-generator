@@ -7,7 +7,10 @@ Each model corresponds to a specific YAML file type in the V2.0 system.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sd_generator_cli.templating.models.theme_models import ThemeConfigBlock
 
 
 @dataclass
@@ -37,8 +40,8 @@ class TemplateConfig:
     imports: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: str = ''
     output: Optional['OutputConfig'] = None
-    # Themes Extension
-    themes: Dict[str, str] = field(default_factory=dict)  # theme_name -> theme_file_path
+    # Themes Extension (presence of themes block indicates themable template)
+    themes: Optional['ThemeConfigBlock'] = None
     style_sensitive: bool = False
     style_sensitive_placeholders: List[str] = field(default_factory=list)
 
@@ -136,8 +139,8 @@ class PromptConfig:
     parameters: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: Optional[str] = None
     output: Optional[OutputConfig] = None
-    # Themes Extension
-    themes: Dict[str, str] = field(default_factory=dict)  # theme_name -> theme_file_path
+    # Themes Extension (inherited from template)
+    themes: Optional['ThemeConfigBlock'] = None
     # After inheritance resolution, template will contain the fully resolved template
     template: Optional[str] = None
 

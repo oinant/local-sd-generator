@@ -37,6 +37,23 @@ _Items braindumped but not yet processed by Agent PO_
     - Generator multi-themes aware (List[ResolvedContext])
     - Ou Pipeline multi-runs interne (agrégation)
   - Phase: Future (après Phase 2 mono-theme)
+- **[Feature]** CLI: `sdgen create-theme` - Initialiser un nouveau theme
+  - Syntaxe: `sdgen create-theme nom-du-theme -t /path/to/prompt`
+  - Analyse le template pour détecter les placeholders requis
+  - Crée la structure de dossier + theme.yaml + fichiers de variations vides
+  - Structure générée :
+    ```
+    nom-du-theme/
+    ├── theme.yaml  (avec imports mappés)
+    ├── nom-du-theme_placeholder1.yaml  (template vide)
+    ├── nom-du-theme_placeholder2.yaml  (template vide)
+    └── ...
+    ```
+  - Options possibles :
+    - `--from-template` : Copier depuis un theme existant
+    - `--scaffolding-only` : Créer seulement theme.yaml
+    - `--interactive` : Mode interactif avec questions
+  - Bénéfices : Facilite création de nouveaux themes, évite erreurs de nommage
 
 <!-- Add new items here during braindump sessions -->
 

@@ -77,7 +77,8 @@
       "Bash(gh issue view:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(gh issue list:*)"
     ],
     "deny": [],
     "ask": []

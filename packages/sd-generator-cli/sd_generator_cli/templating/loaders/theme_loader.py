@@ -28,6 +28,113 @@ class ThemeLoader:
         self.configs_dir = Path(configs_dir)
         self.themes_dir = self.configs_dir / "themes"
 
+    def discover_available_themes(
+        self,
+        template_source_file: Path,
+        themes_config: 'ThemeConfigBlock'
+    ) -> Dict[str, str]:
+        """
+        Discover all available themes for a template using ThemeConfigBlock.
+
+        Combines explicit themes and autodiscovered themes based on configuration.
+
+        Args:
+            template_source_file: Path to the template file (for relative path resolution)
+            themes_config: ThemeConfigBlock from template
+
+        Returns:
+            Dict mapping theme names to their theme.yaml file paths
+
+        Example:
+            >>> from sd_generator_cli.templating.models import ThemeConfigBlock
+            >>> themes_cfg = ThemeConfigBlock(
+            ...     enable_autodiscovery=True,
+            ...     search_paths=['./'],
+            ...     explicit={'custom': '../custom/theme.yaml'}
+            ... )
+            >>> loader.discover_available_themes(Path('template.yaml'), themes_cfg)
+            {'custom': '../custom/theme.yaml', 'pirates': './pirates/theme.yaml', 'cyberpunk': './cyberpunk/theme.yaml'}
+        """
+        available: Dict[str, str] = {}
+        template_dir = template_source_file.parent
+
+        # 1. Add explicit themes first (highest priority)
+        if themes_config.explicit:
+            for name, path in themes_config.explicit.items():
+                # Resolve relative paths
+                if not Path(path).is_absolute():
+                    resolved = (template_dir / path).resolve()
+                    available[name] = str(resolved)
+                else:
+                    available[name] = path
+
+        # 2. Add autodiscovered themes if enabled
+        if themes_config.enable_autodiscovery:
+            search_paths = themes_config.search_paths if themes_config.search_paths else ['.']
+
+            for search_path_str in search_paths:
+                # Resolve relative to template file
+                if not Path(search_path_str).is_absolute():
+                    search_path = (template_dir / search_path_str).resolve()
+                else:
+                    search_path = Path(search_path_str)
+
+                if not search_path.exists() or not search_path.is_dir():
+                    continue
+
+                # Scan for theme.yaml files
+                discovered = self._scan_directory_for_themes(search_path)
+
+                # Add discovered themes (explicit themes have priority)
+                for name, path in discovered.items():
+                    if name not in available:
+                        available[name] = path
+
+        return available
+
+    def _scan_directory_for_themes(self, directory: Path) -> Dict[str, str]:
+        """
+        Scan a directory for theme.yaml files.
+
+        Looks for immediate subdirectories containing theme.yaml.
+
+        Args:
+            directory: Directory to scan
+
+        Returns:
+            Dict mapping theme names to theme.yaml file paths
+
+        Example:
+            Directory structure:
+                ./
+                ├── pirates/
+                │   └── theme.yaml
+                ├── cyberpunk/
+                │   └── theme.yaml
+                └── rockstar/
+                    └── theme.yaml
+
+            Returns:
+                {'pirates': './pirates/theme.yaml', 'cyberpunk': './cyberpunk/theme.yaml', 'rockstar': './rockstar/theme.yaml'}
+        """
+        discovered: Dict[str, str] = {}
+
+        try:
+            for item in directory.iterdir():
+                if not item.is_dir():
+                    continue
+
+                theme_file = item / "theme.yaml"
+                if theme_file.exists():
+                    theme_name = item.name
+                    discovered[theme_name] = str(theme_file)
+
+        except (OSError, PermissionError):
+            # Silently skip directories we can't read
+            pass
+
+        return discovered
+
     def discover_themes(self) -> List[ThemeConfig]:
         """
         Discover all available themes in themes/ directory.

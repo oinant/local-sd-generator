@@ -329,6 +329,17 @@ class InheritanceResolver:
                 # Child has no negative_prompt → inherit from parent
                 merged.negative_prompt = parent_neg
 
+        # 6. themes: INHERIT (child overrides if present, otherwise use parent)
+        # Only TemplateConfig and PromptConfig have themes
+        if isinstance(child, (TemplateConfig, PromptConfig)) and isinstance(parent, (TemplateConfig, PromptConfig)):
+            assert isinstance(merged, (TemplateConfig, PromptConfig))  # Type narrow for mypy
+            if not merged.themes and hasattr(parent, 'themes') and parent.themes:
+                # Child has no themes → inherit from parent
+                merged.themes = parent.themes
+                logger.debug(
+                    f"Inherited themes configuration from {parent.source_file.name}"
+                )
+
         return merged
 
     def clear_cache(self) -> None:

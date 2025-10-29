@@ -18,6 +18,7 @@ from ..models.config_models import (
     OutputConfig,
     AnnotationsConfig
 )
+from ..models.theme_models import ThemeConfigBlock
 import yaml
 
 
@@ -79,6 +80,9 @@ class ConfigParser:
         # Parse output configuration
         output_config = self._parse_output_config(data.get('output'))
 
+        # Parse themes configuration (presence indicates themable template)
+        themes_config = self._parse_themes_config(data.get('themes'))
+
         return TemplateConfig(
             version=data.get('version', '1.0.0'),  # Default to 1.0.0 for backward compat
             name=data['name'],
@@ -90,7 +94,7 @@ class ConfigParser:
             negative_prompt=data.get('negative_prompt') or '',
             output=output_config,
             # Themable Templates Extension
-            themable=data.get('themable', False),
+            themes=themes_config,
             style_sensitive=data.get('style_sensitive', False),
             style_sensitive_placeholders=data.get('style_sensitive_placeholders', [])
         )
@@ -216,6 +220,9 @@ class ConfigParser:
         # Parse output configuration
         output_config = self._parse_output_config(data.get('output'))
 
+        # Parse themes configuration (inherited from template if not specified)
+        themes_config = self._parse_themes_config(data.get('themes'))
+
         return PromptConfig(
             version=data.get('version', '1.0.0'),
             name=data['name'],
@@ -226,7 +233,8 @@ class ConfigParser:
             imports=data.get('imports') or {},
             parameters=parsed_parameters,  # Use parsed parameters
             negative_prompt=data.get('negative_prompt'),
-            output=output_config
+            output=output_config,
+            themes=themes_config
         )
 
     def parse_variations(self, data: Dict[str, Any]) -> Dict[str, str]:
@@ -726,4 +734,46 @@ class ConfigParser:
             session_name=session_name,
             filename_keys=filename_keys,
             annotations=annotations_config
+        )
+
+    def _parse_themes_config(self, themes_data: Optional[Dict[str, Any]]) -> Optional[ThemeConfigBlock]:
+        """
+        Parse themes configuration block.
+
+        The presence of a themes block indicates a themable template.
+        Supports three modes:
+        1. Explicit only: themes.explicit dict
+        2. Autodiscovery only: themes.enable_autodiscovery: true
+        3. Hybrid: both explicit and autodiscovery
+
+        Args:
+            themes_data: Raw themes dict from YAML (can be None)
+
+        Returns:
+            ThemeConfigBlock object or None if no themes_data
+
+        Examples:
+            # Explicit only
+            themes:
+              explicit:
+                pirates: ./pirates/theme.yaml
+
+            # Autodiscovery only
+            themes:
+              enable_autodiscovery: true
+
+            # Hybrid
+            themes:
+              enable_autodiscovery: true
+              search_paths: [./themes/, ../shared/]
+              explicit:
+                custom: ../custom/theme.yaml
+        """
+        if not themes_data:
+            return None
+
+        return ThemeConfigBlock(
+            enable_autodiscovery=themes_data.get('enable_autodiscovery', False),
+            search_paths=themes_data.get('search_paths', []),
+            explicit=themes_data.get('explicit', {})
         )

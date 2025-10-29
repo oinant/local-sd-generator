@@ -178,43 +178,57 @@ class V2Pipeline:
             if not self.theme_resolver or not self.theme_loader:
                 raise ValueError("Theme support requires configs_dir to be set")
 
-            # Load theme (either from theme_file or from config.themes dict)
+            # Load theme (either from theme_file or by discovering from themes block)
             if theme_file:
                 # Direct theme file path provided
                 theme = self.theme_loader.load_theme_from_file(str(theme_file))
             elif theme_name:
-                # Theme name provided - must be in config.themes dict
-                if not hasattr(resolved_config, 'themes') or not resolved_config.themes:
+                # Theme name provided - discover available themes from template
+                if not resolved_config.themes:
                     raise ValueError(
                         f"❌ No 'themes:' block found in {resolved_config.name}\n"
                         f"💡 Use --theme-file to specify theme path directly, or add a themes: block to your template"
                     )
-                if theme_name not in resolved_config.themes:
-                    available = ', '.join(resolved_config.themes.keys()) if resolved_config.themes else '(none)'
+
+                # Discover all available themes (explicit + autodiscovered)
+                available_themes = self.theme_loader.discover_available_themes(
+                    resolved_config.source_file,
+                    resolved_config.themes
+                )
+
+                if theme_name not in available_themes:
+                    available_str = ', '.join(sorted(available_themes.keys())) if available_themes else '(none)'
                     raise ValueError(
-                        f"❌ Theme '{theme_name}' not found in template\n"
-                        f"💡 Available themes: {available}\n"
+                        f"❌ Theme '{theme_name}' not found\n"
+                        f"💡 Available themes: {available_str}\n"
                         f"   Or use --theme-file to load a custom theme"
                     )
 
-                # Load theme from path in themes dict
-                theme_path = resolved_config.themes[theme_name]
-                # Resolve relative to config file's directory
-                if not Path(theme_path).is_absolute():
-                    theme_path = str(resolved_config.source_file.parent / theme_path)
+                # Load theme from discovered path
+                theme_path = available_themes[theme_name]
                 theme = self.theme_loader.load_theme_from_file(theme_path)
 
-            # Apply theme - COMPLETE substitution (not merge)
-            # Theme imports replace template imports entirely
+            # Apply theme - COMPLETE substitution for thematic variations
+            # Theme imports replace template's thematic imports
+            # But preserve prompt's explicit imports (final overrides)
             from copy import deepcopy
             resolved_config = deepcopy(resolved_config)
 
-            # Substitution complète
+            # Save prompt's explicit imports (from the original config before template merge)
+            prompt_explicit_imports = config.imports.copy() if hasattr(config, 'imports') else {}
+
+            # Start with theme imports (complete substitution of template)
             resolved_config.imports = theme.imports.copy()
+
+            # Re-apply prompt's explicit imports as final overrides
+            # This allows prompts to override theme-provided variations
+            resolved_config.imports.update(prompt_explicit_imports)
 
             # Track sources for manifest
             for placeholder in theme.imports.keys():
                 import_sources[placeholder] = f"theme:{theme.name}"
+            for placeholder in prompt_explicit_imports.keys():
+                import_sources[placeholder] = f"prompt:{config.source_file.name}"
 
         # Phase 4: Resolve imports
         # Use the config's source file directory as base path for import resolution

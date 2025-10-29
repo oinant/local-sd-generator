@@ -11,6 +11,42 @@ from typing import Dict, Optional, List
 
 
 @dataclass
+class ThemeConfigBlock:
+    """
+    Configuration block for theme discovery and loading in templates.
+
+    This block appears in template YAML files to control theme behavior.
+    The presence of this block indicates a template is themable.
+
+    Modes:
+    ------
+    1. Explicit only (default):
+        themes:
+          explicit:
+            pirates: ./pirates/theme.yaml
+
+    2. Autodiscovery only:
+        themes:
+          enable_autodiscovery: true
+
+    3. Hybrid (explicit + autodiscovery):
+        themes:
+          enable_autodiscovery: true
+          search_paths: [./themes/, ../shared/]
+          explicit:
+            custom: ../custom/theme.yaml
+
+    Attributes:
+        enable_autodiscovery: Enable automatic theme discovery by scanning directories
+        search_paths: Directories to scan for theme.yaml files (relative to template)
+        explicit: Manually declared theme name → theme.yaml path mappings
+    """
+    enable_autodiscovery: bool = False
+    search_paths: List[str] = field(default_factory=list)
+    explicit: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
 class ThemeConfig:
     """
     Configuration for a theme.
