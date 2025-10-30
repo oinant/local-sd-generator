@@ -6,7 +6,7 @@ and are meant to be inherited by prompt files via the implements field.
 """
 
 from pydantic import Field, validator
-from typing import Optional, Dict, Any, Literal
+from typing import Optional, Dict, Any, Literal, List
 
 from .base import ImplementableSchema
 
@@ -47,6 +47,22 @@ class TemplateFileSchema(ImplementableSchema):
     defaults: Optional[Dict[str, str]] = Field(
         None,
         description="Default values for placeholders"
+    )
+
+    # Theme support (themable templates)
+    themes: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Theme autodiscovery configuration"
+    )
+
+    style_sensitive_placeholders: Optional[List[str]] = Field(
+        None,
+        description="List of placeholders that vary by style (safe/sexy/xxx)"
+    )
+
+    prompts: Optional[Dict[str, str]] = Field(
+        None,
+        description="Default prompt mappings"
     )
 
     class Config:
