@@ -1055,87 +1055,88 @@ def init_config(
 
 
 @app.command(name="validate")
-def validate_template(
-    template: Path = typer.Argument(
+def validate_yaml(
+    path: Path = typer.Argument(
         ...,
-        help="Path to template file to validate",
+        help="Path to YAML file or directory to validate",
         exists=True,
+    ),
+    recursive: bool = typer.Option(
+        True,
+        "--recursive/--no-recursive",
+        "-r/-R",
+        help="Recursively scan subdirectories (default: True)",
+    ),
+    output_format: str = typer.Option(
+        "text",
+        "--format", "-f",
+        help="Output format: text, markdown, or json",
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        "--output", "-o",
+        help="Save report to file (default: print to console)",
     ),
 ):
     """
-    Validate a YAML template file using V2.0 Template System.
+    Validate YAML files against Pydantic schemas.
 
-    Checks syntax, required fields, and import files.
+    Supports:
+    - Single file validation
+    - Recursive directory scanning
+    - Text and JSON report formats
+    - Schema validation for all file types (template, prompt, chunk, variations, theme_config)
 
     Examples:
-        python3 template_cli_typer.py validate portrait.yaml
-        python3 template_cli_typer.py validate path/to/config.prompt.yaml
+        sdgen validate file.yaml                    # Single file
+        sdgen validate ./prompts                    # Directory (recursive)
+        sdgen validate ./prompts --no-recursive     # Directory (non-recursive)
+        sdgen validate ./prompts -f json -o report.json
+        sdgen validate ./prompts -f markdown -o report.md  # Markdown for glow
     """
     try:
-        console.print(f"[cyan]Validating template (V2.0):[/cyan] {template}\n")
+        from sd_generator_cli.templating.validators.schema_validator import SchemaValidator
 
-        from sd_generator_cli.templating.orchestrator import V2Pipeline
+        validator = SchemaValidator()
 
-        pipeline = V2Pipeline()
-        config = pipeline.load(str(template))
-
-        console.print(f"[green]✓ Template is valid (V2.0):[/green] {config.name}\n")
-
-        # Show V2 summary
-        table = Table(title="Template Summary (V2.0)", show_header=False)
-        table.add_column("Property", style="cyan")
-        table.add_column("Value", style="green")
-
-        table.add_row("Name", config.name)
-        if hasattr(config, 'type'):
-            table.add_row("Type", config.type)
-        table.add_row("Version", config.version)
-
-        if config.implements:
-            table.add_row("Implements", config.implements)
-
-        if config.template:
-            template_preview = config.template[:60] + "..." if len(config.template) > 60 else config.template
-            table.add_row("Template", template_preview)
-
-        if hasattr(config, 'imports') and config.imports:
-            table.add_row("Imports", str(len(config.imports)))
-
-        if hasattr(config, 'chunks') and config.chunks:
-            table.add_row("Chunks", str(len(config.chunks)))
-
-        if hasattr(config, 'parameters') and config.parameters:
-            param_keys = ', '.join(list(config.parameters.keys())[:5])
-            if len(config.parameters) > 5:
-                param_keys += f", ... ({len(config.parameters)} total)"
-            table.add_row("Parameters", param_keys)
-
-        console.print(table)
-
-        # Validate import files exist
-        console.print(f"\n[cyan]Checking import files:[/cyan]")
-        all_files_exist = True
-
-        if hasattr(config, 'imports') and config.imports:
-            base_path = template.parent
-            for key, file_path in config.imports.items():
-                import_path = base_path / file_path
-                if import_path.exists():
-                    console.print(f"  [green]✓[/green] {key}: {file_path}")
-                else:
-                    console.print(f"  [red]✗[/red] {key}: {file_path} [yellow](not found)[/yellow]")
-                    all_files_exist = False
+        # Single file or directory?
+        if path.is_file():
+            console.print(f"[cyan]Validating file:[/cyan] {path}\n")
+            results = [validator.validate_file(path)]
+            base_path = path.parent
         else:
-            console.print("  [dim]No import files defined[/dim]")
+            console.print(f"[cyan]Scanning directory:[/cyan] {path}")
+            console.print(f"[cyan]Recursive:[/cyan] {recursive}\n")
+            results = validator.validate_directory(path, recursive=recursive)
+            base_path = path
 
-        if all_files_exist:
-            console.print("\n[green]✓ All validation checks passed[/green]")
+        # Generate report
+        if output_format == "json":
+            import json
+            report = validator.generate_json_report(results, base_path)
+            report_str = json.dumps(report, indent=2, ensure_ascii=False)
+        elif output_format == "markdown":
+            report_str = validator.generate_text_report(results, base_path, markdown=True)
         else:
-            console.print("\n[yellow]⚠ Some import files are missing[/yellow]")
+            report_str = validator.generate_text_report(results, base_path, markdown=False)
+
+        # Output report
+        if output_file:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(report_str)
+            console.print(f"[green]✓ Report saved to:[/green] {output_file}")
+        else:
+            console.print(report_str)
+
+        # Exit code
+        invalid_count = sum(1 for r in results if not r.is_valid)
+        if invalid_count > 0:
             raise typer.Exit(code=1)
 
     except Exception as e:
-        console.print(f"\n[red]✗ Template validation failed:[/red] {e}")
+        console.print(f"\n[red]✗ Validation failed:[/red] {e}")
+        import traceback
+        console.print(f"[dim]{traceback.format_exc()}[/dim]")
         raise typer.Exit(code=1)
 
 

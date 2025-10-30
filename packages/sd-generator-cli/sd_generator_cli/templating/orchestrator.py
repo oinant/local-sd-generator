@@ -49,17 +49,20 @@ class V2Pipeline:
         prompts = pipeline.run('path/to/prompt.yaml')
     """
 
-    def __init__(self, configs_dir: Optional[str] = None):
+    def __init__(self, configs_dir: Optional[str] = None, strict_validation: bool = False):
         """
         Initialize the V2 pipeline.
 
         Args:
             configs_dir: Base directory for config files (optional)
+            strict_validation: If True, schema validation errors raise exceptions.
+                             If False (default), validation errors are warnings only.
         """
         self.configs_dir = Path(configs_dir) if configs_dir else None
+        self.strict_validation = strict_validation
 
         # Initialize all components
-        self.loader = YamlLoader()
+        self.loader = YamlLoader(strict_validation=strict_validation)
         self.parser = ConfigParser()
         self.validator = ConfigValidator(loader=self.loader)
         self.inheritance_resolver = InheritanceResolver(
