@@ -103,6 +103,8 @@ defaults:
 
 **Purpose:** Key-value mappings for placeholder substitution.
 
+### Simple Variations (String Values)
+
 **Structure:**
 ```yaml
 type: variations
@@ -121,10 +123,41 @@ long_waves: long wavy hair
 pixie_cut: pixie cut haircut
 ```
 
+### Multi-Part Variations (Dict Values) - **NEW in v2.1**
+
+**Purpose:** Variations with multiple named parts for advanced positioning control.
+
+**Primary use case:** LoRA tags that must appear at specific positions.
+
+**Structure:**
+```yaml
+type: variations
+version: "1.0"
+name: HairStyles
+variations:
+  short_bob:
+    main: short bob cut, brown hair
+    lora: <lora:hair_short_bob:0.7>
+  long_waves:
+    main: long wavy hair, blonde
+    lora: <lora:hair_long_waves:0.8>
+```
+
 **Key rules:**
 - Keys are variation IDs (used in selectors)
-- Values are substituted into placeholders
+- Simple variations: values are strings
+- Multi-part variations: values are dicts with named parts
+  - Common parts: `main`, `lora`, `negative`
+  - Part names are arbitrary (you define them)
+- Can mix simple and multi-part in same file
+- All part values MUST be strings
 - Can be referenced in `imports:`
+
+**Usage:**
+```yaml
+# In prompt.yaml
+prompt: "{Hair:main}, detailed portrait, {Hair:lora}"
+```
 
 ---
 
@@ -173,7 +206,7 @@ variations:
 
 ### Basic placeholder:
 ```
-{PlaceholderName}
+{PlaceholderName}                # Simple variation OR auto-resolve to "main" part
 ```
 
 ### With selectors:
@@ -184,10 +217,35 @@ variations:
 {PlaceholderName[keys:foo,bar]}  # Specific keys
 ```
 
-### Important selector rule:
-⚠️ **Selectors only apply to COMPLETE placeholders, NOT sub-placeholders**
-- ✅ Valid: `{Hair[random:3]}`
-- ❌ Invalid: `{Hair[random:3]:lora}`
+### Sub-placeholders (Multi-Part Variations) - **NEW in v2.1**:
+```
+{PlaceholderName:part}           # Access specific part of multi-part variation
+{Hair:main}                      # Main prompt text
+{Hair:lora}                      # LoRA tag
+{Hair:negative}                  # Negative prompt addition
+```
+
+### Auto-resolve behavior:
+- `{Hair}` on multi-part variation → uses "main" part (or first alphabetically if no "main")
+- `{Hair}` on simple variation → uses the string value directly
+
+### Important rules:
+
+⚠️ **Selectors and sub-placeholders are MUTUALLY EXCLUSIVE**
+- ✅ Valid: `{Hair[random:3]}`           (selector on complete placeholder)
+- ✅ Valid: `{Hair:lora}`                 (sub-placeholder without selector)
+- ❌ **INVALID:** `{Hair[random:3]:lora}` (selector + sub-placeholder = PARSE ERROR)
+
+**Why this restriction?**
+Selectors operate on the list of variations, while sub-placeholders operate on a specific variation's parts. Combining them would create ambiguous semantics.
+
+**Correct usage for selective multi-part:**
+```yaml
+# If you need to select AND access parts, use separate placeholders:
+prompt: "{Hair:main}, {Hair:lora}"  # Both use same selected variation
+imports:
+  Hair: hair.yaml  # Will be resolved together in generation
+```
 
 ---
 
@@ -232,6 +290,44 @@ generation:
   seed: 42
   max_images: 10
 ```
+
+### Multi-Part Variations with LoRA Positioning - **NEW v2.1**:
+```yaml
+# hair.yaml (multi-part variation file)
+short_bob:
+  main: short bob cut, brown hair
+  lora: <lora:hair_short_bob:0.7>
+  negative: long hair, wavy hair
+
+long_waves:
+  main: long wavy hair, blonde
+  lora: <lora:hair_long_waves:0.8>
+  negative: short hair, straight hair
+
+# character.prompt.yaml
+type: prompt
+version: "2.0"
+name: character
+implements: base.template.yaml
+prompt: "woman, {Hair:main}, detailed portrait"
+negative_prompt: "low quality, {Hair:negative}"
+imports:
+  Hair: hair.yaml
+parameters:
+  # LoRA tags go at END of positive prompt (SD WebUI convention)
+  # Use chunks or manual concatenation
+  # NOTE: Phase 2 will add {loras} placeholder for automatic positioning
+generation:
+  mode: combinatorial
+  seed_mode: fixed
+  seed: 42
+  max_images: 10
+```
+
+**Use Cases:**
+- LoRA tags positioned at prompt end (SD WebUI convention)
+- Negative prompt additions tied to specific variations
+- Multiple positioning requirements (future: {loras}, {negatives} placeholders)
 
 ### Themable Prompt:
 ```yaml

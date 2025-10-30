@@ -47,9 +47,14 @@ class TemplateResolver:
         r'@([\w.]+)'
     )
 
-    # Match {PlaceholderName[selectors]} or {PlaceholderName}
+    # Match {PlaceholderName[selectors]} or {PlaceholderName:part} or {PlaceholderName}
+    # Captures: (name, selector, part)
+    # - {Hair} → ("Hair", None, None)
+    # - {Hair[random:3]} → ("Hair", "random:3", None)
+    # - {Hair:lora} → ("Hair", None, "lora")
+    # - {Hair[random:3]:lora} → ("Hair", "random:3", "lora") - INVALID (caught by validation)
     PLACEHOLDER_PATTERN = re.compile(
-        r'\{(\w+)(?:\[([^\]]+)\])?\}'
+        r'\{(\w+)(?:\[([^\]]+)\])?(?::(\w+))?\}'
     )
 
     def __init__(self, loader=None, parser=None, import_resolver=None):
@@ -244,9 +249,13 @@ class TemplateResolver:
         context: Dict[str, Any]
     ) -> str:
         """
-        Resolve placeholders with optional selectors.
+        Resolve placeholders with optional selectors or sub-placeholder parts.
 
-        Syntax: {PlaceholderName[selectors]} or {PlaceholderName}
+        Syntax:
+        - {PlaceholderName} - simple placeholder
+        - {PlaceholderName[selectors]} - placeholder with selector
+        - {PlaceholderName:part} - sub-placeholder (multi-part variation)
+        - {PlaceholderName[selector]:part} - INVALID (raises ValueError)
 
         Phase 2 behavior (called by generator for each variation):
         - Use context['chunks'] (variation_state) if available
@@ -258,10 +267,25 @@ class TemplateResolver:
 
         Returns:
             Template with placeholders resolved
+
+        Raises:
+            ValueError: If selector and sub-placeholder are combined (invalid syntax)
         """
         def replace_placeholder(match):
             name = match.group(1)
             selector_str = match.group(2)  # May be None
+            part_name = match.group(3)  # May be None (new for multi-part variations)
+
+            # VALIDATION: Reject selector + sub-placeholder combination
+            if selector_str and part_name:
+                raise ValueError(
+                    f"Invalid placeholder syntax: {{{name}[{selector_str}]:{part_name}}}. "
+                    f"Selectors cannot be combined with sub-placeholders. "
+                    f"Use either:\n"
+                    f"  ✓ {{{name}[{selector_str}]}} (selector on complete placeholder)\n"
+                    f"  ✓ {{{name}:{part_name}}} (sub-placeholder without selector)\n"
+                    f"  ✗ {{{name}[{selector_str}]:{part_name}}} (invalid combination)"
+                )
 
             # Check if we have a value already resolved in chunks (from generator)
             # This happens when generator has already picked specific values
@@ -269,7 +293,31 @@ class TemplateResolver:
             chunks = context.get('chunks', {})
             if name in chunks:
                 # Value already resolved by generator - use it directly
-                return str(chunks[name])
+                resolved_value = chunks[name]
+
+                # Handle sub-placeholder: {Placeholder:part}
+                if part_name:
+                    if isinstance(resolved_value, dict):
+                        # Multi-part variation - extract specific part
+                        if part_name in resolved_value:
+                            return str(resolved_value[part_name])
+                        else:
+                            # Part not found - treat as missing value
+                            return ""
+                    else:
+                        # Simple variation - cannot access parts
+                        raise ValueError(
+                            f"Cannot access part '{part_name}' of simple variation '{name}'. "
+                            f"The variation '{name}' is not a multi-part variation. "
+                            f"Use {{{name}}} instead of {{{name}:{part_name}}}."
+                        )
+
+                # No sub-placeholder specified - auto-resolve to default part
+                if isinstance(resolved_value, dict):
+                    # Multi-part variation - use default part ("main" or first)
+                    return self._get_default_part(resolved_value)
+
+                return str(resolved_value)
 
             # When a selector is present, use imports to apply selection
             # This allows chunk param overrides like {HairCut[#10,12]} to work
@@ -282,22 +330,83 @@ class TemplateResolver:
                         # It's a variations dict - apply selector
                         selector = self._parse_selectors(selector_str)
                         selected_values = self._apply_selector(import_data, selector, context)
-                        return selected_values[0] if selected_values else ""
+                        if selected_values:
+                            first_selected = selected_values[0]
+                            # Check if multi-part (dict value) - use default part
+                            if isinstance(first_selected, dict):
+                                return self._get_default_part(first_selected)
+                            return first_selected
+                        return ""
 
             # No selector OR not found in imports - use normal priority
             value = self._get_placeholder_value(name, context)
 
             # If value is dict (import reference), need to resolve to a specific value
             if isinstance(value, dict):
-                if selector_str:
-                    selector = self._parse_selectors(selector_str)
-                    selected_values = self._apply_selector(value, selector, context)
-                    return selected_values[0] if selected_values else ""
+                # Check if this is a multi-part variations dict
+                # Multi-part: first value is a dict {part: string}
+                # Simple: first value is a string
+                first_value = next(iter(value.values()), None) if value else None
+                is_multipart = isinstance(first_value, dict)
+
+                if part_name:
+                    # Sub-placeholder requested: {Name:part}
+                    if is_multipart:
+                        # Multi-part variation - extract part from first variation
+                        if first_value and part_name in first_value:
+                            return str(first_value[part_name])
+                        else:
+                            # Part not found - treat as missing
+                            return ""
+                    else:
+                        # Simple variation - cannot access parts
+                        raise ValueError(
+                            f"Cannot access part '{part_name}' of simple variation '{name}'. "
+                            f"The variation '{name}' is not a multi-part variation. "
+                            f"Use {{{name}}} instead of {{{name}:{part_name}}}."
+                        )
+                elif selector_str:
+                    # Selector without sub-placeholder
+                    if is_multipart:
+                        # Selector on multi-part: apply selector, then use default part
+                        selector = self._parse_selectors(selector_str)
+                        selected_values = self._apply_selector(value, selector, context)
+                        # selected_values contains dicts - use first variation's default part
+                        if selected_values:
+                            first_var = selected_values[0]
+                            if isinstance(first_var, dict):
+                                # Multi-part - auto-resolve to default part ("main" or first)
+                                return self._get_default_part(first_var)
+                            return str(first_var)
+                        return ""
+                    else:
+                        # Simple variation - apply selector normally
+                        selector = self._parse_selectors(selector_str)
+                        selected_values = self._apply_selector(value, selector, context)
+                        return selected_values[0] if selected_values else ""
                 else:
-                    # No selector - return first value
-                    return list(value.values())[0] if value else ""
+                    # No selector, no sub-placeholder
+                    if is_multipart:
+                        # Multi-part: auto-resolve to default part ("main" or first)
+                        return self._get_default_part(first_value) if first_value else ""
+                    else:
+                        # Simple: return first value
+                        return first_value if first_value else ""
 
             # Value is a string (from chunks/defaults or direct value) - return as-is
+            if part_name:
+                # Trying to access part of simple value
+                if value is None:
+                    # Missing placeholder - return empty string
+                    return ""
+                else:
+                    # Non-None simple value - cannot access parts
+                    raise ValueError(
+                        f"Cannot access part '{part_name}' of simple variation '{name}'. "
+                        f"The variation '{name}' is not a multi-part variation. "
+                        f"Use {{{name}}} instead of {{{name}:{part_name}}}."
+                    )
+
             return str(value) if value is not None else ""
 
         return self.PLACEHOLDER_PATTERN.sub(replace_placeholder, template)
@@ -628,6 +737,37 @@ class TemplateResolver:
 
         # Not found - return None (will be replaced with empty string)
         return None
+
+    def _get_default_part(self, multipart_value: Dict[str, str]) -> str:
+        """
+        Get the default part from a multi-part variation.
+
+        Resolution order:
+        1. "main" part (if exists)
+        2. First alphabetically sorted part
+
+        Args:
+            multipart_value: Dict of {part_name: part_value}
+
+        Returns:
+            The default part value
+
+        Examples:
+            >>> _get_default_part({"main": "text", "lora": "tag"})
+            "text"
+            >>> _get_default_part({"lora": "tag", "negative": "avoid"})
+            "tag"  # First alphabetically (lora < negative)
+        """
+        if not multipart_value:
+            return ""
+
+        # Priority 1: "main" part
+        if "main" in multipart_value:
+            return str(multipart_value["main"])
+
+        # Priority 2: First part (alphabetically sorted for consistency)
+        sorted_parts = sorted(multipart_value.keys())
+        return str(multipart_value[sorted_parts[0]])
 
     def _parse_selectors(self, selector_str: str) -> Selector:
         """

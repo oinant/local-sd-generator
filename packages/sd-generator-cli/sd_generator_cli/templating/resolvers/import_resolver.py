@@ -80,7 +80,12 @@ class ImportResolver:
                     style=style if is_style_sensitive else None
                 )
                 resolved[import_name] = variations
-                metadata[import_name] = {"source_count": 1}
+                # Analyze variations for metadata
+                var_metadata = self._analyze_variations(variations)
+                metadata[import_name] = {
+                    "source_count": 1,
+                    **var_metadata  # Add is_multipart, parts if applicable
+                }
 
             elif isinstance(import_value, list):
                 # Multi-source merge (files + inline strings)
@@ -91,7 +96,12 @@ class ImportResolver:
                     style=style if is_style_sensitive else None
                 )
                 resolved[import_name] = merged
-                metadata[import_name] = {"source_count": source_count}
+                # Analyze merged variations for metadata
+                var_metadata = self._analyze_variations(merged)
+                metadata[import_name] = {
+                    "source_count": source_count,
+                    **var_metadata  # Add is_multipart, parts if applicable
+                }
 
             elif isinstance(import_value, dict):
                 # Nested imports (e.g., chunks: {positive: ..., negative: ...})
@@ -124,13 +134,13 @@ class ImportResolver:
         path: str,
         base_path: Path,
         style: str = None
-    ) -> Union[Dict[str, str], Dict[str, Any]]:
+    ) -> Union[Dict[str, str], Dict[str, Dict[str, str]], Dict[str, Any]]:
         """
         Load variations from a single file.
 
         If file is a .chunk.yaml, returns full chunk config dict.
         If file is a .adetailer.yaml, returns detector config.
-        Otherwise, returns variations dict.
+        Otherwise, returns variations dict (simple or multi-part).
 
         Args:
             path: Relative path to variation file
@@ -138,9 +148,10 @@ class ImportResolver:
             style: Optional style for style-sensitive files (e.g., "sports", "casual")
 
         Returns:
-            Dict of variations {key: value} OR
-            Dict of chunk config {template: str, imports: dict, defaults: dict, base_path: Path} OR
-            ADetailerDetector for .adetailer.yaml files
+            - Simple variations: Dict[str, str] - {key: value}
+            - Multi-part variations: Dict[str, Dict[str, str]] - {key: {part: value}}
+            - Chunk config: {template: str, imports: dict, defaults: dict, base_path: Path}
+            - ADetailerDetector for .adetailer.yaml files
 
         Raises:
             FileNotFoundError: If file not found
@@ -352,3 +363,56 @@ class ImportResolver:
         if not source.endswith('.yaml'):
             return True
         return False
+
+    def _analyze_variations(self, variations: Any) -> Dict[str, Any]:
+        """
+        Analyze variations to extract metadata.
+
+        Detects whether variations use multi-part format (dict values) vs
+        simple format (string values) and extracts part names.
+
+        Args:
+            variations: Loaded variations (can be dict, ADetailerDetector, chunk config, etc.)
+
+        Returns:
+            Metadata dict with:
+            - is_multipart: bool (True if any variation has dict value)
+            - parts: List[str] (unique part names if multipart, empty otherwise)
+
+        Examples:
+            Simple variations:
+                {"key1": "value1", "key2": "value2"}
+                → {"is_multipart": False, "parts": []}
+
+            Multi-part variations:
+                {"hair1": {"main": "...", "lora": "..."}, "hair2": {"main": "...", "lora": "..."}}
+                → {"is_multipart": True, "parts": ["main", "lora"]}
+
+            Mixed (some simple, some multi-part):
+                {"hair1": "simple", "hair2": {"main": "...", "lora": "..."}}
+                → {"is_multipart": True, "parts": ["main", "lora"]}
+        """
+        # Handle special types (chunks, adetailer, controlnet)
+        if not isinstance(variations, dict):
+            return {"is_multipart": False, "parts": []}
+
+        # Check if this is a chunk config dict (has 'template' key)
+        if 'template' in variations and 'imports' in variations:
+            return {"is_multipart": False, "parts": []}
+
+        # Analyze variation values
+        has_multipart = False
+        part_names = set()
+
+        for key, value in variations.items():
+            if isinstance(value, dict) and not key in ['template', 'imports', 'defaults', 'base_path']:
+                # This is a multi-part variation
+                has_multipart = True
+                # Collect part names
+                for part_name in value.keys():
+                    part_names.add(part_name)
+
+        return {
+            "is_multipart": has_multipart,
+            "parts": sorted(part_names) if has_multipart else []
+        }

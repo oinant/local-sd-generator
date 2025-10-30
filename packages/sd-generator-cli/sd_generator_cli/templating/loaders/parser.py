@@ -6,7 +6,7 @@ It handles parsing of templates, chunks, prompts, and variation files.
 """
 
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from ..models.config_models import (
     TemplateConfig,
     ChunkConfig,
@@ -237,11 +237,11 @@ class ConfigParser:
             themes=themes_config
         )
 
-    def parse_variations(self, data: Dict[str, Any]) -> Dict[str, str]:
+    def parse_variations(self, data: Dict[str, Any]) -> Dict[str, Union[str, Dict[str, str]]]:
         """
         Parse a variations file (.yaml).
 
-        V2.0 format supports two structures:
+        V2.0 format supports three structures:
         1. Structured (with metadata):
            {
                "type": "variations",
@@ -257,12 +257,25 @@ class ConfigParser:
                "BobCut": "bob cut, chin-length hair",
                "LongHair": "long flowing hair"
            }
+        3. Multi-part variations (dict values):
+           {
+               "short_bob": {
+                   "main": "short bob cut, brown hair",
+                   "lora": "<lora:hair_short_bob:0.7>"
+               },
+               "long_waves": {
+                   "main": "long wavy hair, blonde",
+                   "lora": "<lora:hair_long_waves:0.8>"
+               }
+           }
 
         Args:
             data: Raw YAML dictionary
 
         Returns:
-            Dictionary mapping keys to prompt strings
+            Dictionary mapping keys to prompt strings OR dicts of named parts
+            - Simple variations: {key: "value"}
+            - Multi-part variations: {key: {"part1": "value1", "part2": "value2"}}
 
         Raises:
             ValueError: If data is not a dictionary or variations key is missing
@@ -277,11 +290,50 @@ class ConfigParser:
                 raise ValueError(
                     f"'variations' field must be a dictionary, got {type(variations).__name__}"
                 )
-            return {str(key): str(value) for key, value in variations.items()}
+            return self._parse_variation_values(variations)
 
         # Flat format: entire dict is variations
-        # Ensure all values are strings
-        return {str(key): str(value) for key, value in data.items()}
+        return self._parse_variation_values(data)
+
+    def _parse_variation_values(self, variations: Dict[str, Any]) -> Dict[str, Union[str, Dict[str, str]]]:
+        """
+        Parse variation values, preserving dict structure for multi-part variations.
+
+        Args:
+            variations: Dict of variation key-value pairs
+
+        Returns:
+            Dict with values as strings (simple) or dicts (multi-part)
+
+        Raises:
+            ValueError: If variation value is invalid type or dict has non-string values
+        """
+        parsed = {}
+
+        for key, value in variations.items():
+            if isinstance(value, dict):
+                # Multi-part variation - validate all parts are strings
+                for part_name, part_value in value.items():
+                    if not isinstance(part_value, str):
+                        raise ValueError(
+                            f"Multi-part variation '{key}' has non-string value for part '{part_name}': "
+                            f"got {type(part_value).__name__}. All parts must be strings."
+                        )
+                # Store as dict of parts
+                parsed[str(key)] = {str(part): str(val) for part, val in value.items()}
+
+            elif isinstance(value, str):
+                # Simple variation - store as string
+                parsed[str(key)] = str(value)
+
+            else:
+                # Invalid type
+                raise ValueError(
+                    f"Variation '{key}' has invalid value type: {type(value).__name__}. "
+                    f"Values must be strings (simple variation) or dicts (multi-part variation)."
+                )
+
+        return parsed
 
     def parse_adetailer_file(self, data: Dict[str, Any], source_file: Path) -> ADetailerFileConfig:
         """
