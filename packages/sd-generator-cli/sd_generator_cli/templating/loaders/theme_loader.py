@@ -9,7 +9,7 @@ This module handles:
 """
 
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import yaml
 
 from sd_generator_cli.templating.models import ThemeConfig
@@ -262,6 +262,9 @@ class ThemeLoader:
 
         imports = data.get('imports', {})
 
+        # Validate [Remove] directives
+        self._validate_remove_directives(imports, theme_yaml)
+
         # Extract variation categories (base placeholder names)
         variations = self._extract_variations_from_imports(imports)
 
@@ -422,3 +425,39 @@ class ThemeLoader:
                 variants.append(rating)
 
         return sorted(variants)
+
+    def _validate_remove_directives(self, imports: Dict[str, Any], theme_file: Path) -> None:
+        """
+        Validate that [Remove] directives are properly formatted in theme imports.
+
+        The [Remove] directive must be a YAML list with exactly one element: "Remove" (case-sensitive).
+
+        Args:
+            imports: Dict of import mappings from theme.yaml
+            theme_file: Path to theme file (for error messages)
+
+        Raises:
+            ValueError: If [Remove] directive is improperly formatted
+
+        Valid examples:
+            - Outfit.xxx: [Remove]  # ✓ Valid
+            - Hair: some/file.yaml  # ✓ Valid (string)
+            - Chunks: {positive: ..., negative: ...}  # ✓ Valid (dict)
+
+        Invalid examples:
+            - Outfit: [remove]  # ✗ Wrong case
+            - Outfit: ["Remove", "extra"]  # ✗ Too many elements
+            - Outfit: []  # ✗ Empty list
+        """
+        for placeholder_name, import_value in imports.items():
+            if isinstance(import_value, list):
+                # Lists are only valid as [Remove] directive
+                if len(import_value) != 1 or import_value[0] != "Remove":
+                    raise ValueError(
+                        f"Invalid [Remove] directive in {theme_file} for placeholder '{placeholder_name}'. "
+                        f"Expected: [Remove] (exactly one element, case-sensitive). "
+                        f"Got: {import_value}"
+                    )
+            elif isinstance(import_value, dict):
+                # Nested imports (e.g., chunks) - validate recursively
+                self._validate_remove_directives(import_value, theme_file)

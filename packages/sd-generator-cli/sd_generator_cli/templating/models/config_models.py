@@ -162,6 +162,7 @@ class ResolvedContext:
         import_resolution: Metadata about how each import was resolved (theme source, override status, etc.)
         import_sources: Dict mapping placeholder names to the file that provided the variations
                        (e.g., {"HairCut": "themes/cyberpunk/cyberpunk_haircut.yaml"})
+        import_metadata: Dict mapping placeholder names to metadata (e.g., {"HairCut": {"source_count": 3}})
     """
     imports: Dict[str, Dict[str, str]]  # {import_name: {key: value}}
     chunks: Dict[str, ChunkConfig]      # {chunk_name: ChunkConfig}
@@ -171,6 +172,7 @@ class ResolvedContext:
     style: str = "default"
     import_resolution: Dict[str, 'ImportResolution'] = field(default_factory=dict)
     import_sources: Dict[str, str] = field(default_factory=dict)  # placeholder -> file path
+    import_metadata: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # placeholder -> metadata
 
 
 # ===== ADetailer Extension Support =====

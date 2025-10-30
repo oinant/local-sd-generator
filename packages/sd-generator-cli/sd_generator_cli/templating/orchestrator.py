@@ -218,7 +218,33 @@ class V2Pipeline:
             prompt_explicit_imports = config.imports.copy() if hasattr(config, 'imports') else {}
 
             # Start with theme imports (complete substitution of template)
-            resolved_config.imports = theme.imports.copy()
+            # Filter theme imports by style (handle PlaceholderName.style notation and [Remove] directive)
+            filtered_theme_imports = {}
+            for import_name, import_path in theme.imports.items():
+                # Check for [Remove] directive FIRST (before style filtering)
+                if self._is_remove_directive(import_path):
+                    # Skip this placeholder entirely (will be missing → resolves to "")
+                    continue
+
+                if '.' in import_name:
+                    # Style-specific import (e.g., "TeasingGestures.xxx")
+                    base_name, import_style = import_name.rsplit('.', 1)
+                    if import_style == style:
+                        # Check if style-specific [Remove] directive
+                        if self._is_remove_directive(import_path):
+                            # Remove for this style (also remove any default version)
+                            filtered_theme_imports.pop(base_name, None)
+                        else:
+                            # Use this style variant
+                            filtered_theme_imports[base_name] = import_path
+                    # Otherwise skip (wrong style)
+                else:
+                    # Regular import (no style suffix)
+                    # Only use if we don't already have a style-specific one
+                    if import_name not in filtered_theme_imports:
+                        filtered_theme_imports[import_name] = import_path
+
+            resolved_config.imports = filtered_theme_imports
 
             # Re-apply prompt's explicit imports as final overrides
             # This allows prompts to override theme-provided variations
@@ -233,9 +259,15 @@ class V2Pipeline:
         # Phase 4: Resolve imports
         # Use the config's source file directory as base path for import resolution
         base_path = config.source_file.parent
-        resolved_imports = self.import_resolver.resolve_imports(
+
+        # Get style_sensitive_placeholders from resolved config
+        style_sensitive_placeholders = getattr(resolved_config, 'style_sensitive_placeholders', [])
+
+        resolved_imports, import_metadata = self.import_resolver.resolve_imports(
             resolved_config,
-            base_path
+            base_path,
+            style=style,
+            style_sensitive_placeholders=style_sensitive_placeholders
         )
 
         # Merge parameters from inheritance chain
@@ -249,7 +281,8 @@ class V2Pipeline:
             # Themes metadata
             style=style,
             import_resolution=import_resolution_metadata,
-            import_sources=import_sources  # Track which file provides each placeholder
+            import_sources=import_sources,  # Track which file provides each placeholder
+            import_metadata=import_metadata  # Track source counts for multi-file imports
         )
 
         # Phase 1: Inject chunks structurally (preserving placeholders)
@@ -356,7 +389,7 @@ class V2Pipeline:
         config = self.load(config_path)
 
         # Resolve inheritance and imports (with theme support)
-        resolved_config, context = self.resolve(config, theme_name, style)
+        resolved_config, context = self.resolve(config, theme_name, None, style)
 
         # Generate prompts (use resolved_config with template field populated)
         prompts = self.generate(resolved_config, context)
@@ -385,6 +418,33 @@ class V2Pipeline:
                 merged.update(config.parameters)
 
         return merged
+
+    def _is_remove_directive(self, value: Any) -> bool:
+        """
+        Check if a theme import value is the [Remove] directive.
+
+        The [Remove] directive is a YAML list with single string "Remove" (case-sensitive).
+        Used to explicitly remove a placeholder for certain styles.
+
+        Args:
+            value: Import value from theme.yaml
+
+        Returns:
+            True if value is [Remove] directive, False otherwise
+
+        Examples:
+            >>> self._is_remove_directive(["Remove"])
+            True
+            >>> self._is_remove_directive("./file.yaml")
+            False
+            >>> self._is_remove_directive([])
+            False
+        """
+        return (
+            isinstance(value, list) and
+            len(value) == 1 and
+            value[0] == "Remove"
+        )
 
     def validate_template(self, template: str, context: ResolvedContext) -> bool:
         """
@@ -516,21 +576,25 @@ class V2Pipeline:
                 if isinstance(import_data, dict):
                     count = len(import_data)
 
-                    # Try to detect multi-source imports (this is approximate)
-                    # We check if the keys look like they have prefixes (source_key format)
-                    keys = list(import_data.keys())
-                    has_prefixes = any('_' in k for k in keys[:5])  # Sample first 5 keys
+                    # Get real source count from metadata (if available)
+                    if name in context.import_metadata:
+                        sources = context.import_metadata[name].get('source_count', 1)
+                    else:
+                        # Fallback: Try to detect multi-source imports (approximate heuristic)
+                        # We check if the keys look like they have prefixes (source_key format)
+                        keys = list(import_data.keys())
+                        has_prefixes = any('_' in k for k in keys[:5])  # Sample first 5 keys
 
-                    # Estimate number of sources (very rough heuristic)
-                    sources = 1
-                    if has_prefixes:
-                        # Count unique prefixes
-                        prefixes = set()
-                        for key in keys:
-                            if '_' in key:
-                                prefix = key.split('_')[0]
-                                prefixes.add(prefix)
-                        sources = len(prefixes) if prefixes else 1
+                        # Estimate number of sources (very rough heuristic)
+                        sources = 1
+                        if has_prefixes:
+                            # Count unique prefixes
+                            prefixes = set()
+                            for key in keys:
+                                if '_' in key:
+                                    prefix = key.split('_')[0]
+                                    prefixes.add(prefix)
+                            sources = len(prefixes) if prefixes else 1
 
                     statistics['placeholders'][name] = {
                         'count': count,

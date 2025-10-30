@@ -801,3 +801,50 @@ class TestVariationStatistics:
         assert 'Color' in stats['placeholders']
         assert 'NotDict' not in stats['placeholders']
         assert stats['total_placeholders'] == 1
+
+
+class TestRemoveDirective:
+    """Test suite for [Remove] directive functionality."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.pipeline = V2Pipeline()
+
+    def test_is_remove_directive_valid(self):
+        """Test that _is_remove_directive() correctly identifies valid [Remove] directive."""
+        # Valid [Remove] directive
+        assert self.pipeline._is_remove_directive(["Remove"]) is True
+
+    def test_is_remove_directive_wrong_case(self):
+        """Test that _is_remove_directive() rejects wrong case."""
+        # Wrong case - must be exact "Remove"
+        assert self.pipeline._is_remove_directive(["remove"]) is False
+        assert self.pipeline._is_remove_directive(["REMOVE"]) is False
+        assert self.pipeline._is_remove_directive(["ReMoVe"]) is False
+
+    def test_is_remove_directive_multiple_elements(self):
+        """Test that _is_remove_directive() rejects lists with multiple elements."""
+        assert self.pipeline._is_remove_directive(["Remove", "extra"]) is False
+        assert self.pipeline._is_remove_directive(["Remove", "Remove"]) is False
+
+    def test_is_remove_directive_empty_list(self):
+        """Test that _is_remove_directive() rejects empty lists."""
+        assert self.pipeline._is_remove_directive([]) is False
+
+    def test_is_remove_directive_non_list(self):
+        """Test that _is_remove_directive() rejects non-list values."""
+        # Strings (file paths) are not [Remove] directives
+        assert self.pipeline._is_remove_directive("path/to/file.yaml") is False
+        assert self.pipeline._is_remove_directive("Remove") is False  # String, not list
+
+        # Dicts are not [Remove] directives
+        assert self.pipeline._is_remove_directive({"key": "value"}) is False
+
+        # None is not a [Remove] directive
+        assert self.pipeline._is_remove_directive(None) is False
+
+    def test_is_remove_directive_list_with_non_string(self):
+        """Test that _is_remove_directive() rejects lists with non-string elements."""
+        assert self.pipeline._is_remove_directive([123]) is False
+        assert self.pipeline._is_remove_directive([None]) is False
+        assert self.pipeline._is_remove_directive([{"key": "value"}]) is False

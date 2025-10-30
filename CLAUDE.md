@@ -3,6 +3,7 @@
 ## A Savoir :
 - le MCP Playwright est installé, sers-t'en!
 - **📚 Documentation centralisée dans `/docs/`** - Single source of truth (pas de packages/docs/)
+- **📝 Syntaxe Template System V2** - **TOUJOURS consulter `.claude/syntax-reference.md`** avant de créer/modifier templates/prompts/chunks/themes/tests !
 - **🎯 Roadmap sur GitHub Issues** - Voir `/docs/roadmap/README.md` pour organisation
 - **🤖 Agent PO disponible** - Utiliser `/po` pour feature/bug analysis
 - **🛠️ Build tool disponible** - `python3 tools/build.py` avant chaque commit important

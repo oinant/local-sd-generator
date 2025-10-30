@@ -322,3 +322,138 @@ version: "1.0"
         assert theme is not None
         assert theme.imports == {}
         assert theme.variations == []
+
+
+class TestRemoveDirectiveValidation:
+    """Tests for [Remove] directive validation in ThemeLoader."""
+
+    def test_validate_remove_directive_valid(self, temp_configs_dir):
+        """Test that valid [Remove] directive passes validation."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "Outfit": "outfit.yaml",
+            "Hair.xxx": ["Remove"]  # Valid [Remove] directive
+        }
+
+        # Should not raise
+        loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_multiple_removes(self, temp_configs_dir):
+        """Test that multiple [Remove] directives are valid."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "Outfit.xxx": ["Remove"],
+            "Hair.xxx": ["Remove"],
+            "Jewelry.xxx": ["Remove"]
+        }
+
+        # Should not raise
+        loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_wrong_case(self, temp_configs_dir):
+        """Test that [Remove] with wrong case raises ValueError."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "Outfit.xxx": ["remove"]  # Wrong case
+        }
+
+        with pytest.raises(ValueError, match="Invalid \\[Remove\\] directive"):
+            loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_empty_list(self, temp_configs_dir):
+        """Test that empty list raises ValueError."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "Outfit.xxx": []  # Empty list
+        }
+
+        with pytest.raises(ValueError, match="Invalid \\[Remove\\] directive"):
+            loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_multiple_elements(self, temp_configs_dir):
+        """Test that list with multiple elements raises ValueError."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "Outfit.xxx": ["Remove", "extra"]  # Too many elements
+        }
+
+        with pytest.raises(ValueError, match="Invalid \\[Remove\\] directive"):
+            loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_mixed_valid_invalid(self, temp_configs_dir):
+        """Test that mix of valid and invalid imports raises on invalid."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "Outfit": "outfit.yaml",  # Valid file path
+            "Hair.xxx": ["Remove"],  # Valid [Remove]
+            "Jewelry.xxx": ["REMOVE"]  # Invalid case
+        }
+
+        with pytest.raises(ValueError, match="Invalid \\[Remove\\] directive"):
+            loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_nested_imports_valid(self, temp_configs_dir):
+        """Test that [Remove] in nested imports is validated."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "chunks": {
+                "positive": "positive.chunk.yaml",
+                "negative.xxx": ["Remove"]  # Nested [Remove]
+            }
+        }
+
+        # Should not raise
+        loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_nested_imports_invalid(self, temp_configs_dir):
+        """Test that invalid [Remove] in nested imports raises ValueError."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "chunks": {
+                "positive": "positive.chunk.yaml",
+                "negative.xxx": ["remove"]  # Invalid nested [Remove]
+            }
+        }
+
+        with pytest.raises(ValueError, match="Invalid \\[Remove\\] directive"):
+            loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_validate_remove_directive_error_message_contains_placeholder(self, temp_configs_dir):
+        """Test that error message contains placeholder name."""
+        loader = ThemeLoader(temp_configs_dir)
+
+        imports = {
+            "SpecificPlaceholder.xxx": ["WRONG"]
+        }
+
+        with pytest.raises(ValueError, match="'SpecificPlaceholder\\.xxx'"):
+            loader._validate_remove_directives(imports, Path("test.yaml"))
+
+    def test_load_explicit_theme_validates_remove(self, temp_configs_dir):
+        """Test that load_explicit_theme() validates [Remove] directives."""
+        theme_dir = temp_configs_dir / "themes" / "test"
+        theme_dir.mkdir(parents=True)
+
+        # Create theme.yaml with invalid [Remove]
+        theme_yaml = theme_dir / "theme.yaml"
+        theme_yaml.write_text("""
+type: theme_config
+version: "1.0"
+imports:
+  Outfit: outfit.yaml
+  Hair.xxx: [remove]
+""")
+
+        loader = ThemeLoader(temp_configs_dir)
+
+        # Should raise during load
+        with pytest.raises(ValueError, match="Invalid \\[Remove\\] directive"):
+            loader.load_theme("test")

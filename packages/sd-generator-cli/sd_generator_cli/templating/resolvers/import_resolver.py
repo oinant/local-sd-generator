@@ -38,40 +38,60 @@ class ImportResolver:
     def resolve_imports(
         self,
         config,
-        base_path: Path
-    ) -> Dict[str, Dict[str, str]]:
+        base_path: Path,
+        style: str = "default",
+        style_sensitive_placeholders: List[str] = None
+    ) -> tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, Any]]]:
         """
         Resolve all imports from a configuration.
 
         Args:
             config: Configuration object (TemplateConfig, ChunkConfig, or PromptConfig)
             base_path: Base path for resolving relative paths
+            style: Target style for style-sensitive placeholders (e.g., "sports", "casual")
+            style_sensitive_placeholders: List of placeholder names that vary by style
 
         Returns:
-            Dict mapping import names to variation dictionaries
-            Format: {import_name: {key: value}}
-            Example: {"Outfit": {"Urban1": "jeans", "7d8e3a2f": "red dress"}}
+            Tuple of (resolved imports, metadata)
+            - resolved: Dict mapping import names to variation dictionaries
+              Format: {import_name: {key: value}}
+              Example: {"Outfit": {"Urban1": "jeans", "7d8e3a2f": "red dress"}}
+            - metadata: Dict mapping import names to metadata
+              Format: {import_name: {"source_count": int}}
+              Example: {"Outfit": {"source_count": 3}}
 
         Raises:
             ValueError: If duplicate keys found in multi-source merge
             FileNotFoundError: If import file not found
         """
         resolved = {}
+        metadata = {}  # Track metadata for each import
+        style_sensitive = style_sensitive_placeholders or []
 
         for import_name, import_value in config.imports.items():
+            # Check if this placeholder is style-sensitive
+            is_style_sensitive = import_name in style_sensitive
+
             if isinstance(import_value, str):
                 # Single file import
-                variations = self._load_variation_file(import_value, base_path)
+                variations = self._load_variation_file(
+                    import_value,
+                    base_path,
+                    style=style if is_style_sensitive else None
+                )
                 resolved[import_name] = variations
+                metadata[import_name] = {"source_count": 1}
 
             elif isinstance(import_value, list):
                 # Multi-source merge (files + inline strings)
-                merged = self._merge_multi_sources(
+                merged, source_count = self._merge_multi_sources(
                     import_value,
                     base_path,
-                    import_name
+                    import_name,
+                    style=style if is_style_sensitive else None
                 )
                 resolved[import_name] = merged
+                metadata[import_name] = {"source_count": source_count}
 
             elif isinstance(import_value, dict):
                 # Nested imports (e.g., chunks: {positive: ..., negative: ...})
@@ -81,25 +101,29 @@ class ImportResolver:
                         # Single file
                         variations = self._load_variation_file(
                             nested_value,
-                            base_path
+                            base_path,
+                            style=style if is_style_sensitive else None
                         )
                         nested[nested_name] = variations
                     elif isinstance(nested_value, list):
                         # Multi-source in nested context
-                        merged = self._merge_multi_sources(
+                        merged, source_count = self._merge_multi_sources(
                             nested_value,
                             base_path,
-                            f"{import_name}.{nested_name}"
+                            f"{import_name}.{nested_name}",
+                            style=style if is_style_sensitive else None
                         )
                         nested[nested_name] = merged
                 resolved[import_name] = nested
+                # For nested imports, we don't track metadata separately (yet)
 
-        return resolved
+        return resolved, metadata
 
     def _load_variation_file(
         self,
         path: str,
-        base_path: Path
+        base_path: Path,
+        style: str = None
     ) -> Union[Dict[str, str], Dict[str, Any]]:
         """
         Load variations from a single file.
@@ -111,6 +135,7 @@ class ImportResolver:
         Args:
             path: Relative path to variation file
             base_path: Base path for resolution
+            style: Optional style for style-sensitive files (e.g., "sports", "casual")
 
         Returns:
             Dict of variations {key: value} OR
@@ -121,6 +146,30 @@ class ImportResolver:
             FileNotFoundError: If file not found
             ValueError: If file format invalid
         """
+        # If style is provided, try to resolve style variant first
+        if style and style != "default":
+            style_path = self._resolve_style_variant(path, style)
+            if style_path:
+                # Check if style variant exists
+                try:
+                    resolved_path_variant = self.loader.resolve_path(style_path, base_path)
+                    if resolved_path_variant.exists():
+                        # DEBUG: Print which file we're using
+                        print(f"[DEBUG] Style variant found: {resolved_path_variant}")
+                        path = style_path  # Use style variant
+                    else:
+                        print(f"[DEBUG] Style variant NOT found: {resolved_path_variant}, using default: {path}")
+                except FileNotFoundError:
+                    print(f"[DEBUG] Style variant resolution failed for: {style_path}, using default: {path}")
+                    pass  # Fall back to default file
+            else:
+                print(f"[DEBUG] No style_path generated for: {path}")
+        else:
+            if style:
+                print(f"[DEBUG] Style is 'default', using: {path}")
+            else:
+                print(f"[DEBUG] No style provided, using: {path}")
+
         resolved_path = self.loader.resolve_path(path, base_path)
         data = self.loader.load_file(resolved_path, base_path)
 
@@ -168,12 +217,39 @@ class ImportResolver:
         # Regular variation file - parse variations
         return self.parser.parse_variations(data)
 
+    def _resolve_style_variant(self, path: str, style: str) -> str:
+        """
+        Resolve style variant path by adding style suffix.
+
+        Converts:
+          campus/campus-teasing_gesture.yaml + style="sports"
+          → campus/campus-teasing_gesture.sports.yaml
+
+        Args:
+            path: Original file path
+            style: Style name (e.g., "sports", "casual")
+
+        Returns:
+            Path with style suffix added
+        """
+        from pathlib import Path as PathLib
+        p = PathLib(path)
+        # Insert style before .yaml extension
+        # "file.yaml" → "file.xxx.yaml"
+        stem = p.stem  # "campus-teasing_gesture"
+        suffix = p.suffix  # ".yaml"
+        parent = p.parent  # "campus"
+
+        new_name = f"{stem}.{style}{suffix}"
+        return str(parent / new_name)
+
     def _merge_multi_sources(
         self,
         sources: List[str],
         base_path: Path,
-        import_name: str
-    ) -> Dict[str, str]:
+        import_name: str,
+        style: str = None
+    ) -> tuple[Dict[str, str], int]:
         """
         Merge variations from multiple sources.
 
@@ -187,12 +263,14 @@ class ImportResolver:
             sources: List of file paths and/or inline strings
             base_path: Base path for resolving file paths
             import_name: Name of import (for error messages)
+            style: Optional style for style-sensitive files
 
         Returns:
-            Merged dict of variations
+            Tuple of (merged dict of variations, number of source files)
         """
         merged = {}
         key_sources = {}  # Track source of each key for conflict detection
+        file_count = 0  # Track number of actual files (not inline strings)
 
         for source in sources:
             if self._is_inline_string(source):
@@ -203,8 +281,9 @@ class ImportResolver:
                 merged[inline_key] = clean_value
                 key_sources[inline_key] = f"inline({inline_key})"
             else:
-                # File - load and merge
-                variations = self._load_variation_file(source, base_path)
+                # File - load and merge (with style if provided)
+                variations = self._load_variation_file(source, base_path, style=style)
+                file_count += 1  # Increment file counter
 
                 # Handle conflicts with auto-prefixing
                 for key, value in variations.items():
@@ -219,7 +298,7 @@ class ImportResolver:
                         merged[key] = value
                         key_sources[key] = source
 
-        return merged
+        return merged, file_count
 
     def _normalize_path_to_prefix(self, path: str) -> str:
         """
