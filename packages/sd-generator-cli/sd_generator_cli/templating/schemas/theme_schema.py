@@ -5,7 +5,7 @@ Theme files define theme-specific variation overrides with style support.
 """
 
 from pydantic import Field, validator, model_validator
-from typing import Dict, Any, List, Literal, Union
+from typing import Dict, Any, List, Literal, Union, Optional
 
 from .base import BaseFileSchema
 
