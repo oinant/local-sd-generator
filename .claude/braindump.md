@@ -166,6 +166,51 @@ _Items braindumped but not yet processed by Agent PO_
     - H100: 1 image 36s→6s, 100 images 60min→10min
   - **ROI:** 38k images in 63h (vs 380h current) with H100
   - **Priority:** P3 (Strategic investment, enable advanced ML workflows)
+- **[Feature/Infrastructure]** Cloud GPU Burst (H100 instances for heavy workloads)
+  - **Full spec:** `docs/roadmap/future/cloud_gpu_burst.md` (comprehensive)
+  - **Goal:** Offload heavy compute to cloud H100 @ €2.80/h (€3.36 TTC)
+  - **Architecture:** Hybrid (local orchestration + cloud compute)
+  - **Performance gains vs Local (5070 Ti + ComfyUI):**
+    - 1 image: 14s → 6s (2.3x speedup)
+    - 500 images: 1.94h → 50 min (2.3x speedup)
+    - LoRA training: 3h → 20 min (9x speedup)
+  - **Cost analysis:**
+    - 500 images: €3.19 (ROI +€45.92 if dev time €50/h)
+    - LoRA training: €1.41 (ROI +€127.76)
+    - Break-even: ~50-60 images
+  - **Use cases (Priority):**
+    - ✅ P1: LoRA training (killer use case, 9x speedup, €1.41)
+    - ✅ P1: Batch >500 images (ROI fortement positif)
+    - ✅ P1: CLIP validation (38k images en 1 jour vs 5 jours)
+    - ❌ P3: Batch <100 images (ROI négatif, rester local)
+  - **Effort:** 6 weeks MVP (POC 2w, automation 4w), 12 weeks production
+  - **Phases:**
+    1. POC - Manual SSH + rsync workflow (2w)
+    2. MVP - Automated provisioning + CLI `--cloud` flag (4w)
+    3. Production - Multi-cloud + spot instances (6w)
+  - **Setup requirements:**
+    - VM: Ubuntu 22.04 + CUDA 12.1 (OVH image)
+    - Dependencies: PyTorch, ComfyUI, diffusers, xformers
+    - Storage: 47-57 GB (models, checkpoints, LoRAs)
+    - Bandwidth: Upload 500 KB (prompts), Download 2 GB (images)
+  - **Communication:** SSH + rsync (MVP), REST API (Phase 3)
+  - **Provisioning strategies:**
+    - Custom image OVH (setup 3 min vs 15 min cold start)
+    - Auto-teardown after job (avoid idle costs)
+    - Model caching (persistent storage, avoid re-upload)
+  - **Cost optimization:**
+    - Multi-cloud (RunPod €2.15/h → -23% vs OVH)
+    - Spot instances (€1.20/h → -64% vs on-demand)
+    - Budget alerts (€50/jour)
+  - **Risks:** Medium (cost overrun, cold start time, security)
+  - **Benefits:**
+    - 10x faster LoRA training (critical for self-improving loop)
+    - Massive batch processing (38k images in 3 days vs 6 days)
+    - Pay-per-use (no upfront €30k H100 purchase)
+    - Foundation for cloud-native ML workflows
+  - **Compatibility:** 100% with Template System V2.0 + Direct Pipeline
+  - **Strategic value:** Enables self-improving generator loop (Generate → CLIP → Train → Loop)
+  - **Priority:** P4 (Strategic investment, depends on Direct Pipeline)
 
 <!-- Add new items here during braindump sessions -->
 
