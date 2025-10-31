@@ -163,15 +163,28 @@ export default {
 
   computed: {
     displayName() {
-      // Format: 2025-10-14_163854_hassaku_actualportrait.prompt
-      // Include date prefix for easier scanning
-      const parts = this.session.name.split('_')
-      if (parts.length >= 3) {
-        const date = parts[0] // YYYY-MM-DD
-        const name = parts.slice(2).join('_').replace('.prompt', '')
-        return `${date} · ${name}`
+      // Support two formats:
+      // Old: 2025-10-14_163854_hassaku_actualportrait.prompt
+      // New: 20251014_163854-Hassaku-fantasy-default
+      const name = this.session.name
+
+      // Try old format (YYYY-MM-DD_HHMMSS_name)
+      const oldMatch = name.match(/^(\d{4}-\d{2}-\d{2})_\d{6}_(.+)/)
+      if (oldMatch) {
+        const date = oldMatch[1]
+        const sessionName = oldMatch[2].replace('.prompt', '')
+        return `${date} · ${sessionName}`
       }
-      return this.session.name
+
+      // Try new format (YYYYMMDD_HHMMSS-name)
+      const newMatch = name.match(/^(\d{4})(\d{2})(\d{2})_\d{6}-(.+)/)
+      if (newMatch) {
+        const date = `${newMatch[1]}-${newMatch[2]}-${newMatch[3]}`
+        const sessionName = newMatch[4].replace(/-/g, ' ')
+        return `${date} · ${sessionName}`
+      }
+
+      return name
     }
   },
 

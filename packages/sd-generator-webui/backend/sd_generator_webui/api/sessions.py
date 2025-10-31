@@ -26,9 +26,13 @@ def parse_session_datetime(session_name: str) -> Optional[datetime]:
     """
     Parse datetime from session folder name.
 
-    Format: 2025-10-14_173320_name.prompt
+    Supports two formats:
+    - Old: 2025-10-14_173320_name.prompt (with dashes in date)
+    - New: 20251014_173320-name (without dashes in date)
+
     Returns datetime or None if unable to parse.
     """
+    # Try old format first: YYYY-MM-DD_HHMMSS
     match = re.match(r'^(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})', session_name)
     if match:
         year, month, day, hour, minute, second = map(int, match.groups())
@@ -36,6 +40,16 @@ def parse_session_datetime(session_name: str) -> Optional[datetime]:
             return datetime(year, month, day, hour, minute, second)
         except ValueError:
             pass
+
+    # Try new format: YYYYMMDD_HHMMSS
+    match = re.match(r'^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', session_name)
+    if match:
+        year, month, day, hour, minute, second = map(int, match.groups())
+        try:
+            return datetime(year, month, day, hour, minute, second)
+        except ValueError:
+            pass
+
     return None
 
 

@@ -636,14 +636,26 @@ export default {
     },
 
     formatSessionName(sessionName) {
-      // Format: 2025-10-14_163854_hassaku_actualportrait.prompt
-      // Include date prefix for consistency with SessionCard
-      const parts = sessionName.split('_')
-      if (parts.length >= 3) {
-        const date = parts[0] // YYYY-MM-DD
-        const name = parts.slice(2).join('_').replace('.prompt', '')
+      // Support two formats:
+      // Old: 2025-10-14_163854_hassaku_actualportrait.prompt
+      // New: 20251014_163854-Hassaku-fantasy-default
+
+      // Try old format (YYYY-MM-DD_HHMMSS_name)
+      const oldMatch = sessionName.match(/^(\d{4}-\d{2}-\d{2})_\d{6}_(.+)/)
+      if (oldMatch) {
+        const date = oldMatch[1]
+        const name = oldMatch[2].replace('.prompt', '')
         return `${date} · ${name}`
       }
+
+      // Try new format (YYYYMMDD_HHMMSS-name)
+      const newMatch = sessionName.match(/^(\d{4})(\d{2})(\d{2})_\d{6}-(.+)/)
+      if (newMatch) {
+        const date = `${newMatch[1]}-${newMatch[2]}-${newMatch[3]}`
+        const name = newMatch[4].replace(/-/g, ' ')
+        return `${date} · ${name}`
+      }
+
       return sessionName
     },
 
