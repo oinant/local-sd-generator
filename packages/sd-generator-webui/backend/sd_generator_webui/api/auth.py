@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends
 
 from sd_generator_webui.auth import AuthService
 from sd_generator_webui.models import UserInfo
@@ -22,12 +22,12 @@ async def _warm_file_tree_cache():
 
 @router.get("/me", response_model=UserInfo)
 async def get_current_user(
-    background_tasks: BackgroundTasks,
     user_guid: str = Depends(AuthService.validate_guid)
 ):
     """Récupère les informations de l'utilisateur actuel."""
-    # Lance le warming du cache en arrière-plan
-    background_tasks.add_task(_warm_file_tree_cache)
+    # DISABLED: Cache warming is too slow on WSL + mounted Windows drives (50s+ for 460+ sessions)
+    # File tree is lazy-loaded on-demand instead
+    # background_tasks.add_task(_warm_file_tree_cache)
     return AuthService.get_user_info(user_guid)
 
 
