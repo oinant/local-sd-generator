@@ -147,7 +147,15 @@ class InheritanceResolver:
         if 'generation' in data:
             return self.parser.parse_prompt(data, source_file)
         elif 'type' in data:
-            return self.parser.parse_chunk(data, source_file)
+            file_type = data['type']
+            if file_type == 'template':
+                return self.parser.parse_template(data, source_file)
+            elif file_type == 'chunk':
+                return self.parser.parse_chunk(data, source_file)
+            elif file_type == 'prompt':
+                return self.parser.parse_prompt(data, source_file)
+            else:
+                raise ValueError(f"Unknown type '{file_type}' in {source_file.name}")
         else:
             return self.parser.parse_template(data, source_file)
 
