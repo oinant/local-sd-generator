@@ -137,6 +137,35 @@ _Items braindumped but not yet processed by Agent PO_
     - P3: Split TemplateResolver into ChunkInjector + PlaceholderResolver + SelectorEngine
     - P4: Split ConfigParser by responsibility
     - P5: Factory for config type detection (inheritance_resolver.py:147-160) - ✅ Partially fixed in commit 0254c3a
+- **[Feature/Refactor]** Direct SD Pipeline (Replace A1111 API with PyTorch pipeline)
+  - **Full spec:** `docs/roadmap/future/direct_pipeline.md` (4,159 words)
+  - **Goal:** 36 sec/image → 5-10 sec/image (3-7x speedup with H100, 2.5x with 5070 Ti)
+  - **Framework recommendation:** ComfyUI (Score 4.5/5 vs diffusers 3.6/5)
+  - **Why ComfyUI:**
+    - 2x faster than A1111 (native caching, batch optimization)
+    - 500+ custom nodes (ADetailer, ControlNet, LoRA, upscalers)
+    - Python API for programmatic control
+    - Memory efficient (2x SDXL models vs diffusers crash)
+  - **Effort:** 11 weeks MVP (POC 2w, Core 4w, Advanced 4w), 17-19 weeks full
+  - **Phases:**
+    1. Infrastructure setup (1w)
+    2. POC - Generate 1 image (2w)
+    3. Core pipeline - txt2img + img2img (4w)
+    4. Advanced - LoRA + upscalers + batch (4w)
+    5. Extensions - ADetailer + ControlNet (4-6w)
+    6. Optimization - 100+ batch, CLIP scoring (6w)
+  - **Risk:** Medium (migration complexity, testing, feature parity)
+  - **Benefits:**
+    - Native batch processing (128+ images)
+    - Foundation for self-improving generator loop
+    - Full GPU utilization (5070 Ti → H100 ready)
+    - Eliminate HTTP/JSON overhead
+  - **Compatibility:** 100% with Template System V2.0 (no changes required)
+  - **Performance estimates:**
+    - 5070 Ti: 1 image 36s→14s, 100 images 60min→23min
+    - H100: 1 image 36s→6s, 100 images 60min→10min
+  - **ROI:** 38k images in 63h (vs 380h current) with H100
+  - **Priority:** P3 (Strategic investment, enable advanced ML workflows)
 
 <!-- Add new items here during braindump sessions -->
 
