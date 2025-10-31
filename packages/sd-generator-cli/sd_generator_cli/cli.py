@@ -136,7 +136,8 @@ def _generate(
     session_name_override: Optional[str] = None,
     theme_name: Optional[str] = None,
     theme_file: Optional[Path] = None,
-    style: str = "default"
+    style: str = "default",
+    skip_validation: bool = False
 ):
     """
     Generate images using Template System V2.0.
@@ -162,8 +163,31 @@ def _generate(
     from sd_generator_cli.templating.orchestrator import V2Pipeline
     from sd_generator_cli.api import SDAPIClient, BatchGenerator, SessionManager, ImageWriter, ProgressReporter
     from sd_generator_cli.api import PromptConfig
+    from sd_generator_cli.templating.validators.schema_validator import SchemaValidator
 
     try:
+        # Validate template file before generation (unless skipped)
+        if not skip_validation:
+            console.print(f"[cyan]Validating template file...[/cyan]")
+            validator = SchemaValidator()
+            result = validator.validate_file(template_path)
+
+            if not result.is_valid:
+                console.print(f"[red]✗ Template validation failed:[/red] {template_path.name}")
+                console.print()
+
+                # Display validation errors
+                for error in result.errors:
+                    loc = " → ".join(str(l) for l in error.get('loc', []))
+                    msg = error.get('msg', 'Unknown error')
+                    console.print(f"  [yellow]•[/yellow] {loc}: {msg}")
+
+                console.print()
+                console.print("[yellow]Tip: Use --skip-validation to bypass validation[/yellow]")
+                raise typer.Exit(code=1)
+
+            console.print(f"[green]✓[/green] Template validation passed")
+
         # Initialize V2 Pipeline
         console.print(f"[cyan]Initializing V2 Pipeline...[/cyan]")
         pipeline = V2Pipeline(configs_dir=str(global_config.configs_dir))
@@ -701,6 +725,11 @@ def generate_images(
         "--session-name", "-sn",
         help="Override session directory name",
     ),
+    skip_validation: bool = typer.Option(
+        False,
+        "--skip-validation",
+        help="Skip YAML schema validation before generation",
+    ),
 ):
     """
     Generate images from YAML template using V2.0 Template System.
@@ -790,7 +819,8 @@ def generate_images(
             session_name_override=session_name,
             theme_name=theme,
             theme_file=theme_file,
-            style=style
+            style=style,
+            skip_validation=skip_validation
         )
 
     except typer.Exit:
