@@ -8,15 +8,30 @@
             <span>
               <v-icon class="mr-2">mdi-folder-multiple</v-icon>
               Sessions
+              <v-chip size="x-small" variant="text" class="ml-2">
+                <v-icon size="x-small">mdi-sort-clock-descending</v-icon>
+                Par date {{ sortDescending ? '↓' : '↑' }}
+              </v-chip>
             </span>
-            <v-btn
-              icon
-              size="small"
-              variant="text"
-              @click="filtersDrawer = !filtersDrawer"
-            >
-              <v-icon>mdi-filter-variant</v-icon>
-            </v-btn>
+            <div class="d-flex gap-1">
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                @click="toggleSortOrder"
+                title="Inverser l'ordre de tri"
+              >
+                <v-icon>{{ sortDescending ? 'mdi-sort-descending' : 'mdi-sort-ascending' }}</v-icon>
+              </v-btn>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                @click="filtersDrawer = !filtersDrawer"
+              >
+                <v-icon>mdi-filter-variant</v-icon>
+              </v-btn>
+            </div>
           </v-card-title>
 
           <v-divider />
@@ -268,6 +283,8 @@ export default {
       loadingMetadata: false,
       intersectionObserver: null,
       sessionObserver: null,
+      // Sort
+      sortDescending: true,  // Par défaut: plus récent d'abord
       // Filtres
       filtersDrawer: false,
       filters: {
@@ -346,6 +363,13 @@ export default {
           session.displayName.toLowerCase().includes(search)
         )
       }
+
+      // Sort by date (respects sortDescending flag)
+      filtered.sort((a, b) => {
+        const timeA = a.date.getTime()
+        const timeB = b.date.getTime()
+        return this.sortDescending ? timeB - timeA : timeA - timeB
+      })
 
       return filtered
     },
@@ -612,12 +636,13 @@ export default {
     },
 
     formatSessionName(sessionName) {
-      // Essayer de rendre le nom de session plus lisible
       // Format: 2025-10-14_163854_hassaku_actualportrait.prompt
-      // On va extraire juste la partie après la date
+      // Include date prefix for consistency with SessionCard
       const parts = sessionName.split('_')
       if (parts.length >= 3) {
-        return parts.slice(2).join('_').replace('.prompt', '')
+        const date = parts[0] // YYYY-MM-DD
+        const name = parts.slice(2).join('_').replace('.prompt', '')
+        return `${date} · ${name}`
       }
       return sessionName
     },
@@ -694,6 +719,10 @@ export default {
         message: 'Dialog tags - À implémenter',
         color: 'info'
       })
+    },
+
+    toggleSortOrder() {
+      this.sortDescending = !this.sortDescending
     }
   }
 }

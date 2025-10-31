@@ -3,6 +3,7 @@
     :active="isSelected"
     @click="$emit('select', session.name)"
     class="session-card"
+    :title="session.name"
   >
     <!-- Session icon -->
     <template v-slot:prepend>
@@ -163,10 +164,12 @@ export default {
   computed: {
     displayName() {
       // Format: 2025-10-14_163854_hassaku_actualportrait.prompt
-      // Extract just the part after the date
+      // Include date prefix for easier scanning
       const parts = this.session.name.split('_')
       if (parts.length >= 3) {
-        return parts.slice(2).join('_').replace('.prompt', '')
+        const date = parts[0] // YYYY-MM-DD
+        const name = parts.slice(2).join('_').replace('.prompt', '')
+        return `${date} · ${name}`
       }
       return this.session.name
     }
