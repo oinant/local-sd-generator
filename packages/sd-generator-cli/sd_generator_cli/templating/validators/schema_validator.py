@@ -15,6 +15,8 @@ from ..schemas import (
     ChunkFileSchema,
     VariationsFileSchema,
     ThemeFileSchema,
+    ADetailerFileSchema,
+    MultiFieldFileSchema,
 )
 
 
@@ -61,6 +63,8 @@ class SchemaValidator:
             'chunk': ChunkFileSchema,
             'variations': VariationsFileSchema,
             'theme_config': ThemeFileSchema,
+            'adetailer_config': ADetailerFileSchema,
+            'multi-field': MultiFieldFileSchema,
         }
 
     def validate_file(self, file_path: Path) -> ValidationResult:

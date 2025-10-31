@@ -10,6 +10,7 @@ Schemas:
 - ChunkFileSchema: .chunk.yaml files
 - VariationsFileSchema: .yaml variation files
 - ThemeFileSchema: theme.yaml files
+- ADetailerFileSchema: .adetailer.yaml files
 
 Usage:
     from sd_generator_cli.templating.schemas import TemplateFileSchema
@@ -27,6 +28,8 @@ from .prompt_schema import PromptFileSchema
 from .chunk_schema import ChunkFileSchema
 from .variations_schema import VariationsFileSchema
 from .theme_schema import ThemeFileSchema
+from .adetailer_schema import ADetailerFileSchema
+from .multi_field_schema import MultiFieldFileSchema
 
 __all__ = [
     'BaseFileSchema',
@@ -36,4 +39,6 @@ __all__ = [
     'ChunkFileSchema',
     'VariationsFileSchema',
     'ThemeFileSchema',
+    'ADetailerFileSchema',
+    'MultiFieldFileSchema',
 ]

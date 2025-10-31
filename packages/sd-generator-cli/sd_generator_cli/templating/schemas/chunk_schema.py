@@ -5,7 +5,7 @@ Chunk files are reusable template fragments that can be imported
 into templates, prompts, or other chunks.
 """
 
-from pydantic import Field, validator
+from pydantic import Field, validator, model_validator
 from typing import Optional, Dict, Any, Literal
 
 from .base import ImplementableSchema
@@ -17,7 +17,7 @@ class ChunkFileSchema(ImplementableSchema):
 
     Chunk files must:
     - Have type: "chunk"
-    - Contain a template field (reusable fragment)
+    - Contain a template field OR implement a parent chunk (inherits template)
     - NOT contain {prompt} placeholder (reserved for templates)
     - NOT have a generation field (not executable)
     - NOT have a prompt field (use template instead)
@@ -28,9 +28,9 @@ class ChunkFileSchema(ImplementableSchema):
         description="File type identifier (must be 'chunk')"
     )
 
-    template: str = Field(
-        ...,
-        description="Template fragment (can use placeholders but NOT {prompt})",
+    template: Optional[str] = Field(
+        None,
+        description="Template fragment (can use placeholders but NOT {prompt}). Optional if implements is specified.",
         min_length=1
     )
 
@@ -70,11 +70,21 @@ class ChunkFileSchema(ImplementableSchema):
         return v
 
     @validator('template')
-    def validate_template_not_empty(cls, v: str) -> str:
-        """Ensure template is not just whitespace."""
-        if not v.strip():
+    def validate_template_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        """Ensure template is not just whitespace if present."""
+        if v is not None and not v.strip():
             raise ValueError("Template field cannot be empty or whitespace only")
         return v
+
+    @model_validator(mode='after')
+    def validate_has_template_or_implements(self) -> 'ChunkFileSchema':
+        """Ensure chunk has either template field or implements parent."""
+        if self.template is None and self.implements is None:
+            raise ValueError(
+                "Chunk must have either 'template' field or 'implements' field. "
+                "If implementing a parent chunk, the template is inherited."
+            )
+        return self
 
     def __init__(self, **data: Any) -> None:
         """Override __init__ to explicitly reject generation and prompt fields."""

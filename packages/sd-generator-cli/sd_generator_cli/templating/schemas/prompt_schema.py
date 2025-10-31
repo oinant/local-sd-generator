@@ -14,14 +14,14 @@ from .base import ImplementableSchema
 class GenerationConfigSchema(BaseModel):
     """Schema for generation configuration block."""
 
-    mode: Literal["combinatorial", "random"] = Field(
+    mode: Literal["combinatorial", "random", "ask"] = Field(
         ...,
-        description="Generation mode: 'combinatorial' for all combinations, 'random' for sampling"
+        description="Generation mode: 'combinatorial' for all combinations, 'random' for sampling, 'ask' for interactive prompt"
     )
 
-    seed_mode: Literal["fixed", "progressive", "random"] = Field(
+    seed_mode: Literal["fixed", "progressive", "random", "ask"] = Field(
         ...,
-        description="Seed mode: 'fixed' (same seed), 'progressive' (incremental), 'random' (random seeds)"
+        description="Seed mode: 'fixed' (same seed), 'progressive' (incremental), 'random' (random seeds), 'ask' for interactive prompt"
     )
 
     seed: int = Field(

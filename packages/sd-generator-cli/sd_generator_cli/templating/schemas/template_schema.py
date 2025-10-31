@@ -65,6 +65,11 @@ class TemplateFileSchema(ImplementableSchema):
         description="Default prompt mappings"
     )
 
+    output: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Output configuration (session_name, filename_keys)"
+    )
+
     class Config:
         extra = "forbid"  # Reject unknown fields
 
