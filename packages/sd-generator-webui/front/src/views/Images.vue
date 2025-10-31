@@ -4,9 +4,19 @@
       <!-- Panneau latéral avec liste des sessions -->
       <v-col cols="3" class="border-r">
         <v-card flat height="100vh" class="d-flex flex-column">
-          <v-card-title class="pb-2">
-            <v-icon class="mr-2">mdi-folder-multiple</v-icon>
-            Sessions
+          <v-card-title class="pb-2 d-flex justify-space-between align-center">
+            <span>
+              <v-icon class="mr-2">mdi-folder-multiple</v-icon>
+              Sessions
+            </span>
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              @click="filtersDrawer = !filtersDrawer"
+            >
+              <v-icon>mdi-filter-variant</v-icon>
+            </v-btn>
           </v-card-title>
 
           <v-divider />
@@ -15,31 +25,20 @@
             <v-progress-linear v-if="loadingSessions" indeterminate />
 
             <v-list density="compact" class="pa-0">
-              <!-- Liste des sessions -->
-              <v-list-item
-                v-for="session in sessions"
+              <!-- Liste des sessions avec SessionCard -->
+              <session-card
+                v-for="session in filteredSessions"
                 :key="session.name"
-                :active="selectedSession === session.name"
-                @click="selectSession(session.name)"
+                :session="session"
+                :is-selected="selectedSession === session.name"
+                :metadata="sessionMetadata[session.name]"
+                @select="selectSession"
+                @update-metadata="handleMetadataUpdate"
+                @add-note="openNoteDialog"
+                @add-tags="openTagsDialog"
                 ref="sessionItems"
                 :data-session-name="session.name"
-                class="session-item"
-              >
-                <template v-slot:prepend>
-                  <v-icon>mdi-folder</v-icon>
-                </template>
-                <v-list-item-title class="text-caption">
-                  {{ session.displayName }}
-                </v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  {{ formatDate(session.date) }}
-                </v-list-item-subtitle>
-                <template v-slot:append>
-                  <v-progress-circular v-if="session.countLoading" indeterminate size="20" width="2" />
-                  <v-chip v-else-if="session.count !== null" size="small" color="info">{{ session.count }}</v-chip>
-                  <v-chip v-else size="small" color="grey" variant="outlined">?</v-chip>
-                </template>
-              </v-list-item>
+              />
             </v-list>
           </v-card-text>
         </v-card>
@@ -224,20 +223,42 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+
+    <!-- Drawer pour les filtres -->
+    <v-navigation-drawer
+      v-model="filtersDrawer"
+      location="left"
+      temporary
+      width="350"
+    >
+      <session-filters
+        :filters="filters"
+        :max-image-count="1000"
+        @update:filters="filters = $event"
+      />
+    </v-navigation-drawer>
   </v-container>
 </template>
 
 <script>
 import ApiService from '@/services/api'
+import SessionCard from '@/components/SessionCard.vue'
+import SessionFilters from '@/components/SessionFilters.vue'
 
 export default {
   name: 'ImagesView',
+
+  components: {
+    SessionCard,
+    SessionFilters
+  },
 
   data() {
     return {
       loading: false,
       loadingSessions: false,
       sessions: [],  // Liste des sessions depuis l'API
+      sessionMetadata: {},  // Metadata indexé par session.name
       allImages: [],
       selectedSession: null,
       imageDialog: false,
@@ -246,7 +267,17 @@ export default {
       imageMetadata: null,
       loadingMetadata: false,
       intersectionObserver: null,
-      sessionObserver: null
+      sessionObserver: null,
+      // Filtres
+      filtersDrawer: false,
+      filters: {
+        rating: 'all',
+        flags: [],
+        minImages: 0,
+        maxImages: 1000,
+        dateRange: 'all',
+        search: ''
+      }
     }
   },
 
@@ -272,6 +303,53 @@ export default {
   },
 
   computed: {
+    // Sessions filtrées selon les filtres actifs
+    filteredSessions() {
+      let filtered = [...this.sessions]
+
+      // Filter by rating
+      if (this.filters.rating !== 'all') {
+        filtered = filtered.filter(session => {
+          const metadata = this.sessionMetadata[session.name]
+          if (this.filters.rating === 'unrated') {
+            return !metadata || !metadata.user_rating
+          }
+          return metadata && metadata.user_rating === this.filters.rating
+        })
+      }
+
+      // Filter by flags
+      if (this.filters.flags.length > 0) {
+        filtered = filtered.filter(session => {
+          const metadata = this.sessionMetadata[session.name]
+          if (!metadata) return false
+
+          return this.filters.flags.every(flag => {
+            if (flag === 'favorite') return metadata.is_favorite
+            if (flag === 'test') return metadata.is_test
+            if (flag === 'complete') return metadata.is_complete
+            return false
+          })
+        })
+      }
+
+      // Filter by image count
+      filtered = filtered.filter(session => {
+        const count = session.count ?? 0
+        return count >= this.filters.minImages && count <= this.filters.maxImages
+      })
+
+      // Filter by search
+      if (this.filters.search) {
+        const search = this.filters.search.toLowerCase()
+        filtered = filtered.filter(session =>
+          session.displayName.toLowerCase().includes(search)
+        )
+      }
+
+      return filtered
+    },
+
     // Images filtrées (toutes si pas de session sélectionnée)
     filteredImages() {
       return this.allImages
@@ -331,6 +409,7 @@ export default {
     async loadSessions() {
       try {
         this.loadingSessions = true
+        // Charger les sessions (sans metadata pour l'instant)
         const response = await ApiService.getSessions()
 
         // Transformer les sessions pour l'affichage
@@ -341,6 +420,9 @@ export default {
           count: null,  // Sera chargé à la demande
           countLoading: false
         }))
+
+        // Metadata will be lazy-loaded per session when visible
+        // (handled by sessionObserver or on-demand)
 
         // Les counts seront chargés par le sessionObserver au scroll
       } catch (error) {
@@ -573,6 +655,45 @@ export default {
       } else if (event.key === 'Escape') {
         this.imageDialog = false
       }
+    },
+
+    async handleMetadataUpdate({ sessionName, update }) {
+      try {
+        // Update metadata via API
+        const metadata = await ApiService.updateSessionMetadata(sessionName, update)
+
+        // Update local state
+        this.$set(this.sessionMetadata, sessionName, metadata)
+
+        this.$store.dispatch('showSnackbar', {
+          message: 'Metadata mise à jour',
+          color: 'success'
+        })
+      } catch (error) {
+        console.error('Erreur mise à jour metadata:', error)
+        this.$store.dispatch('showSnackbar', {
+          message: 'Erreur lors de la mise à jour',
+          color: 'error'
+        })
+      }
+    },
+
+    openNoteDialog(sessionName) {
+      // TODO: Implémenter le dialog pour ajouter une note
+      console.log('Open note dialog for', sessionName)
+      this.$store.dispatch('showSnackbar', {
+        message: 'Dialog notes - À implémenter',
+        color: 'info'
+      })
+    },
+
+    openTagsDialog(sessionName) {
+      // TODO: Implémenter le dialog pour ajouter des tags
+      console.log('Open tags dialog for', sessionName)
+      this.$store.dispatch('showSnackbar', {
+        message: 'Dialog tags - À implémenter',
+        color: 'info'
+      })
     }
   }
 }

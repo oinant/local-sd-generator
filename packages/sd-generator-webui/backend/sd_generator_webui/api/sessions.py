@@ -10,11 +10,16 @@ from pathlib import Path
 from typing import List, Optional
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from sd_generator_webui.auth import AuthService
 from sd_generator_webui.config import IMAGES_DIR
+from sd_generator_webui.services.session_metadata import SessionMetadataService
+from sd_generator_webui.models import (
+    SessionMetadata,
+    SessionMetadataUpdate
+)
 
 
 def parse_session_datetime(session_name: str) -> Optional[datetime]:
@@ -50,6 +55,17 @@ class SessionListResponse(BaseModel):
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
+# Initialize metadata service (singleton)
+_metadata_service: Optional[SessionMetadataService] = None
+
+
+def get_metadata_service() -> SessionMetadataService:
+    """Get or create the metadata service instance."""
+    global _metadata_service
+    if _metadata_service is None:
+        _metadata_service = SessionMetadataService()
+    return _metadata_service
+
 
 @router.get("/", response_model=SessionListResponse)
 async def list_sessions(
@@ -59,8 +75,9 @@ async def list_sessions(
     Liste tous les dossiers de sessions (rapide).
 
     Ne compte PAS les images par session - utilisez l'endpoint /count pour ça.
+    Metadata is loaded separately via /sessions/{name}/metadata endpoints.
     """
-    sessions = []
+    sessions: List[SessionInfo] = []
 
     # Lister uniquement les dossiers de premier niveau
     for item in IMAGES_DIR.iterdir():
@@ -71,6 +88,8 @@ async def list_sessions(
             if not created_at:
                 continue  # Skip folders that don't match session format
 
+            # Always return SessionInfo (not SessionWithMetadata to keep types simple)
+            # Frontend will fetch metadata separately if needed
             sessions.append(SessionInfo(
                 name=item.name,
                 path=str(item.relative_to(IMAGES_DIR)),
@@ -150,3 +169,73 @@ async def list_session_images(
         "images": images,
         "total_count": len(images)
     }
+
+
+@router.get("/{session_name}/metadata", response_model=SessionMetadata)
+async def get_session_metadata(
+    session_name: str,
+    user_guid: str = Depends(AuthService.validate_guid)
+):
+    """
+    Get metadata for a specific session.
+
+    Returns 404 if session doesn't exist or has no metadata.
+    """
+    session_path = IMAGES_DIR / session_name
+
+    if not session_path.exists() or not session_path.is_dir():
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+
+    metadata_service = get_metadata_service()
+    metadata = metadata_service.get_metadata(session_name)
+
+    if metadata is None:
+        raise HTTPException(status_code=404, detail="Metadata non trouvée")
+
+    return metadata
+
+
+@router.patch("/{session_name}/metadata", response_model=SessionMetadata)
+async def update_session_metadata(
+    session_name: str,
+    update: SessionMetadataUpdate,
+    user_guid: str = Depends(AuthService.validate_guid)
+):
+    """
+    Create or update metadata for a session.
+
+    If metadata doesn't exist, it will be created.
+    Only provided fields will be updated.
+    """
+    session_path = IMAGES_DIR / session_name
+
+    if not session_path.exists() or not session_path.is_dir():
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+
+    metadata_service = get_metadata_service()
+    metadata = metadata_service.upsert_metadata(
+        session_id=session_name,
+        session_path=str(session_path),
+        update=update
+    )
+
+    return metadata
+
+
+@router.delete("/{session_name}/metadata")
+async def delete_session_metadata(
+    session_name: str,
+    user_guid: str = Depends(AuthService.validate_guid)
+):
+    """
+    Delete metadata for a session.
+
+    Returns 404 if metadata doesn't exist.
+    """
+    metadata_service = get_metadata_service()
+    deleted = metadata_service.delete_metadata(session_name)
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Metadata non trouvée")
+
+    return {"success": True, "message": f"Metadata deleted for {session_name}"}

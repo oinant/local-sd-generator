@@ -74,6 +74,22 @@ class ApiService {
     return response.data
   }
 
+  // Session metadata endpoints
+  async getSessionMetadata(sessionName) {
+    const response = await this.client.get(`/api/sessions/${sessionName}/metadata`)
+    return response.data
+  }
+
+  async updateSessionMetadata(sessionName, update) {
+    const response = await this.client.patch(`/api/sessions/${sessionName}/metadata`, update)
+    return response.data
+  }
+
+  async deleteSessionMetadata(sessionName) {
+    const response = await this.client.delete(`/api/sessions/${sessionName}/metadata`)
+    return response.data
+  }
+
   // Images endpoints
   async getImages(page = 1, pageSize = 20, session = null) {
     const params = { page, page_size: pageSize }

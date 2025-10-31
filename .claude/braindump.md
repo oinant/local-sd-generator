@@ -212,6 +212,63 @@ _Items braindumped but not yet processed by Agent PO_
   - **Strategic value:** Enables self-improving generator loop (Generate → CLIP → Train → Loop)
   - **Priority:** P4 (Strategic investment, depends on Direct Pipeline)
 
+- **[Feature]** LLM-based Template Reconstruction & Prompt Inference
+  - **Context:** 546 sessions migrées avec manifests v2.0, dont 128 inférées avec méthode basique
+  - **Problem:** Inférence actuelle = parsing basique (filename + PNG metadata)
+    - Certains placeholders non détectés (medium/low confidence)
+    - Templates manquants pour sessions très anciennes
+  - **Goal:** Utiliser un LLM local pour reconstruire templates complets par ingénierie inverse
+  - **Approach - Reverse Engineering Total:**
+    ```
+    Input: Collection de prompts résolus
+      "1girl, bob cut, blue eyes, standing, beach"
+      "1girl, ponytail, green eyes, sitting, forest"
+      "1girl, braided, blue eyes, running, city"
+
+    Output LLM:
+      Template: "1girl, {HairStyle}, {EyeColor}, {Pose}, {Location}"
+      Variations:
+        HairStyle: [bob cut, ponytail, braided]
+        EyeColor: [blue eyes, green eyes]
+        Pose: [standing, sitting, running]
+        Location: [beach, forest, city]
+    ```
+  - **Capabilities:**
+    - Détecte automatiquement parties fixes vs variables
+    - Nomme intelligemment les placeholders (HairStyle, EyeColor, Pose, Location)
+    - Détecte structures complexes (loras, emphasis, nested constructs)
+    - Fonctionne même sans aucune métadonnée (sessions ultra-anciennes)
+    - Améliore les manifests medium/low confidence existants
+  - **Use Cases:**
+    1. **Amélioration manifests existants** - Compléter les 84 medium + 7 low confidence
+    2. **Sessions ultra-anciennes** - Reconstruire templates pour sessions sans config
+    3. **Validation qualité** - Vérifier cohérence template ↔ prompts générés
+    4. **Migration legacy** - Convertir anciennes sessions V0 sans métadonnées
+  - **Tech Stack:**
+    - **LLM local:** Ollama (llama 3.1 70B ou mistral), LM Studio, ou vLLM
+    - **Context:** Collection prompts + images PNG metadata
+    - **Output:** Template YAML + variations dict → manifest.json enrichi
+    - **Batch processing:** Analyse 10-50 sessions en une passe
+  - **Architecture:**
+    - `sdgen metadata infer-template --llm ollama://llama3.1:70b`
+    - Lit manifests existants (v2.0-inferred)
+    - Extrait tous les prompts de la session
+    - Prompt LLM pour reconstruction template
+    - Enrichit manifest avec template reconstruit + placeholder names
+  - **Benefits:**
+    - **Couverture 100%** - Même les sessions les plus anciennes
+    - **Qualité supérieure** - Nommage sémantique des placeholders
+    - **Validation** - Détecte incohérences dans prompts
+    - **Future-proof** - Foundation pour analyse avancée (CLIP validation)
+  - **Phases:**
+    1. **Week 1:** POC avec Ollama + 10 sessions test
+    2. **Week 2:** Batch processing + enrichissement manifests
+    3. **Week 3:** Validation + amélioration prompts LLM
+    4. **Week 4:** Production sur 546 sessions complètes
+  - **Effort:** Medium (~2-3 weeks), dépend de perf LLM local
+  - **Priority:** P6 (Nice-to-have, amélioration qualité manifests)
+  - **Dependencies:** Ollama/LM Studio installé, modèle 70B téléchargé
+
 <!-- Add new items here during braindump sessions -->
 
 ---

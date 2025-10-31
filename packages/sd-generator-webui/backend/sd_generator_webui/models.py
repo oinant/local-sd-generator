@@ -87,3 +87,54 @@ class UserInfo(BaseModel):
     is_read_only: bool
     can_generate: bool
     can_view: bool
+
+
+class UserRating(str, Enum):
+    """User rating for a session."""
+    LIKE = "like"
+    DISLIKE = "dislike"
+
+
+class SessionMetadata(BaseModel):
+    """Metadata for a session (user ratings, flags, tags)."""
+    session_id: str = Field(..., description="Session folder name")
+    session_path: str = Field(..., description="Full path to session folder")
+
+    # User flags
+    is_test: bool = Field(default=False, description="Marked as test session")
+    is_complete: bool = Field(default=True, description="Session is complete")
+    is_favorite: bool = Field(default=False, description="Marked as favorite")
+
+    # User ratings and notes
+    user_rating: Optional[UserRating] = Field(default=None, description="Like/dislike")
+    user_note: Optional[str] = Field(default=None, description="User notes")
+    tags: List[str] = Field(default_factory=list, description="User tags")
+
+    # Auto-metadata (flexible JSON)
+    auto_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Auto-extracted metadata")
+
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+class SessionMetadataUpdate(BaseModel):
+    """Request model for updating session metadata."""
+    is_test: Optional[bool] = None
+    is_complete: Optional[bool] = None
+    is_favorite: Optional[bool] = None
+    user_rating: Optional[UserRating] = None
+    user_note: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+class SessionWithMetadata(BaseModel):
+    """Session info with metadata attached."""
+    # Session info
+    name: str
+    path: str
+    created_at: datetime
+    image_count: Optional[int] = None
+
+    # Metadata
+    metadata: Optional[SessionMetadata] = None
