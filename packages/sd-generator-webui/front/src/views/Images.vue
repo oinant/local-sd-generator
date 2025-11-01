@@ -870,11 +870,50 @@ export default {
     async refreshCurrentSession() {
       if (!this.selectedSession) return
 
-      await this.loadSessionImages(this.selectedSession)
-      this.$store.dispatch('showSnackbar', {
-        message: 'Images rafraîchies',
-        color: 'success'
-      })
+      try {
+        // Refresh incrémental : récupérer toutes les images
+        const response = await ApiService.getSessionImages(this.selectedSession)
+
+        // Transformer les nouvelles images
+        const allImages = response.images.map((image) => ({
+          id: image.path,
+          name: image.filename,
+          path: image.path,
+          session: this.selectedSession,
+          url: null,
+          thumbnail: null,
+          thumbnailLoading: false,
+          created: new Date(image.created_at)
+        }))
+
+        // Trouver l'image la plus récente actuelle
+        const mostRecentImage = this.allImages.length > 0 ? this.allImages[0] : null
+
+        if (mostRecentImage) {
+          // Filtrer uniquement les nouvelles images (plus récentes)
+          const newImages = allImages.filter(img => img.created > mostRecentImage.created)
+
+          if (newImages.length > 0) {
+            // Ajouter les nouvelles images au début
+            this.allImages.unshift(...newImages)
+
+            this.$store.dispatch('showSnackbar', {
+              message: `${newImages.length} nouvelle${newImages.length > 1 ? 's' : ''} image${newImages.length > 1 ? 's' : ''} détectée${newImages.length > 1 ? 's' : ''}`,
+              color: 'info'
+            })
+
+            // Attacher les observers pour lazy loading
+            this.$nextTick(() => {
+              this.attachObservers()
+            })
+          }
+        } else {
+          // Première fois : charger toutes les images
+          this.allImages = allImages
+        }
+      } catch (error) {
+        console.error(`Erreur refresh images session ${this.selectedSession}:`, error)
+      }
     },
 
     toggleAutoRefresh() {
