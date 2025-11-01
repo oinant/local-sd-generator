@@ -225,12 +225,12 @@ class V2Pipeline:
             # Filter theme imports by style (handle PlaceholderName.style notation and [Remove] directive)
             filtered_theme_imports = {}
             for import_name, import_path in theme.imports.items():
-                # Check for [Remove] directive FIRST (before style filtering)
-                if self._is_remove_directive(import_path):
+                # Check for [Remove] directive for non-style-specific imports only
+                # (e.g., "Underwear: [Remove]" but NOT "Outfits.sexy: [Remove]")
+                # Style-specific [Remove] is handled below in the style-aware block
+                if not '.' in import_name and self._is_remove_directive(import_path):
                     # Track placeholder name as explicitly removed
-                    # For style-specific names like "Underwear.teasing", track base name only
-                    base_name = import_name.rsplit('.', 1)[0] if '.' in import_name else import_name
-                    removed_placeholders.add(base_name)
+                    removed_placeholders.add(import_name)
                     # Skip this placeholder entirely (will be missing → resolves to "")
                     continue
 
