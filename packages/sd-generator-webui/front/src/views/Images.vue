@@ -18,6 +18,26 @@
                 icon
                 size="small"
                 variant="text"
+                @click="refreshSessions"
+                :loading="loadingSessions"
+                title="Rafraîchir la liste des sessions"
+              >
+                <v-icon>mdi-refresh</v-icon>
+              </v-btn>
+              <v-btn
+                icon
+                size="small"
+                :variant="autoRefresh ? 'tonal' : 'text'"
+                :color="autoRefresh ? 'primary' : undefined"
+                @click="toggleAutoRefresh"
+                title="Auto-refresh (1 minute)"
+              >
+                <v-icon>{{ autoRefresh ? 'mdi-play-circle' : 'mdi-play-circle-outline' }}</v-icon>
+              </v-btn>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
                 @click="toggleSortOrder"
                 title="Inverser l'ordre de tri"
               >
@@ -28,6 +48,7 @@
                 size="small"
                 variant="text"
                 @click="filtersDrawer = !filtersDrawer"
+                title="Filtres"
               >
                 <v-icon>mdi-filter-variant</v-icon>
               </v-btn>
@@ -62,13 +83,26 @@
       <!-- Zone principale avec galerie -->
       <v-col cols="9">
         <v-card flat height="100vh" class="d-flex flex-column">
-          <v-card-title class="pb-2">
+          <v-card-title class="pb-2 d-flex align-center">
             <v-icon class="mr-2">mdi-image-multiple</v-icon>
-            {{ selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session' }}
-            <v-spacer />
-            <v-chip v-if="selectedSession" color="primary" variant="outlined">
-              {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
-            </v-chip>
+            <span class="flex-grow-1">
+              {{ selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session' }}
+            </span>
+            <div v-if="selectedSession" class="d-flex align-center gap-2">
+              <v-chip color="primary" variant="outlined" size="small">
+                {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
+              </v-chip>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                @click="refreshCurrentSession"
+                :loading="loading"
+                title="Rafraîchir les images de cette session"
+              >
+                <v-icon>mdi-refresh</v-icon>
+              </v-btn>
+            </div>
           </v-card-title>
 
           <v-divider />
@@ -285,6 +319,9 @@ export default {
       sessionObserver: null,
       // Sort
       sortDescending: true,  // Par défaut: plus récent d'abord
+      // Auto-refresh
+      autoRefresh: false,
+      autoRefreshInterval: null,
       // Filtres
       filtersDrawer: false,
       filters: {
@@ -471,6 +508,10 @@ export default {
     }
     // Nettoyer l'event listener clavier
     window.removeEventListener('keydown', this.handleKeyNavigation)
+    // Nettoyer l'auto-refresh interval
+    if (this.autoRefreshInterval) {
+      clearInterval(this.autoRefreshInterval)
+    }
   },
 
   methods: {
@@ -779,6 +820,91 @@ export default {
 
     toggleSortOrder() {
       this.sortDescending = !this.sortDescending
+    },
+
+    async refreshSessions() {
+      try {
+        // Refresh incrémental : récupérer toutes les sessions
+        const response = await ApiService.getSessions()
+
+        // Transformer les nouvelles sessions
+        const allSessions = response.sessions.map(session => ({
+          name: session.name,
+          displayName: this.formatSessionName(session.name),
+          date: new Date(session.created_at),
+          count: null,
+          countLoading: false
+        }))
+
+        // Trouver la session la plus récente actuelle
+        const mostRecent = this.sessions.length > 0 ? this.sessions[0] : null
+
+        if (mostRecent) {
+          // Filtrer uniquement les nouvelles sessions (plus récentes que la plus récente actuelle)
+          const newSessions = allSessions.filter(s => s.date > mostRecent.date)
+
+          if (newSessions.length > 0) {
+            // Ajouter les nouvelles sessions au début
+            this.sessions.unshift(...newSessions)
+
+            this.$store.dispatch('showSnackbar', {
+              message: `${newSessions.length} nouvelle${newSessions.length > 1 ? 's' : ''} session${newSessions.length > 1 ? 's' : ''} détectée${newSessions.length > 1 ? 's' : ''}`,
+              color: 'info'
+            })
+          }
+
+          // Rafraîchir le count de la session la plus récente (peut-être en cours de génération)
+          const updatedMostRecent = allSessions.find(s => s.name === mostRecent.name)
+          if (updatedMostRecent) {
+            await this.loadSessionCount(mostRecent)
+          }
+        } else {
+          // Première fois : charger toutes les sessions
+          this.sessions = allSessions
+        }
+      } catch (error) {
+        console.error('Erreur lors du refresh des sessions:', error)
+      }
+    },
+
+    async refreshCurrentSession() {
+      if (!this.selectedSession) return
+
+      await this.loadSessionImages(this.selectedSession)
+      this.$store.dispatch('showSnackbar', {
+        message: 'Images rafraîchies',
+        color: 'success'
+      })
+    },
+
+    toggleAutoRefresh() {
+      this.autoRefresh = !this.autoRefresh
+
+      if (this.autoRefresh) {
+        // Démarrer auto-refresh toutes les 60 secondes
+        this.autoRefreshInterval = setInterval(() => {
+          this.refreshSessions()
+          if (this.selectedSession) {
+            this.refreshCurrentSession()
+          }
+        }, 60000) // 1 minute
+
+        this.$store.dispatch('showSnackbar', {
+          message: 'Auto-refresh activé (1 minute)',
+          color: 'info'
+        })
+      } else {
+        // Arrêter auto-refresh
+        if (this.autoRefreshInterval) {
+          clearInterval(this.autoRefreshInterval)
+          this.autoRefreshInterval = null
+        }
+
+        this.$store.dispatch('showSnackbar', {
+          message: 'Auto-refresh désactivé',
+          color: 'info'
+        })
+      }
     }
   }
 }
