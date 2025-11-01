@@ -216,21 +216,28 @@ Sessions    [Sort ↓] [Filter] [📅 Aller à une date]
 
 ## Implementation Timeline
 
-**Phase 1 (Priority 1 - Now):**
+**Phase 1 (Priority 1 - COMPLETED ✅):**
 - [x] Save UX analysis to documentation
-- [ ] Add tooltip with full folder name
-- [ ] Update displayName to include date prefix
-- [ ] Add sort direction indicator
-- [ ] Add sort toggle functionality
-- [ ] Test in browser
+- [x] Add tooltip with full folder name
+- [x] Update displayName to include date prefix
+- [x] Add sort direction indicator
+- [x] Add sort toggle functionality
+- [x] Test in browser
+- **Commit:** `328ccae` - "feat(webui): Improve session date display and sorting UX (Priority 1)"
 
-**Phase 2 (Priority 2 - Next sprint):**
-- [ ] Add date range filter component
-- [ ] Implement date filtering logic
-- [ ] Add quick date presets
+**Phase 2 (Priority 2 - COMPLETED ✅):**
+- [x] Add date range filter chips (today/week/month/custom)
+- [x] Implement custom date picker UI with expand transition
+- [x] Add date filtering logic in filteredSessions computed
+- [x] Support all preset ranges (today, 7 days, 30 days)
+- [x] Support custom start/end date selection
+- **Date:** 2025-11-01
+- **Files changed:**
+  - SessionFilters.vue: Added date chips + custom date pickers
+  - Images.vue: Implemented date range filtering logic
 
 **Phase 3 (Priority 3 - Future):**
-- [ ] Implement date grouping
+- [ ] Implement date grouping (by month/week)
 - [ ] Add virtual scrolling for performance
 - [ ] Add "Jump to date" quick action
 

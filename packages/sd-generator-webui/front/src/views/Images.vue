@@ -293,6 +293,8 @@ export default {
         minImages: 0,
         maxImages: 1000,
         dateRange: 'all',
+        dateStart: null,
+        dateEnd: null,
         search: ''
       }
     }
@@ -362,6 +364,48 @@ export default {
         filtered = filtered.filter(session =>
           session.displayName.toLowerCase().includes(search)
         )
+      }
+
+      // Filter by date range
+      if (this.filters.dateRange !== 'all') {
+        const now = new Date()
+        let startDate = null
+        let endDate = null
+
+        switch (this.filters.dateRange) {
+          case 'today':
+            // Start of today
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
+            break
+          case 'week':
+            // 7 days ago
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case 'month':
+            // 30 days ago
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case 'custom':
+            // Custom date range
+            if (this.filters.dateStart) {
+              startDate = new Date(this.filters.dateStart)
+            }
+            if (this.filters.dateEnd) {
+              // End of selected day (23:59:59)
+              endDate = new Date(this.filters.dateEnd)
+              endDate.setHours(23, 59, 59, 999)
+            }
+            break
+        }
+
+        if (startDate || endDate) {
+          filtered = filtered.filter(session => {
+            const sessionDate = session.date
+            if (startDate && sessionDate < startDate) return false
+            if (endDate && sessionDate > endDate) return false
+            return true
+          })
+        }
       }
 
       // Sort by date (respects sortDescending flag)

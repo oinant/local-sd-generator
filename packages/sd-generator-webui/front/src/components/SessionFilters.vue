@@ -132,21 +132,56 @@
           column
         >
           <v-chip value="all" size="small" variant="outlined">
+            <v-icon start>mdi-calendar</v-icon>
             Toutes
           </v-chip>
           <v-chip value="today" size="small" variant="outlined">
+            <v-icon start>mdi-calendar-today</v-icon>
             Aujourd'hui
           </v-chip>
           <v-chip value="week" size="small" variant="outlined">
-            Cette semaine
+            <v-icon start>mdi-calendar-week</v-icon>
+            7 derniers jours
           </v-chip>
           <v-chip value="month" size="small" variant="outlined">
-            Ce mois
+            <v-icon start>mdi-calendar-month</v-icon>
+            30 derniers jours
           </v-chip>
           <v-chip value="custom" size="small" variant="outlined">
+            <v-icon start>mdi-calendar-range</v-icon>
             Personnalisé
           </v-chip>
         </v-chip-group>
+
+        <!-- Custom date range picker -->
+        <v-expand-transition>
+          <div v-if="localFilters.dateRange === 'custom'" class="mt-3">
+            <v-row dense>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="localFilters.dateStart"
+                  type="date"
+                  label="Date début"
+                  density="compact"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-calendar-start"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="localFilters.dateEnd"
+                  type="date"
+                  label="Date fin"
+                  density="compact"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-calendar-end"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
+          </div>
+        </v-expand-transition>
       </div>
 
       <v-divider class="my-3" />
@@ -193,6 +228,8 @@ export default {
         minImages: 0,
         maxImages: 1000,
         dateRange: 'all',
+        dateStart: null,
+        dateEnd: null,
         search: ''
       })
     },
@@ -228,6 +265,8 @@ export default {
         this.localFilters.minImages > 0 ||
         this.localFilters.maxImages < this.maxImageCount ||
         this.localFilters.dateRange !== 'all' ||
+        this.localFilters.dateStart !== null ||
+        this.localFilters.dateEnd !== null ||
         this.localFilters.search !== ''
       )
     }
@@ -254,6 +293,8 @@ export default {
         minImages: 0,
         maxImages: this.maxImageCount,
         dateRange: 'all',
+        dateStart: null,
+        dateEnd: null,
         search: ''
       }
       this.applyFilters()
