@@ -71,7 +71,6 @@
                 @select="selectSession"
                 @update-metadata="handleMetadataUpdate"
                 @add-note="openNoteDialog"
-                @add-tags="openTagsDialog"
                 ref="sessionItems"
                 :data-session-name="session.name"
               />
@@ -83,27 +82,61 @@
       <!-- Zone principale avec galerie -->
       <v-col cols="9">
         <v-card flat height="100vh" class="d-flex flex-column">
-          <v-card-title class="pb-2 d-flex align-center">
-            <v-icon class="mr-2">mdi-image-multiple</v-icon>
-            <span class="flex-grow-1">
-              {{ selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session' }}
-            </span>
-            <div v-if="selectedSession" class="d-flex align-center gap-2">
-              <v-chip color="primary" variant="outlined" size="small">
-                {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
-              </v-chip>
-              <v-btn
-                icon
-                size="small"
-                variant="text"
-                @click="refreshCurrentSession"
-                :loading="loading"
-                title="Rafraîchir les images de cette session"
-              >
-                <v-icon>mdi-refresh</v-icon>
-              </v-btn>
+          <v-card-title class="pb-2">
+            <div class="d-flex align-center w-100">
+              <v-icon class="mr-2">mdi-image-multiple</v-icon>
+              <span class="flex-grow-1">
+                {{ selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session' }}
+              </span>
+              <div v-if="selectedSession" class="d-flex align-center gap-2">
+                <v-chip color="primary" variant="outlined" size="small">
+                  {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
+                </v-chip>
+                <v-btn
+                  icon
+                  size="small"
+                  variant="text"
+                  @click="refreshCurrentSession"
+                  :loading="loading"
+                  title="Rafraîchir les images de cette session"
+                >
+                  <v-icon>mdi-refresh</v-icon>
+                </v-btn>
+              </div>
             </div>
           </v-card-title>
+
+          <!-- Tags inline pour la session courante -->
+          <v-card-subtitle v-if="selectedSession" class="pt-0 pb-2">
+            <div class="d-flex align-center gap-2">
+              <v-icon size="small">mdi-tag-multiple</v-icon>
+              <v-combobox
+                v-model="currentSessionTags"
+                :items="allTags"
+                label="Tags"
+                multiple
+                chips
+                clearable
+                density="compact"
+                variant="outlined"
+                hide-details
+                @update:model-value="handleTagsUpdate"
+                class="flex-grow-1"
+              >
+                <template v-slot:chip="{ item, props }">
+                  <v-chip
+                    v-bind="props"
+                    size="small"
+                    closable
+                    color="primary"
+                    variant="tonal"
+                  >
+                    {{ item.title }}
+                  </v-chip>
+                </template>
+              </v-combobox>
+            </div>
+          </v-card-subtitle>
 
           <v-divider />
 
@@ -286,6 +319,7 @@
         @update:filters="filters = $event"
       />
     </v-navigation-drawer>
+
   </v-container>
 </template>
 
@@ -322,6 +356,8 @@ export default {
       // Auto-refresh
       autoRefresh: false,
       autoRefreshInterval: null,
+      // Tags
+      allTags: [],
       // Filtres
       filtersDrawer: false,
       filters: {
@@ -359,6 +395,17 @@ export default {
   },
 
   computed: {
+    // Tags de la session courante
+    currentSessionTags: {
+      get() {
+        if (!this.selectedSession) return []
+        return this.sessionMetadata[this.selectedSession]?.tags || []
+      },
+      set(newTags) {
+        // Sera géré par handleTagsUpdate
+      }
+    },
+
     // Sessions filtrées selon les filtres actifs
     filteredSessions() {
       let filtered = [...this.sessions]
@@ -688,6 +735,14 @@ export default {
       if (sessionName) {
         // Charger les images de cette session
         await this.loadSessionImages(sessionName)
+
+        // Charger les métadonnées de la session si pas déjà chargées
+        if (!this.sessionMetadata[sessionName]) {
+          await this.loadSessionMetadata(sessionName)
+        }
+
+        // Charger tous les tags disponibles pour l'autocomplete
+        await this.loadAllTags()
       }
     },
 
@@ -809,13 +864,43 @@ export default {
       })
     },
 
-    openTagsDialog(sessionName) {
-      // TODO: Implémenter le dialog pour ajouter des tags
-      console.log('Open tags dialog for', sessionName)
-      this.$store.dispatch('showSnackbar', {
-        message: 'Dialog tags - À implémenter',
-        color: 'info'
+    async loadAllTags() {
+      // Collect all unique tags from all sessions
+      const tagsSet = new Set()
+
+      Object.values(this.sessionMetadata).forEach(metadata => {
+        if (metadata && metadata.tags) {
+          metadata.tags.forEach(tag => tagsSet.add(tag))
+        }
       })
+
+      this.allTags = Array.from(tagsSet).sort()
+    },
+
+    async handleTagsUpdate(newTags) {
+      if (!this.selectedSession) return
+
+      try {
+        // Update metadata via API
+        const metadata = await ApiService.updateSessionMetadata(
+          this.selectedSession,
+          { tags: newTags }
+        )
+
+        // Update local state
+        this.$set(this.sessionMetadata, this.selectedSession, metadata)
+
+        this.$store.dispatch('showSnackbar', {
+          message: 'Tags mis à jour',
+          color: 'success'
+        })
+      } catch (error) {
+        console.error('Erreur mise à jour tags:', error)
+        this.$store.dispatch('showSnackbar', {
+          message: 'Erreur lors de la mise à jour des tags',
+          color: 'error'
+        })
+      }
     },
 
     toggleSortOrder() {

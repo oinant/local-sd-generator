@@ -118,14 +118,6 @@
                 </template>
                 <v-list-item-title>Ajouter une note</v-list-item-title>
               </v-list-item>
-
-              <!-- Add tags -->
-              <v-list-item @click="$emit('add-tags', session.name)">
-                <template v-slot:prepend>
-                  <v-icon>mdi-tag-multiple-outline</v-icon>
-                </template>
-                <v-list-item-title>Ajouter des tags</v-list-item-title>
-              </v-list-item>
             </v-list>
           </v-menu>
         </div>
@@ -153,7 +145,7 @@ export default {
     }
   },
 
-  emits: ['select', 'update-metadata', 'add-note', 'add-tags'],
+  emits: ['select', 'update-metadata', 'add-note'],
 
   data() {
     return {
