@@ -133,7 +133,10 @@ class PromptGenerator:
                     unresolved.append(name)
             else:
                 # Placeholder not found in imports
-                unresolved.append(name)
+                # Check if it was explicitly removed via [Remove] directive
+                if name not in context.removed_placeholders:
+                    unresolved.append(name)
+                # If it was removed, skip it (will resolve to empty string later)
 
         # Raise error if any placeholders are unresolved
         if unresolved:

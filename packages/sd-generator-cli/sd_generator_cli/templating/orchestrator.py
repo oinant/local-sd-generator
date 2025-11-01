@@ -176,6 +176,7 @@ class V2Pipeline:
         theme: Optional[ThemeConfig] = None
         import_sources: Dict[str, str] = {}  # Track which file provides each placeholder
         import_resolution_metadata: Dict[str, Any] = {}
+        removed_placeholders: set = set()  # Track placeholders explicitly removed via [Remove]
 
         if theme_name or theme_file:
             if not self.theme_resolver or not self.theme_loader:
@@ -226,6 +227,10 @@ class V2Pipeline:
             for import_name, import_path in theme.imports.items():
                 # Check for [Remove] directive FIRST (before style filtering)
                 if self._is_remove_directive(import_path):
+                    # Track placeholder name as explicitly removed
+                    # For style-specific names like "Underwear.teasing", track base name only
+                    base_name = import_name.rsplit('.', 1)[0] if '.' in import_name else import_name
+                    removed_placeholders.add(base_name)
                     # Skip this placeholder entirely (will be missing → resolves to "")
                     continue
 
@@ -235,6 +240,8 @@ class V2Pipeline:
                     if import_style == style:
                         # Check if style-specific [Remove] directive
                         if self._is_remove_directive(import_path):
+                            # Track placeholder as removed for this style
+                            removed_placeholders.add(base_name)
                             # Remove for this style (also remove any default version)
                             filtered_theme_imports.pop(base_name, None)
                         else:
@@ -285,7 +292,8 @@ class V2Pipeline:
             style=style,
             import_resolution=import_resolution_metadata,
             import_sources=import_sources,  # Track which file provides each placeholder
-            import_metadata=import_metadata  # Track source counts for multi-file imports
+            import_metadata=import_metadata,  # Track source counts for multi-file imports
+            removed_placeholders=removed_placeholders  # Placeholders explicitly removed via [Remove]
         )
 
         # Phase 1: Inject chunks structurally (preserving placeholders)

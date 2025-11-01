@@ -163,6 +163,8 @@ class ResolvedContext:
         import_sources: Dict mapping placeholder names to the file that provided the variations
                        (e.g., {"HairCut": "themes/cyberpunk/cyberpunk_haircut.yaml"})
         import_metadata: Dict mapping placeholder names to metadata (e.g., {"HairCut": {"source_count": 3}})
+        removed_placeholders: Set of placeholder names explicitly removed via [Remove] directive
+                             (e.g., {"Accessories", "Underwear"} - these should resolve to empty string)
     """
     imports: Dict[str, Dict[str, str]]  # {import_name: {key: value}}
     chunks: Dict[str, ChunkConfig]      # {chunk_name: ChunkConfig}
@@ -173,6 +175,7 @@ class ResolvedContext:
     import_resolution: Dict[str, 'ImportResolution'] = field(default_factory=dict)
     import_sources: Dict[str, str] = field(default_factory=dict)  # placeholder -> file path
     import_metadata: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # placeholder -> metadata
+    removed_placeholders: set = field(default_factory=set)  # Set[str] of intentionally removed placeholders
 
 
 # ===== ADetailer Extension Support =====
