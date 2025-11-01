@@ -293,6 +293,51 @@
                     <strong>{{ key }}:</strong>&nbsp;{{ value }}
                   </v-chip>
                 </div>
+
+                <!-- Infos du manifest (session) -->
+                <v-divider class="my-3" />
+
+                <div v-if="loadingManifest" class="text-center py-2">
+                  <v-progress-circular indeterminate size="20" width="2" />
+                  <div class="text-caption mt-1">Chargement infos session...</div>
+                </div>
+
+                <div v-else-if="manifestDataForCurrentImage">
+                  <div class="text-h6 mb-2">
+                    <v-icon class="mr-2" size="small">mdi-folder-cog</v-icon>
+                    Infos de Session
+                  </div>
+
+                  <!-- Applied Variations -->
+                  <div v-if="Object.keys(manifestDataForCurrentImage.appliedVariations).length > 0" class="mb-3">
+                    <div class="text-subtitle-2 mb-1">Variations Appliquées</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <v-chip size="small" color="secondary" v-for="(value, key) in manifestDataForCurrentImage.appliedVariations" :key="key">
+                        <strong>{{ key }}:</strong>&nbsp;{{ value }}
+                      </v-chip>
+                    </div>
+                  </div>
+
+                  <!-- Generation Params -->
+                  <div v-if="Object.keys(manifestDataForCurrentImage.generationParams).length > 0" class="mb-3">
+                    <div class="text-subtitle-2 mb-1">Paramètres de Génération</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <v-chip size="small" color="info" v-for="(value, key) in manifestDataForCurrentImage.generationParams" :key="key">
+                        <strong>{{ key }}:</strong>&nbsp;{{ value }}
+                      </v-chip>
+                    </div>
+                  </div>
+
+                  <!-- API Params (already in imageMetadata, but can show from manifest too) -->
+                  <div v-if="Object.keys(manifestDataForCurrentImage.apiParams).length > 0" class="mb-3">
+                    <div class="text-subtitle-2 mb-1">Paramètres API (session)</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <v-chip size="small" color="grey" variant="outlined" v-for="(value, key) in manifestDataForCurrentImage.apiParams" :key="key">
+                        <strong>{{ key }}:</strong>&nbsp;{{ value }}
+                      </v-chip>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div v-else class="text-center py-4">
@@ -349,6 +394,8 @@ export default {
       selectedImage: null,
       imageMetadata: null,
       loadingMetadata: false,
+      sessionManifest: null,
+      loadingManifest: false,
       intersectionObserver: null,
       sessionObserver: null,
       // Sort
@@ -521,6 +568,24 @@ export default {
     // Y a-t-il une image suivante ?
     hasNextImage() {
       return this.currentImageIndex >= 0 && this.currentImageIndex < this.allImages.length - 1
+    },
+
+    // Extraire les infos du manifest pour l'image courante
+    manifestDataForCurrentImage() {
+      if (!this.sessionManifest || !this.selectedImage) return null
+
+      // Trouver l'entry de cette image dans manifest.images
+      const imageEntry = this.sessionManifest.images?.find(
+        img => img.filename === this.selectedImage.name
+      )
+
+      if (!imageEntry) return null
+
+      return {
+        appliedVariations: imageEntry.applied_variations || {},
+        generationParams: this.sessionManifest.snapshot?.generation_params || {},
+        apiParams: this.sessionManifest.snapshot?.api_params || {}
+      }
     },
 
     // Extraire les champs de métadonnées à afficher en chips
@@ -750,7 +815,9 @@ export default {
       this.selectedImage = image
       this.imageDialog = true
       this.imageMetadata = null // Reset metadata
+      this.sessionManifest = null // Reset manifest
       this.loadingMetadata = true
+      this.loadingManifest = true
 
       // Charger l'image full size si pas déjà chargée
       if (!image.url) {
@@ -761,18 +828,37 @@ export default {
         }
       }
 
-      // Charger les métadonnées
-      try {
-        this.imageMetadata = await ApiService.getImageMetadata(image.path)
-      } catch (error) {
-        console.error('Erreur lors du chargement des métadonnées:', error)
-        this.$store.dispatch('showSnackbar', {
-          message: 'Erreur lors du chargement des métadonnées',
-          color: 'error'
-        })
-      } finally {
-        this.loadingMetadata = false
-      }
+      // Charger les métadonnées ET le manifest EN PARALLÈLE
+      await Promise.allSettled([
+        // Load image metadata
+        ApiService.getImageMetadata(image.path)
+          .then(metadata => {
+            this.imageMetadata = metadata
+          })
+          .catch(error => {
+            console.error('Erreur lors du chargement des métadonnées:', error)
+            this.$store.dispatch('showSnackbar', {
+              message: 'Erreur lors du chargement des métadonnées',
+              color: 'error'
+            })
+          })
+          .finally(() => {
+            this.loadingMetadata = false
+          }),
+
+        // Load session manifest
+        ApiService.getSessionManifest(this.selectedSession)
+          .then(manifest => {
+            this.sessionManifest = manifest
+          })
+          .catch(error => {
+            console.error('Erreur lors du chargement du manifest:', error)
+            // Pas de snackbar pour manifest car c'est optionnel
+          })
+          .finally(() => {
+            this.loadingManifest = false
+          })
+      ])
     },
 
     formatSessionName(sessionName) {
@@ -887,8 +973,8 @@ export default {
           { tags: newTags }
         )
 
-        // Update local state
-        this.$set(this.sessionMetadata, this.selectedSession, metadata)
+        // Update local state (Vue 3 reactivity)
+        this.sessionMetadata[this.selectedSession] = metadata
 
         this.$store.dispatch('showSnackbar', {
           message: 'Tags mis à jour',

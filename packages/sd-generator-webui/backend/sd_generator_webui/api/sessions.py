@@ -209,6 +209,38 @@ async def get_session_metadata(
     return metadata
 
 
+@router.get("/{session_name}/manifest")
+async def get_session_manifest(
+    session_name: str,
+    user_guid: str = Depends(AuthService.validate_guid)
+):
+    """
+    Get manifest.json for a specific session.
+
+    Returns 404 if session doesn't exist or has no manifest.
+    """
+    session_path = IMAGES_DIR / session_name
+
+    if not session_path.exists() or not session_path.is_dir():
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+
+    manifest_path = session_path / "manifest.json"
+
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail="Manifest non trouvé")
+
+    # Read and return manifest as JSON
+    import json
+    try:
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            manifest_data = json.load(f)
+        return manifest_data
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Manifest JSON invalide")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lecture manifest: {str(e)}")
+
+
 @router.patch("/{session_name}/metadata", response_model=SessionMetadata)
 async def update_session_metadata(
     session_name: str,

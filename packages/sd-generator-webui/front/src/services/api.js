@@ -90,6 +90,11 @@ class ApiService {
     return response.data
   }
 
+  async getSessionManifest(sessionName) {
+    const response = await this.client.get(`/api/sessions/${sessionName}/manifest`)
+    return response.data
+  }
+
   // Images endpoints
   async getImages(page = 1, pageSize = 20, session = null) {
     const params = { page, page_size: pageSize }
