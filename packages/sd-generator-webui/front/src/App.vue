@@ -56,6 +56,16 @@
         </v-icon>
         {{ user.is_admin ? 'Admin' : user.can_generate ? 'Générateur' : 'Lecture seule' }}
       </v-chip>
+
+      <v-chip
+        size="small"
+        variant="outlined"
+        class="mr-2"
+        :title="'Build: ' + buildTimestamp"
+      >
+        <v-icon left size="small">mdi-clock-outline</v-icon>
+        {{ buildInfo }}
+      </v-chip>
     </v-app-bar>
 
     <v-main>
@@ -107,6 +117,21 @@ export default {
 
   computed: {
     ...mapGetters(['isAuthenticated', 'user', 'loading', 'snackbar', 'canGenerate']),
+
+    buildTimestamp() {
+      return __BUILD_TIMESTAMP__
+    },
+
+    buildInfo() {
+      // Format: "2 nov. 13:05"
+      const date = new Date(__BUILD_TIMESTAMP__)
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date)
+    },
 
     menuItems() {
       const items = [

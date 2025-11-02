@@ -234,8 +234,15 @@
                 <v-icon>mdi-chevron-left</v-icon>
               </v-btn>
 
-              <!-- Image -->
-              <v-img :src="selectedImage.url" contain max-height="75vh" />
+              <!-- Image (cliquable pour fullscreen) -->
+              <v-img
+                :src="selectedImage.url"
+                contain
+                max-height="75vh"
+                @click="openFullscreen"
+                class="cursor-pointer fullscreen-trigger"
+                title="Cliquer pour afficher en plein écran"
+              />
 
               <!-- Bouton Suivant -->
               <v-btn
@@ -351,6 +358,71 @@
       </v-card>
     </v-dialog>
 
+    <!-- Overlay Fullscreen pour l'image -->
+    <v-overlay
+      v-model="fullscreenOverlay"
+      class="fullscreen-overlay"
+      :persistent="false"
+      :z-index="2000"
+    >
+      <div class="fullscreen-container" @click="closeFullscreen">
+        <!-- Bouton fermer -->
+        <v-btn
+          icon
+          size="large"
+          variant="elevated"
+          color="white"
+          class="fullscreen-close"
+          @click.stop="closeFullscreen"
+        >
+          <v-icon color="black">mdi-close</v-icon>
+        </v-btn>
+
+        <!-- Bouton Précédent -->
+        <v-btn
+          v-if="hasPreviousImage"
+          icon
+          size="large"
+          variant="elevated"
+          color="primary"
+          class="fullscreen-nav fullscreen-nav-left"
+          @click.stop="showPreviousImage"
+        >
+          <v-icon>mdi-chevron-left</v-icon>
+        </v-btn>
+
+        <!-- Image fullscreen -->
+        <div class="fullscreen-image-wrapper" @click.stop>
+          <img
+            v-if="selectedImage"
+            :src="selectedImage.url"
+            class="fullscreen-image"
+            alt="Fullscreen image"
+          />
+        </div>
+
+        <!-- Bouton Suivant -->
+        <v-btn
+          v-if="hasNextImage"
+          icon
+          size="large"
+          variant="elevated"
+          color="primary"
+          class="fullscreen-nav fullscreen-nav-right"
+          @click.stop="showNextImage"
+        >
+          <v-icon>mdi-chevron-right</v-icon>
+        </v-btn>
+
+        <!-- Indicateur de position -->
+        <div class="fullscreen-indicator">
+          <v-chip color="white" variant="elevated">
+            <strong>{{ currentImageIndex + 1 }}</strong> / {{ allImages.length }}
+          </v-chip>
+        </div>
+      </div>
+    </v-overlay>
+
     <!-- Drawer pour les filtres -->
     <v-navigation-drawer
       v-model="filtersDrawer"
@@ -391,6 +463,7 @@ export default {
       selectedSession: null,
       imageDialog: false,
       metadataDialog: false,
+      fullscreenOverlay: false,
       selectedImage: null,
       imageMetadata: null,
       loadingMetadata: false,
@@ -437,6 +510,8 @@ export default {
         window.addEventListener('keydown', this.handleKeyNavigation)
       } else {
         window.removeEventListener('keydown', this.handleKeyNavigation)
+        // Fermer aussi le fullscreen si la dialog se ferme
+        this.fullscreenOverlay = false
       }
     }
   },
@@ -916,8 +991,22 @@ export default {
       } else if (event.key === 'ArrowRight') {
         this.showNextImage()
       } else if (event.key === 'Escape') {
-        this.imageDialog = false
+        // Si fullscreen est ouvert, fermer seulement le fullscreen
+        if (this.fullscreenOverlay) {
+          this.closeFullscreen()
+        } else {
+          // Sinon, fermer la dialog
+          this.imageDialog = false
+        }
       }
+    },
+
+    openFullscreen() {
+      this.fullscreenOverlay = true
+    },
+
+    closeFullscreen() {
+      this.fullscreenOverlay = false
     },
 
     async handleMetadataUpdate({ sessionName, update }) {
@@ -1174,5 +1263,71 @@ export default {
 
 .nav-button:hover {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Fullscreen overlay styles */
+.fullscreen-overlay {
+  background-color: rgba(0, 0, 0, 0.95) !important;
+}
+
+.fullscreen-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.fullscreen-image-wrapper {
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-image {
+  max-width: 100%;
+  max-height: 90vh;
+}
+
+.fullscreen-trigger:hover {
+  opacity: 0.9;
+}
+
+.fullscreen-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+}
+
+.fullscreen-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.fullscreen-nav-left {
+  left: 30px;
+}
+
+.fullscreen-nav-right {
+  right: 30px;
+}
+
+.fullscreen-nav:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6) !important;
+}
+
+.fullscreen-indicator {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 </style>

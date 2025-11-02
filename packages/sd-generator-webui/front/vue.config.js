@@ -1,4 +1,5 @@
 const { defineConfig } = require('@vue/cli-service')
+const webpack = require('webpack')
 
 module.exports = defineConfig({
   transpileDependencies: true,
@@ -21,5 +22,13 @@ module.exports = defineConfig({
     }
   },
   outputDir: '../backend/static/dist',
-  publicPath: process.env.NODE_ENV === 'production' ? '/webui/' : '/'
+  publicPath: process.env.NODE_ENV === 'production' ? '/webui/' : '/',
+
+  chainWebpack: config => {
+    // Inject build timestamp automatically (merge with existing defines)
+    config.plugin('define').tap(args => {
+      args[0].__BUILD_TIMESTAMP__ = JSON.stringify(new Date().toISOString())
+      return args
+    })
+  }
 })
