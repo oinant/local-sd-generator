@@ -9,8 +9,20 @@ This module handles resolution of imports with support for:
 """
 
 from pathlib import Path
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Union, Optional
+from dataclasses import dataclass
 from ..utils.hash_utils import md5_short
+
+
+@dataclass
+class FileResolution:
+    """Track a single file resolution attempt."""
+    placeholder: str
+    requested_path: str
+    requested_style: Optional[str]
+    resolved_path: str
+    status: str  # 'found', 'fallback', 'no_variant'
+    fallback_reason: Optional[str] = None
 
 
 class ImportResolver:
@@ -74,12 +86,26 @@ class ImportResolver:
 
             if isinstance(import_value, str):
                 # Single file import
-                variations = self._load_variation_file(
-                    import_value,
-                    base_path,
-                    style=style if is_style_sensitive else None
-                )
-                resolved[import_name] = variations
+                try:
+                    variations = self._load_variation_file(
+                        import_value,
+                        base_path,
+                        style=style if is_style_sensitive else None,
+                        placeholder_name=import_name  # Pass placeholder name for better debug
+                    )
+                    resolved[import_name] = variations
+                except FileNotFoundError as e:
+                    # Try to resolve the path to show what was attempted
+                    try:
+                        attempted_path = self.loader.resolve_path(import_value, base_path)
+                    except Exception:
+                        attempted_path = f"{base_path}/{import_value}"
+
+                    print(f"[ERROR] [{import_name}] Import file not found: {import_value}")
+                    print(f"        → Tried: {attempted_path}")
+                    print(f"        → {e}")
+                    # Skip this import - placeholder will be unresolved
+                    continue
                 # Analyze variations for metadata
                 var_metadata = self._analyze_variations(variations)
                 metadata[import_name] = {
@@ -93,7 +119,8 @@ class ImportResolver:
                     import_value,
                     base_path,
                     import_name,
-                    style=style if is_style_sensitive else None
+                    style=style if is_style_sensitive else None,
+                    placeholder_name=import_name  # Pass placeholder name for better debug
                 )
                 resolved[import_name] = merged
                 # Analyze merged variations for metadata
@@ -112,7 +139,8 @@ class ImportResolver:
                         variations = self._load_variation_file(
                             nested_value,
                             base_path,
-                            style=style if is_style_sensitive else None
+                            style=style if is_style_sensitive else None,
+                            placeholder_name=f"{import_name}.{nested_name}"  # Pass nested placeholder name
                         )
                         nested[nested_name] = variations
                     elif isinstance(nested_value, list):
@@ -121,7 +149,8 @@ class ImportResolver:
                             nested_value,
                             base_path,
                             f"{import_name}.{nested_name}",
-                            style=style if is_style_sensitive else None
+                            style=style if is_style_sensitive else None,
+                            placeholder_name=f"{import_name}.{nested_name}"  # Pass nested placeholder name
                         )
                         nested[nested_name] = merged
                 resolved[import_name] = nested
@@ -133,7 +162,8 @@ class ImportResolver:
         self,
         path: str,
         base_path: Path,
-        style: str = None
+        style: str = None,
+        placeholder_name: str = None
     ) -> Union[Dict[str, str], Dict[str, Dict[str, str]], Dict[str, Any]]:
         """
         Load variations from a single file.
@@ -146,6 +176,7 @@ class ImportResolver:
             path: Relative path to variation file
             base_path: Base path for resolution
             style: Optional style for style-sensitive files (e.g., "sports", "casual")
+            placeholder_name: Name of the placeholder/import for better debug messages
 
         Returns:
             - Simple variations: Dict[str, str] - {key: value}
@@ -157,6 +188,9 @@ class ImportResolver:
             FileNotFoundError: If file not found
             ValueError: If file format invalid
         """
+        # Debug: Always print what we're loading
+        placeholder_info = f"[{placeholder_name}] " if placeholder_name else ""
+
         # If style is provided, try to resolve style variant first
         if style and style != "default":
             style_path = self._resolve_style_variant(path, style)
@@ -165,22 +199,34 @@ class ImportResolver:
                 try:
                     resolved_path_variant = self.loader.resolve_path(style_path, base_path)
                     if resolved_path_variant.exists():
-                        # DEBUG: Print which file we're using
-                        print(f"[DEBUG] Style variant found: {resolved_path_variant}")
+                        # Style variant found - use it
+                        placeholder_info = f"[{placeholder_name}] " if placeholder_name else ""
+                        print(f"[RESOLVE] {placeholder_info}Style '{style}' variant found: {style_path}")
                         path = style_path  # Use style variant
                     else:
-                        print(f"[DEBUG] Style variant NOT found: {resolved_path_variant}, using default: {path}")
-                except FileNotFoundError:
-                    print(f"[DEBUG] Style variant resolution failed for: {style_path}, using default: {path}")
+                        # Style variant file doesn't exist - fallback to default
+                        placeholder_info = f"[{placeholder_name}] " if placeholder_name else ""
+                        print(f"[FALLBACK] {placeholder_info}Style '{style}' variant not found: {style_path}")
+                        print(f"           → Tried: {resolved_path_variant}")
+                        print(f"           → Using default: {path}")
+                except FileNotFoundError as e:
+                    # Style variant resolution failed - fallback to default
+                    placeholder_info = f"[{placeholder_name}] " if placeholder_name else ""
+                    print(f"[FALLBACK] {placeholder_info}Style '{style}' variant resolution failed: {style_path}")
+                    print(f"           → Error: {e}")
+                    print(f"           → Using default: {path}")
                     pass  # Fall back to default file
             else:
-                print(f"[DEBUG] No style_path generated for: {path}")
+                # No style_path generated (style not in filename)
+                # This means the file doesn't have {style} placeholder in name
+                print(f"[FALLBACK] {placeholder_info}Style '{style}' requested but file has no style support")
+                print(f"           → Using file as-is: {path}")
         else:
-            if style:
-                print(f"[DEBUG] Style is 'default', using: {path}")
-            else:
-                print(f"[DEBUG] No style provided, using: {path}")
+            # No style handling (style is None or "default")
+            # Dim the message for normal loads (less important)
+            print(f"\033[2m[LOAD] {placeholder_info}Loading: {path}\033[0m")
 
+        # Resolve the path (don't show it for successful loads)
         resolved_path = self.loader.resolve_path(path, base_path)
         data = self.loader.load_file(resolved_path, base_path)
 
@@ -259,7 +305,8 @@ class ImportResolver:
         sources: List[str],
         base_path: Path,
         import_name: str,
-        style: str = None
+        style: str = None,
+        placeholder_name: str = None
     ) -> tuple[Dict[str, str], int]:
         """
         Merge variations from multiple sources.
@@ -275,6 +322,7 @@ class ImportResolver:
             base_path: Base path for resolving file paths
             import_name: Name of import (for error messages)
             style: Optional style for style-sensitive files
+            placeholder_name: Name of the placeholder/import for better debug messages
 
         Returns:
             Tuple of (merged dict of variations, number of source files)
@@ -293,7 +341,7 @@ class ImportResolver:
                 key_sources[inline_key] = f"inline({inline_key})"
             else:
                 # File - load and merge (with style if provided)
-                variations = self._load_variation_file(source, base_path, style=style)
+                variations = self._load_variation_file(source, base_path, style=style, placeholder_name=placeholder_name)
                 file_count += 1  # Increment file counter
 
                 # Handle conflicts with auto-prefixing
