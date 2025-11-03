@@ -140,12 +140,28 @@ class PromptGenerator:
 
         # Raise error if any placeholders are unresolved
         if unresolved:
-            raise ValueError(
-                f"Unresolved placeholders in template: {', '.join(sorted(unresolved))}\n"
-                f"These placeholders are used in the prompt/template but have no "
-                f"corresponding variations defined in 'variations:' or 'imports:' sections.\n"
-                f"Available variations: {', '.join(sorted(context.imports.keys()))}"
-            )
+            # Build detailed diagnostic for each unresolved placeholder
+            diagnostic_lines = []
+            diagnostic_lines.append(f"✗ Unresolved placeholders detected: {', '.join(sorted(unresolved))}")
+            diagnostic_lines.append("")
+            diagnostic_lines.append("Diagnostics:")
+
+            for placeholder in sorted(unresolved):
+                diagnostic_lines.append(f"  • {placeholder}:")
+                diagnostic_lines.append(f"      → NOT found in loaded imports")
+                diagnostic_lines.append(f"      → This placeholder needs to be defined in:")
+                if context.theme_name:
+                    diagnostic_lines.append(f"         - Theme '{context.theme_name}' imports section (theme.yaml)")
+                diagnostic_lines.append(f"         - Template imports section (template.yaml)")
+                diagnostic_lines.append(f"         - Prompt imports section (prompt.yaml)")
+
+            diagnostic_lines.append("")
+            diagnostic_lines.append(f"Available loaded imports ({len(context.imports)}):")
+            diagnostic_lines.append(f"  {', '.join(sorted(context.imports.keys()))}")
+            diagnostic_lines.append("")
+            diagnostic_lines.append("💡 Tip: Check the debug messages above for [ERROR] or missing [LOAD] messages")
+
+            raise ValueError('\n'.join(diagnostic_lines))
 
         return variations
 
