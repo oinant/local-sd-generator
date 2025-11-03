@@ -255,10 +255,13 @@ class InheritanceResolver:
         # 2. imports: MERGE (all config types)
         merged.imports = {**parent.imports, **child.imports}
 
-        # 3. chunks and defaults: MERGE (ChunkConfig only)
+        # 3. chunks: MERGE (all config types)
+        # TemplateConfig and PromptConfig can also define chunks
+        merged.chunks = {**parent.chunks, **child.chunks}
+
+        # 4. defaults: MERGE (ChunkConfig only)
         if isinstance(child, ChunkConfig) and isinstance(parent, ChunkConfig):
             assert isinstance(merged, ChunkConfig)  # Type narrow for mypy
-            merged.chunks = {**parent.chunks, **child.chunks}
             merged.defaults = {**parent.defaults, **child.defaults}
 
         # 4. template: INJECTION (Template Method Pattern)

@@ -91,6 +91,7 @@ class ConfigParser:
             implements=data.get('implements'),
             parameters=parsed_parameters,  # Use parsed parameters
             imports=data.get('imports') or {},
+            chunks=data.get('chunks') or {},  # Parse chunks field
             negative_prompt=data.get('negative_prompt') or '',
             output=output_config,
             # Themable Templates Extension
@@ -231,6 +232,7 @@ class ConfigParser:
             source_file=source_file,
             implements=data.get('implements'),  # Optional: supports standalone prompts
             imports=data.get('imports') or {},
+            chunks=data.get('chunks') or {},  # Parse chunks field
             parameters=parsed_parameters,  # Use parsed parameters
             negative_prompt=data.get('negative_prompt'),
             output=output_config,

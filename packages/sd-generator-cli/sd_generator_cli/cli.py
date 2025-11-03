@@ -126,6 +126,46 @@ def find_yaml_templates(configs_dir: Path) -> list[Path]:
     return templates
 
 
+def _apply_fixed_to_context(context: Any, fixed_placeholders: dict[str, str]) -> Any:
+    """
+    Apply fixed placeholder values to context imports.
+
+    Filters each fixed placeholder's variations to only include the specified key.
+
+    Args:
+        context: V2Pipeline ResolvedContext with imports dict
+        fixed_placeholders: Dict mapping placeholder names to their fixed keys
+
+    Returns:
+        Modified context with filtered imports
+
+    Raises:
+        ValueError: If a fixed key is not found in the placeholder's variations
+    """
+    if not hasattr(context, 'imports') or not context.imports:
+        return context
+
+    for placeholder, fixed_key in fixed_placeholders.items():
+        if placeholder not in context.imports:
+            # Placeholder not in template, just skip
+            continue
+
+        # Check if the fixed key exists in this placeholder's variations
+        variations_dict = context.imports[placeholder]
+
+        if fixed_key not in variations_dict:
+            available_keys = list(variations_dict.keys())
+            raise ValueError(
+                f"Key '{fixed_key}' not found for placeholder '{placeholder}'. "
+                f"Available keys: {', '.join(available_keys) if available_keys else 'none'}"
+            )
+
+        # Replace with single-item dict (fixed value)
+        context.imports[placeholder] = {fixed_key: variations_dict[fixed_key]}
+
+    return context
+
+
 def _generate(
     template_path: Path,
     global_config: Any,
@@ -137,7 +177,8 @@ def _generate(
     theme_name: Optional[str] = None,
     theme_file: Optional[Path] = None,
     style: str = "default",
-    skip_validation: bool = False
+    skip_validation: bool = False,
+    use_fixed: Optional[str] = None
 ):
     """
     Generate images using Template System V2.0.
@@ -159,6 +200,7 @@ def _generate(
         session_name_override: CLI override for session name (highest priority)
         theme_name: Optional theme name (for themable templates)
         style: Art style (default, cartoon, realistic, etc.)
+        use_fixed: Fix placeholder values (format: "placeholder:key|placeholder2:key2")
     """
     from sd_generator_cli.templating.orchestrator import V2Pipeline
     from sd_generator_cli.api import SDAPIClient, BatchGenerator, SessionManager, ImageWriter, ProgressReporter
@@ -201,6 +243,24 @@ def _generate(
 
         config = pipeline.load(str(template_path))
         resolved_config, context = pipeline.resolve(config, theme_name, theme_file, style)
+
+        # Apply fixed placeholder values if specified
+        fixed_placeholders = {}
+        if use_fixed:
+            from sd_generator_cli.templating.utils.fixed_placeholders import parse_fixed_values
+            try:
+                fixed_placeholders = parse_fixed_values(use_fixed)
+                if fixed_placeholders:
+                    console.print(f"[cyan]Applying fixed values:[/cyan]")
+                    for placeholder, key in fixed_placeholders.items():
+                        console.print(f"  [cyan]{placeholder}:[/cyan] {key}")
+
+                    # Apply fixed values to context variations
+                    context = _apply_fixed_to_context(context, fixed_placeholders)
+            except ValueError as e:
+                console.print(f"[red]✗ Invalid --use-fixed format:[/red] {e}")
+                raise typer.Exit(code=1)
+
         prompts = pipeline.generate(resolved_config, context)
 
         # Display variation statistics
@@ -395,6 +455,7 @@ def _generate(
             "generation_params": generation_params,
             "api_params": api_params,
             "variations": variations_map,
+            "fixed_placeholders": fixed_placeholders,
             # Themable Templates metadata (Phase 2)
             "theme_name": theme_name,
             "style": style
@@ -730,6 +791,11 @@ def generate_images(
         "--skip-validation",
         help="Skip YAML schema validation before generation",
     ),
+    use_fixed: Optional[str] = typer.Option(
+        None,
+        "--use-fixed", "--fix",
+        help="Fix placeholder values (format: placeholder:key|placeholder2:key2)",
+    ),
 ):
     """
     Generate images from YAML template using V2.0 Template System.
@@ -820,7 +886,8 @@ def generate_images(
             theme_name=theme,
             theme_file=theme_file,
             style=style,
-            skip_validation=skip_validation
+            skip_validation=skip_validation,
+            use_fixed=use_fixed
         )
 
     except typer.Exit:
