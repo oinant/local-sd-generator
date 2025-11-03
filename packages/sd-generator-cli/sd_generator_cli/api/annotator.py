@@ -100,6 +100,10 @@ class ImageAnnotator:
         # Load image
         img: Any = Image.open(image_path)  # type: ignore
 
+        # CRITICAL: Preserve PNG metadata (parameters chunk from SD WebUI)
+        # Extract metadata BEFORE any image operations
+        original_metadata = img.info.copy() if hasattr(img, 'info') else {}
+
         # Convert to RGBA for transparency
         if img.mode != 'RGBA':
             img = img.convert('RGBA')  # type: ignore
@@ -159,13 +163,33 @@ class ImageAnnotator:
         # Composite overlay
         img = Image.alpha_composite(img, overlay)  # type: ignore
 
-        # Convert back to RGB for JPEG
-        if output_path and output_path.suffix.lower() in ['.jpg', '.jpeg']:
+        # Save with metadata preservation
+        save_path = output_path or image_path
+
+        # Convert back to RGB for JPEG (JPEG doesn't support alpha channel)
+        if save_path.suffix.lower() in ['.jpg', '.jpeg']:
             img = img.convert('RGB')  # type: ignore
 
-        # Save
-        save_path = output_path or image_path
-        img.save(save_path)
+        # For PNG files, preserve metadata
+        if save_path.suffix.lower() == '.png':
+            from PIL import PngImagePlugin
+            pnginfo = PngImagePlugin.PngInfo()
+
+            # Copy all text chunks from original metadata
+            for key, value in original_metadata.items():
+                if isinstance(value, (str, bytes)):
+                    # Handle both string and bytes values
+                    if isinstance(value, bytes):
+                        try:
+                            value = value.decode('utf-8', errors='ignore')
+                        except Exception:
+                            continue
+                    pnginfo.add_text(key, str(value))
+
+            img.save(save_path, pnginfo=pnginfo)
+        else:
+            # Non-PNG formats (JPEG, etc.) - save normally
+            img.save(save_path)
 
         return save_path
 
