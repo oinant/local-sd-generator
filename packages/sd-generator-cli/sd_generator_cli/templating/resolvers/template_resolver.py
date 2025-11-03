@@ -538,14 +538,14 @@ class TemplateResolver:
             Dict containing chunk data (template, imports, etc.)
 
         Raises:
-            ValueError: If chunk not found in imports
+            ValueError: If chunk not found in chunks
         """
-        imports = context.get('imports', {})
+        chunks = context.get('chunks', {})
 
-        if chunk_name not in imports:
-            raise ValueError(f"Chunk '{chunk_name}' not found in imports")
+        if chunk_name not in chunks:
+            raise ValueError(f"Chunk '{chunk_name}' not found in chunks")
 
-        chunk_data = imports[chunk_name]
+        chunk_data = chunks[chunk_name]
 
         # chunk_data should be a dict with 'template' and 'imports' fields
         # (loaded by import_resolver when it's a .chunk.yaml file)

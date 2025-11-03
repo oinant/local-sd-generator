@@ -22,7 +22,7 @@ class TemplateConfig:
     It can be inherited by other templates or prompts using implements:.
 
     Required fields: version, name, template
-    Optional fields: implements, parameters, imports, negative_prompt, output, themes
+    Optional fields: implements, parameters, imports, chunks, negative_prompt, output, themes
 
     Themes Extension:
         themes: Dict mapping theme names to theme file paths (ex: {"cyberpunk": "./themes/cyberpunk/theme.yaml"})
@@ -38,6 +38,7 @@ class TemplateConfig:
     implements: Optional[str] = None
     parameters: Dict[str, Any] = field(default_factory=dict)
     imports: Dict[str, Any] = field(default_factory=dict)
+    chunks: Dict[str, str] = field(default_factory=dict)  # {chunk_name: chunk_file_path}
     negative_prompt: str = ''
     output: Optional['OutputConfig'] = None
     # Themes Extension (presence of themes block indicates themable template)
@@ -120,7 +121,7 @@ class PromptConfig:
     variations and generation settings to produce images.
 
     Required fields: version, name, generation, prompt
-    Optional fields: implements, imports, parameters, negative_prompt, output, themes
+    Optional fields: implements, imports, chunks, parameters, negative_prompt, output, themes
 
     Themes Extension:
         themes: Dict mapping theme names to theme file paths (ex: {"cyberpunk": "./themes/cyberpunk/theme.yaml"})
@@ -136,6 +137,7 @@ class PromptConfig:
     source_file: Path
     implements: Optional[str] = None
     imports: Dict[str, Any] = field(default_factory=dict)
+    chunks: Dict[str, str] = field(default_factory=dict)  # {chunk_name: chunk_file_path}
     parameters: Dict[str, Any] = field(default_factory=dict)
     negative_prompt: Optional[str] = None
     output: Optional[OutputConfig] = None
@@ -155,10 +157,11 @@ class ResolvedContext:
 
     Attributes:
         imports: Dict mapping import names to their key-value variations
-        chunks: Dict mapping chunk names to their ChunkConfig objects
+        chunks: Dict mapping chunk names to chunk dicts (with 'template', 'imports', 'defaults' keys)
         parameters: Merged SD WebUI parameters from inheritance chain
         variation_state: Current values for placeholders during generation
         style: Active style for this resolution (e.g., "cartoon", "realistic", "watercolor")
+        theme_name: Name of the theme used for this resolution (e.g., "cyberpunk", "tropical", None if no theme)
         import_resolution: Metadata about how each import was resolved (theme source, override status, etc.)
         import_sources: Dict mapping placeholder names to the file that provided the variations
                        (e.g., {"HairCut": "themes/cyberpunk/cyberpunk_haircut.yaml"})
@@ -167,14 +170,15 @@ class ResolvedContext:
                              (e.g., {"Accessories", "Underwear"} - these should resolve to empty string)
     """
     imports: Dict[str, Dict[str, str]]  # {import_name: {key: value}}
-    chunks: Dict[str, ChunkConfig]      # {chunk_name: ChunkConfig}
+    chunks: Dict[str, Dict[str, Any]]   # {chunk_name: {'template': str, 'imports': dict, 'defaults': dict}}
     parameters: Dict[str, Any]
     variation_state: Dict[str, str] = field(default_factory=dict)
     # Themes Extension
     style: str = "default"
+    theme_name: Optional[str] = None  # Theme name used for this resolution
     import_resolution: Dict[str, 'ImportResolution'] = field(default_factory=dict)
     import_sources: Dict[str, str] = field(default_factory=dict)  # placeholder -> file path
-    import_metadata: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # placeholder -> metadata
+    import_metadata: Dict[str, Dict[str, Dict[str, Any]]] = field(default_factory=dict)  # placeholder -> metadata
     removed_placeholders: set = field(default_factory=set)  # Set[str] of intentionally removed placeholders
 
 

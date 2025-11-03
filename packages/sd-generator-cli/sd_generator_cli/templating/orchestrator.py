@@ -283,13 +283,17 @@ class V2Pipeline:
         # Merge parameters from inheritance chain
         merged_params = self._merge_parameters(inheritance_chain)
 
+        # Load chunks from resolved_config
+        resolved_chunks = self._load_chunks(resolved_config, base_path)
+
         # Build resolved context
         context = ResolvedContext(
             imports=resolved_imports,
-            chunks={},  # Chunks will be available via imports
+            chunks=resolved_chunks,  # Loaded chunks (Dict[str, ChunkConfig])
             parameters=merged_params,
             # Themes metadata
             style=style,
+            theme_name=theme_name,  # Theme name for debugging
             import_resolution=import_resolution_metadata,
             import_sources=import_sources,  # Track which file provides each placeholder
             import_metadata=import_metadata,  # Track source counts for multi-file imports
@@ -429,6 +433,61 @@ class V2Pipeline:
                 merged.update(config.parameters)
 
         return merged
+
+    def _load_chunks(
+        self,
+        config: Any,
+        base_path: Path
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Load chunk configurations from file paths.
+
+        Args:
+            config: PromptConfig or TemplateConfig with chunks field
+            base_path: Base directory for resolving chunk paths
+
+        Returns:
+            Dict mapping chunk names to chunk dicts (with 'template' and 'imports' keys)
+            Format expected by template_resolver: {chunk_name: {'template': str, 'imports': dict}}
+        """
+        loaded_chunks: Dict[str, Dict[str, Any]] = {}
+
+        # Get chunks from config (Dict[str, str] - chunk_name: file_path)
+        chunks_dict = getattr(config, 'chunks', {})
+        if not chunks_dict:
+            return loaded_chunks
+
+        # Load each chunk file
+        for chunk_name, chunk_path in chunks_dict.items():
+            try:
+                # Resolve chunk path
+                resolved_path = self.loader.resolve_path(
+                    chunk_path,
+                    base_path,
+                    allow_absolute=False
+                )
+
+                # Load and parse chunk file
+                chunk_data = self.loader.load_file(resolved_path, base_path=resolved_path.parent)
+                chunk_config = self.parser.parse_chunk(chunk_data, resolved_path)
+
+                # Resolve chunk's inheritance if it has implements
+                if chunk_config.implements:
+                    chunk_config = self.inheritance_resolver.resolve_implements(chunk_config)
+
+                # Convert ChunkConfig to dict format expected by template_resolver
+                loaded_chunks[chunk_name] = {
+                    'template': chunk_config.template,
+                    'imports': chunk_config.imports,
+                    'defaults': chunk_config.defaults
+                }
+
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load chunk '{chunk_name}' from '{chunk_path}': {e}"
+                )
+
+        return loaded_chunks
 
     def _is_remove_directive(self, value: Any) -> bool:
         """
