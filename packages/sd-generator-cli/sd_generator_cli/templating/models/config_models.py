@@ -105,11 +105,23 @@ class GenerationConfig:
 
     Defines how variations are generated (random vs combinatorial),
     seed management, and the number of images to generate.
+
+    Seed modes (when seed_list is None):
+    - fixed: Same seed for all images
+    - progressive: SEED + index
+    - random: -1 (random)
+
+    Seed list mode (when seed_list is provided):
+    - Overrides seed_mode
+    - Each variation combination is tested on all seeds in the list
+    - Example: 12 variations × 20 seeds = 240 images
     """
     mode: str  # 'random' | 'combinatorial'
     seed: int
     seed_mode: str  # 'fixed' | 'progressive' | 'random'
     max_images: int
+    # Explicit seed list for seed-sweep mode (overrides seed/seed_mode)
+    seed_list: Optional[List[int]] = None
 
 
 @dataclass

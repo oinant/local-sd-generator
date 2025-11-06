@@ -178,7 +178,8 @@ def _generate(
     theme_file: Optional[Path] = None,
     style: str = "default",
     skip_validation: bool = False,
-    use_fixed: Optional[str] = None
+    use_fixed: Optional[str] = None,
+    seeds: Optional[str] = None
 ):
     """
     Generate images using Template System V2.0.
@@ -259,6 +260,17 @@ def _generate(
                     context = _apply_fixed_to_context(context, fixed_placeholders)
             except ValueError as e:
                 console.print(f"[red]✗ Invalid --use-fixed format:[/red] {e}")
+                raise typer.Exit(code=1)
+
+        # Apply seed-sweep mode if specified
+        if seeds:
+            from sd_generator_cli.templating.utils.seed_utils import parse_seeds
+            try:
+                seed_list = parse_seeds(seeds)
+                resolved_config.generation.seed_list = seed_list
+                console.print(f"[cyan]Seed-sweep mode:[/cyan] {len(seed_list)} seeds ({seeds})")
+            except ValueError as e:
+                console.print(f"[red]✗ Invalid --seeds format:[/red] {e}")
                 raise typer.Exit(code=1)
 
         prompts = pipeline.generate(resolved_config, context)
@@ -432,6 +444,10 @@ def _generate(
             "total_combinations": total_combs
         }
 
+        # Add seed_list if present (seed-sweep mode)
+        if resolved_config.generation and resolved_config.generation.seed_list:
+            generation_params["seed_list"] = resolved_config.generation.seed_list
+
         # Build api_params from first prompt
         api_params = {}
         if prompts and 'parameters' in prompts[0]:
@@ -577,11 +593,18 @@ def _generate(
             # Update variations in prompt_dict for manifest
             prompt_dict['variations'] = variations
 
+            # Build filename with seed if present
+            seed = prompt_dict.get('seed', -1)
+            if seed != -1:
+                filename = f"{session_name}_{idx:04d}_seed-{seed}.png"
+            else:
+                filename = f"{session_name}_{idx:04d}.png"
+
             prompt_cfg = PromptConfig(
                 prompt=prompt_dict['prompt'],
                 negative_prompt=prompt_dict.get('negative_prompt', ''),
-                seed=prompt_dict.get('seed', -1),
-                filename=f"{session_name}_{idx:04d}.png",
+                seed=seed,
+                filename=filename,
                 parameters=parameters
             )
             prompt_configs.append(prompt_cfg)
@@ -796,6 +819,11 @@ def generate_images(
         "--use-fixed", "--fix",
         help="Fix placeholder values (format: placeholder:key|placeholder2:key2)",
     ),
+    seeds: Optional[str] = typer.Option(
+        None,
+        "--seeds",
+        help="Seed specification for seed-sweep mode (formats: '1000,1005,1008' | '1000-1019' | '20#1000')",
+    ),
 ):
     """
     Generate images from YAML template using V2.0 Template System.
@@ -809,6 +837,14 @@ def generate_images(
     - Advanced selectors and weights
     - Themable templates with style variants
 
+    Seed-sweep mode (--seeds):
+    - Each variation is tested on the same set of seeds
+    - Example: 12 variations × 20 seeds = 240 images
+    - Formats:
+      * Explicit list: --seeds 1000,1005,1008
+      * Range: --seeds 1000-1019
+      * Count + start: --seeds 20#1000
+
     Examples:
         sdgen generate
         sdgen generate -t portrait.yaml
@@ -816,6 +852,7 @@ def generate_images(
         sdgen generate -t test.yaml --session-name my_session
         sdgen generate -t character.template.yaml --theme cyberpunk --style realistic
         sdgen generate -t scene.template.yaml --theme scifi --style cartoon
+        sdgen generate -t test.yaml --seeds 20#1000 (seed-sweep: 20 seeds starting at 1000)
     """
     try:
         # Validate theme options (mutually exclusive)
@@ -887,6 +924,7 @@ def generate_images(
             theme_file=theme_file,
             style=style,
             skip_validation=skip_validation,
+            seeds=seeds,
             use_fixed=use_fixed
         )
 

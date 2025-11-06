@@ -173,7 +173,8 @@ class V2Executor:
             # Save image
             image_path = self._save_image(
                 response['images'][0],
-                image_number
+                image_number,
+                prompt_dict
             )
 
             # Save metadata
@@ -249,13 +250,14 @@ class V2Executor:
             expand=False
         ))
 
-    def _save_image(self, base64_data: str, image_number: int) -> Path:
+    def _save_image(self, base64_data: str, image_number: int, prompt_dict: Dict[str, Any]) -> Path:
         """
         Save base64 image data to file.
 
         Args:
             base64_data: Base64-encoded PNG image
             image_number: Image number for filename
+            prompt_dict: Prompt dict containing seed and variations
 
         Returns:
             Path to saved image file
@@ -263,8 +265,13 @@ class V2Executor:
         # Decode base64
         image_bytes = base64.b64decode(base64_data)
 
-        # Generate filename
-        filename = f"image_{image_number:04d}.png"
+        # Generate filename with seed (if present)
+        seed = prompt_dict.get('seed', -1)
+        if seed != -1:
+            filename = f"image_{image_number:04d}_seed-{seed}.png"
+        else:
+            filename = f"image_{image_number:04d}.png"
+
         image_path = self.session_dir / filename
 
         # Save file

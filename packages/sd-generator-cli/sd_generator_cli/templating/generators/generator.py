@@ -302,42 +302,84 @@ class PromptGenerator:
 
         # Generate prompts
         prompts = []
-        for idx, combo in enumerate(combinations):
-            if generation.max_images > 0 and idx >= generation.max_images:
-                break
 
-            # Build variation state for this combination
-            variation_state = {}
-            for name_idx, name in enumerate(names) if combinatorial_vars else []:
-                variation_state[name] = combo[name_idx]
+        # Seed-sweep mode: iterate combinations × seeds
+        if generation.seed_list:
+            image_index = 0
+            for combo in combinations:
+                # Build variation state for this combination
+                variation_state = {}
+                for name_idx, name in enumerate(names) if combinatorial_vars else []:
+                    variation_state[name] = combo[name_idx]
 
-            # Add random values for non-combinatorial vars (weight 0)
-            # Use truly random selection (not seeded - variations should be random each run)
-            for name, variations in non_combinatorial_vars:
-                variation_state[name] = random.choice(variations)
+                # Add random values for non-combinatorial vars (weight 0)
+                for name, variations in non_combinatorial_vars:
+                    variation_state[name] = random.choice(variations)
 
-            # Build context with variation_state
-            prompt_context = {
-                'imports': context.imports,
-                'chunks': {**context.chunks, **variation_state},
-                'defaults': {}
-            }
+                # Test this variation on all seeds in the list
+                for seed in generation.seed_list:
+                    if generation.max_images > 0 and image_index >= generation.max_images:
+                        return prompts
 
-            # Resolve template (skip chunk injection - already done in Phase 1)
-            resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
+                    # Build context
+                    prompt_context = {
+                        'imports': context.imports,
+                        'chunks': {**context.chunks, **variation_state},
+                        'defaults': {}
+                    }
 
-            # Normalize
-            normalized = self.normalizer.normalize_prompt(resolved)
+                    # Resolve template
+                    resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
 
-            # Calculate seed
-            seed = self._calculate_seed(generation, idx)
+                    # Normalize
+                    normalized = self.normalizer.normalize_prompt(resolved)
 
-            prompts.append({
-                'prompt': normalized,
-                'negative_prompt': '',
-                'seed': seed,
-                'variations': variation_state.copy()
-            })
+                    prompts.append({
+                        'prompt': normalized,
+                        'negative_prompt': '',
+                        'seed': seed,
+                        'variations': variation_state.copy()
+                    })
+
+                    image_index += 1
+
+        # Normal mode: iterate combinations once
+        else:
+            for idx, combo in enumerate(combinations):
+                if generation.max_images > 0 and idx >= generation.max_images:
+                    break
+
+                # Build variation state for this combination
+                variation_state = {}
+                for name_idx, name in enumerate(names) if combinatorial_vars else []:
+                    variation_state[name] = combo[name_idx]
+
+                # Add random values for non-combinatorial vars (weight 0)
+                for name, variations in non_combinatorial_vars:
+                    variation_state[name] = random.choice(variations)
+
+                # Build context with variation_state
+                prompt_context = {
+                    'imports': context.imports,
+                    'chunks': {**context.chunks, **variation_state},
+                    'defaults': {}
+                }
+
+                # Resolve template (skip chunk injection - already done in Phase 1)
+                resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
+
+                # Normalize
+                normalized = self.normalizer.normalize_prompt(resolved)
+
+                # Calculate seed
+                seed = self._calculate_seed(generation, idx)
+
+                prompts.append({
+                    'prompt': normalized,
+                    'negative_prompt': '',
+                    'seed': seed,
+                    'variations': variation_state.copy()
+                })
 
         return prompts
 
@@ -353,6 +395,9 @@ class PromptGenerator:
 
         Selects random values from each variation, ensuring uniqueness.
 
+        When seed_list is provided, each unique variation combination
+        is tested on all seeds in the list.
+
         Args:
             template: Template string
             selected_variations: Selected variation values
@@ -365,48 +410,101 @@ class PromptGenerator:
         prompts: List[Dict[str, Any]] = []
         used_combinations: set[tuple[tuple[str, str], ...]] = set()
 
-        # Limit attempts to avoid infinite loop
-        max_attempts = generation.max_images * 10
+        # Seed-sweep mode: pick random combinations, test on all seeds
+        if generation.seed_list:
+            # Calculate how many unique combinations we need
+            num_combinations_needed = generation.max_images // len(generation.seed_list)
+            if generation.max_images % len(generation.seed_list) > 0:
+                num_combinations_needed += 1
 
-        for attempt in range(max_attempts):
-            if len(prompts) >= generation.max_images:
-                break
+            # Limit attempts to avoid infinite loop
+            max_attempts = num_combinations_needed * 10
 
-            # Generate random combination (truly random - not seeded)
-            # The seed parameter only affects SD image generation, not variation selection
-            variation_state = {}
-            for name, variations in selected_variations.items():
-                variation_state[name] = random.choice(variations)
+            for attempt in range(max_attempts):
+                if len(used_combinations) >= num_combinations_needed:
+                    break
 
-            # Check uniqueness
-            combo_key = tuple(sorted(variation_state.items()))
-            if combo_key in used_combinations:
-                continue
+                # Generate random combination
+                variation_state = {}
+                for name, variations in selected_variations.items():
+                    variation_state[name] = random.choice(variations)
 
-            used_combinations.add(combo_key)
+                # Check uniqueness
+                combo_key = tuple(sorted(variation_state.items()))
+                if combo_key in used_combinations:
+                    continue
 
-            # Build context
-            prompt_context = {
-                'imports': context.imports,
-                'chunks': {**context.chunks, **variation_state},
-                'defaults': {}
-            }
+                used_combinations.add(combo_key)
 
-            # Resolve template (skip chunk injection - already done in Phase 1)
-            resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
+                # Test this combination on all seeds
+                for seed in generation.seed_list:
+                    if generation.max_images > 0 and len(prompts) >= generation.max_images:
+                        return prompts
 
-            # Normalize
-            normalized = self.normalizer.normalize_prompt(resolved)
+                    # Build context
+                    prompt_context = {
+                        'imports': context.imports,
+                        'chunks': {**context.chunks, **variation_state},
+                        'defaults': {}
+                    }
 
-            # Calculate seed
-            seed = self._calculate_seed(generation, len(prompts))
+                    # Resolve template
+                    resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
 
-            prompts.append({
-                'prompt': normalized,
-                'negative_prompt': '',
-                'seed': seed,
-                'variations': variation_state.copy()
-            })
+                    # Normalize
+                    normalized = self.normalizer.normalize_prompt(resolved)
+
+                    prompts.append({
+                        'prompt': normalized,
+                        'negative_prompt': '',
+                        'seed': seed,
+                        'variations': variation_state.copy()
+                    })
+
+        # Normal mode: pick random combinations with calculated seeds
+        else:
+            # Limit attempts to avoid infinite loop
+            max_attempts = generation.max_images * 10
+
+            for attempt in range(max_attempts):
+                if len(prompts) >= generation.max_images:
+                    break
+
+                # Generate random combination (truly random - not seeded)
+                # The seed parameter only affects SD image generation, not variation selection
+                variation_state = {}
+                for name, variations in selected_variations.items():
+                    variation_state[name] = random.choice(variations)
+
+                # Check uniqueness
+                combo_key = tuple(sorted(variation_state.items()))
+                if combo_key in used_combinations:
+                    continue
+
+                used_combinations.add(combo_key)
+
+                # Build context
+                prompt_context = {
+                    'imports': context.imports,
+                    'chunks': {**context.chunks, **variation_state},
+                    'defaults': {}
+                }
+
+                # Resolve template (skip chunk injection - already done in Phase 1)
+                resolved = self.resolver.resolve_template(template, prompt_context, skip_chunk_injection=True)
+
+                # Normalize
+                normalized = self.normalizer.normalize_prompt(resolved)
+
+                # Calculate seed
+                seed = self._calculate_seed(generation, len(prompts))
+
+                prompts.append({
+                    'prompt': normalized,
+                    'negative_prompt': '',
+                    'seed': seed,
+                    'variations': variation_state.copy()
+                })
 
         return prompts
 
