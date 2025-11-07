@@ -57,24 +57,28 @@
 
           <v-divider />
 
-          <v-card-text class="flex-grow-1 overflow-auto pa-0">
+          <v-card-text class="flex-grow-1 pa-0 d-flex flex-column">
             <v-progress-linear v-if="loadingSessions" indeterminate />
 
-            <v-list density="compact" class="pa-0">
-              <!-- Liste des sessions avec SessionCard -->
-              <session-card
-                v-for="session in filteredSessions"
-                :key="session.name"
-                :session="session"
-                :is-selected="selectedSession === session.name"
-                :metadata="sessionMetadata[session.name]"
-                @select="selectSession"
-                @update-metadata="handleMetadataUpdate"
-                @add-note="openNoteDialog"
-                ref="sessionItems"
-                :data-session-name="session.name"
-              />
-            </v-list>
+            <!-- Virtual scroll pour performance avec grandes listes -->
+            <v-virtual-scroll
+              :items="filteredSessions"
+              :item-height="96"
+              class="flex-grow-1"
+            >
+              <template v-slot:default="{ item: session }">
+                <session-card
+                  :key="session.name"
+                  :session="session"
+                  :is-selected="selectedSession === session.name"
+                  :metadata="sessionMetadata[session.name]"
+                  @select="selectSession"
+                  @update-metadata="handleMetadataUpdate"
+                  @add-note="openNoteDialog"
+                  :data-session-name="session.name"
+                />
+              </template>
+            </v-virtual-scroll>
           </v-card-text>
         </v-card>
       </v-col>
