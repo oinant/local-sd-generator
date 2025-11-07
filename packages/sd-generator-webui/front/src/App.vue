@@ -170,9 +170,15 @@ export default {
           disabled: false
         },
         {
+          title: 'Sessions',
+          icon: 'mdi-folder-multiple',
+          route: '/sessions',
+          disabled: false
+        },
+        {
           title: 'Galerie',
           icon: 'mdi-image-multiple',
-          route: '/images',
+          route: '/gallery',
           disabled: false
         },
         {
