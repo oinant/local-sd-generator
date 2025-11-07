@@ -138,3 +138,72 @@ class SessionWithMetadata(BaseModel):
 
     # Metadata
     metadata: Optional[SessionMetadata] = None
+
+
+# ==================== Session Statistics API Models ====================
+
+
+class SessionStatsResponse(BaseModel):
+    """Response model for session statistics."""
+
+    # Identity
+    session_name: str
+
+    # Generation info
+    sd_model: Optional[str] = None
+    sampler_name: Optional[str] = None
+    scheduler: Optional[str] = None
+    cfg_scale: Optional[float] = None
+    steps: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+    # Images
+    images_requested: int = 0
+    images_actual: int = 0
+    completion_percent: float = 0.0
+
+    # Placeholders & Variations
+    placeholders_count: int = 0
+    placeholders: Optional[List[str]] = None
+    variations_theoretical: int = 0
+    variations_summary: Optional[Dict[str, int]] = None
+
+    # Session type
+    session_type: str = "normal"
+    is_seed_sweep: bool = False
+
+    # Seed info
+    seed_min: Optional[int] = None
+    seed_max: Optional[int] = None
+    seed_mode: Optional[str] = None
+
+    # Timestamps
+    session_created_at: Optional[datetime] = None
+    stats_computed_at: Optional[datetime] = None
+
+
+class SessionListItem(BaseModel):
+    """Lightweight session info for list view."""
+
+    session_name: str
+    sd_model: Optional[str] = None
+    images_actual: int = 0
+    completion_percent: float = 0.0
+    session_type: str = "normal"
+    is_seed_sweep: bool = False
+    session_created_at: Optional[datetime] = None
+
+    # User metadata (from session_metadata table)
+    tags: List[str] = Field(default_factory=list)
+    is_favorite: bool = False
+    is_test: bool = False
+
+
+class SessionListResponse(BaseModel):
+    """Response for GET /api/sessions."""
+
+    sessions: List[SessionListItem]
+    total_count: int
+    page: int = 0
+    page_size: int = 50

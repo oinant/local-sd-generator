@@ -16,9 +16,11 @@ from pydantic import BaseModel
 from sd_generator_webui.auth import AuthService
 from sd_generator_webui.config import IMAGES_DIR
 from sd_generator_webui.services.session_metadata import SessionMetadataService
+from sd_generator_webui.services.session_stats import SessionStatsService
 from sd_generator_webui.models import (
     SessionMetadata,
-    SessionMetadataUpdate
+    SessionMetadataUpdate,
+    SessionStatsResponse,
 )
 
 
@@ -71,6 +73,7 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 # Initialize metadata service (singleton)
 _metadata_service: Optional[SessionMetadataService] = None
+_stats_service: Optional[SessionStatsService] = None
 
 
 def get_metadata_service() -> SessionMetadataService:
@@ -79,6 +82,14 @@ def get_metadata_service() -> SessionMetadataService:
     if _metadata_service is None:
         _metadata_service = SessionMetadataService()
     return _metadata_service
+
+
+def get_stats_service() -> SessionStatsService:
+    """Get or create the stats service instance."""
+    global _stats_service
+    if _stats_service is None:
+        _stats_service = SessionStatsService(sessions_root=IMAGES_DIR)
+    return _stats_service
 
 
 @router.get("/", response_model=SessionListResponse)
@@ -300,3 +311,130 @@ async def delete_session_metadata(
         raise HTTPException(status_code=404, detail="Metadata non trouvée")
 
     return {"success": True, "message": f"Metadata deleted for {session_name}"}
+
+
+# ==================== Session Statistics Endpoints ====================
+
+
+def _stats_to_response(stats) -> SessionStatsResponse:
+    """Convert SessionStats to SessionStatsResponse."""
+    return SessionStatsResponse(
+        session_name=stats.session_name,
+        sd_model=stats.sd_model,
+        sampler_name=stats.sampler_name,
+        scheduler=stats.scheduler,
+        cfg_scale=stats.cfg_scale,
+        steps=stats.steps,
+        width=stats.width,
+        height=stats.height,
+        images_requested=stats.images_requested,
+        images_actual=stats.images_actual,
+        completion_percent=stats.completion_percent,
+        placeholders_count=stats.placeholders_count,
+        placeholders=stats.placeholders,
+        variations_theoretical=stats.variations_theoretical,
+        variations_summary=stats.variations_summary,
+        session_type=stats.session_type,
+        is_seed_sweep=stats.is_seed_sweep,
+        seed_min=stats.seed_min,
+        seed_max=stats.seed_max,
+        seed_mode=stats.seed_mode,
+        session_created_at=stats.session_created_at,
+        stats_computed_at=stats.stats_computed_at,
+    )
+
+
+@router.get("/{session_name}/stats", response_model=SessionStatsResponse)
+async def get_session_stats(
+    session_name: str,
+    user_guid: str = Depends(AuthService.validate_guid),
+):
+    """
+    Get detailed statistics for a specific session.
+
+    Args:
+        session_name: Session folder name
+        user_guid: Authenticated user GUID
+
+    Returns:
+        SessionStatsResponse with all computed stats
+
+    Raises:
+        404: Session not found
+    """
+    stats_service = get_stats_service()
+
+    # Try to get cached stats
+    stats = stats_service.get_stats(session_name)
+
+    if stats is None:
+        # Stats not cached - compute on-demand
+        session_path = IMAGES_DIR / session_name
+
+        if not session_path.exists():
+            raise HTTPException(status_code=404, detail=f"Session not found: {session_name}")
+
+        # Compute and save
+        stats = stats_service.compute_and_save(session_path)
+
+    return _stats_to_response(stats)
+
+
+@router.post("/{session_name}/stats/refresh", response_model=SessionStatsResponse)
+async def refresh_session_stats(
+    session_name: str,
+    user_guid: str = Depends(AuthService.validate_guid),
+):
+    """
+    Force recalculation of statistics for a session.
+
+    Args:
+        session_name: Session folder name
+        user_guid: Authenticated user GUID
+
+    Returns:
+        SessionStatsResponse with fresh stats
+
+    Raises:
+        404: Session not found
+    """
+    stats_service = get_stats_service()
+    session_path = IMAGES_DIR / session_name
+
+    if not session_path.exists():
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_name}")
+
+    # Force recompute
+    stats = stats_service.compute_and_save(session_path)
+
+    return _stats_to_response(stats)
+
+
+class BatchComputeRequest(BaseModel):
+    """Request model for batch computing stats."""
+
+    force_recompute: bool = False
+
+
+@router.post("/batch-compute")
+async def batch_compute_stats(
+    request: BatchComputeRequest,
+    user_guid: str = Depends(AuthService.validate_guid),
+):
+    """
+    Batch compute stats for all sessions (admin only).
+
+    Args:
+        request: Batch compute options
+        user_guid: Authenticated user GUID
+
+    Returns:
+        Count of sessions processed
+    """
+    stats_service = get_stats_service()
+
+    count = stats_service.batch_compute_all(
+        sessions_root=IMAGES_DIR, force_recompute=request.force_recompute
+    )
+
+    return {"success": True, "sessions_processed": count}
