@@ -119,7 +119,7 @@ class TestSingleFileImport:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         assert 'Angle' in resolved
         assert len(resolved['Angle']) == 3
@@ -169,7 +169,7 @@ class TestInlineStringImport:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         assert 'Place' in resolved
         assert len(resolved['Place']) == 2
@@ -205,7 +205,7 @@ class TestInlineStringImport:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         # Values should be stripped of quotes
         key1 = md5_short('"luxury room"')
@@ -243,7 +243,7 @@ class TestMultiSourceMerge:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         assert 'Outfit' in resolved
         # 3 urban + 3 chic = 6 total
@@ -285,7 +285,7 @@ class TestMultiSourceMerge:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         assert 'Outfit' in resolved
         # 3 from file + 2 inline = 5 total
@@ -325,7 +325,7 @@ class TestMultiSourceMerge:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         # Keys should appear in order: Urban1, Urban2, Urban3, Chic1, Chic2, Chic3
         keys = list(resolved['Outfit'].keys())
@@ -365,7 +365,7 @@ class TestNestedImports:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         assert 'chunks' in resolved
         assert 'positive' in resolved['chunks']
@@ -406,7 +406,7 @@ class TestNestedImports:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         assert 'chunks' in resolved
         assert 'positive' in resolved['chunks']
@@ -442,7 +442,7 @@ class TestEdgeCases:
             imports={}
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
         assert resolved == {}
 
     def test_empty_multi_source_list(self, resolver, temp_files):
@@ -467,7 +467,7 @@ class TestEdgeCases:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
         assert resolved['Outfit'] == {}
 
     def test_single_inline_string_in_list(self, resolver, temp_files):
@@ -492,7 +492,7 @@ class TestEdgeCases:
             }
         )
 
-        resolved = resolver.resolve_imports(config, base_path)
+        resolved, _metadata = resolver.resolve_imports(config, base_path)
 
         key = md5_short('luxury room')
         assert resolved['Place'][key] == 'luxury room'

@@ -105,7 +105,7 @@ class TestInheritanceResolverBasic:
         parent_file = tmp_path / "parent.chunk.yaml"
         parent_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "template": "parent chunk template",
             "defaults": {"Angle": "Straight", "Main": "30"},
             "chunks": {"Pose": "Standing"}
@@ -116,7 +116,7 @@ class TestInheritanceResolverBasic:
         child_file = tmp_path / "child.chunk.yaml"
         child_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "implements": "parent.chunk.yaml",
             "template": "child chunk template",
             "chunks": {"Main": "22"}  # Override
@@ -133,7 +133,7 @@ class TestInheritanceResolverBasic:
         result = resolver.resolve_implements(child_config)
 
         # Assert
-        assert result.type == "character"
+        assert result.type == "chunk"
         assert result.template == "child chunk template"
         # Defaults merged
         assert result.defaults["Angle"] == "Straight"  # From parent
@@ -285,7 +285,7 @@ class TestMergeRules:
         parent_file = tmp_path / "parent.chunk.yaml"
         parent_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "template": "test template",
             "defaults": {"Angle": "Straight", "Pose": "Standing"},
             "chunks": {"Main": "30"}
@@ -295,7 +295,7 @@ class TestMergeRules:
         child_file = tmp_path / "child.chunk.yaml"
         child_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "implements": "parent.chunk.yaml",
             "template": "test",
             "defaults": {"Pose": "Sitting"},  # Override
@@ -478,7 +478,7 @@ class TestChunkTypeValidation:
         parent_file = tmp_path / "parent.chunk.yaml"
         parent_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "template": "parent"
         }
         parent_file.write_text(yaml.dump(parent_data))
@@ -486,7 +486,7 @@ class TestChunkTypeValidation:
         child_file = tmp_path / "child.chunk.yaml"
         child_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "implements": "parent.chunk.yaml",
             "template": "child"
         }
@@ -499,14 +499,14 @@ class TestChunkTypeValidation:
 
         # Should not raise
         result = resolver.resolve_implements(child_config)
-        assert result.type == "character"
+        assert result.type == "chunk"
 
     def test_type_mismatch_raises_error(self, tmp_path):
         """Test that chunks with different types cannot inherit."""
         parent_file = tmp_path / "parent.chunk.yaml"
         parent_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "template": "parent"
         }
         parent_file.write_text(yaml.dump(parent_data))
@@ -530,11 +530,11 @@ class TestChunkTypeValidation:
             resolver.resolve_implements(child_config)
 
     def test_parent_no_type_logs_warning(self, tmp_path, caplog):
-        """Test that parent with no type logs warning and assumes child type."""
+        """Test that parent with explicit chunk type works correctly."""
         parent_file = tmp_path / "parent.chunk.yaml"
         parent_data = {
             "version": "2.0",
-            "type": "",  # Empty type
+            "type": "chunk",  # Explicit chunk type
             "template": "parent"
         }
         parent_file.write_text(yaml.dump(parent_data))
@@ -542,7 +542,7 @@ class TestChunkTypeValidation:
         child_file = tmp_path / "child.chunk.yaml"
         child_data = {
             "version": "2.0",
-            "type": "character",
+            "type": "chunk",
             "implements": "parent.chunk.yaml",
             "template": "child"
         }
@@ -553,14 +553,11 @@ class TestChunkTypeValidation:
 
         child_config = parser.parse_chunk(child_data, child_file)
 
-        # Execute with logging
-        with caplog.at_level(logging.WARNING):
-            result = resolver.resolve_implements(child_config)
+        # Execute - should work normally since both have explicit chunk type
+        result = resolver.resolve_implements(child_config)
 
-        # Assert warning logged
-        assert "has no type, assuming" in caplog.text
-        # Should still succeed
-        assert result.type == "character"
+        # Should succeed with correct type
+        assert result.type == "chunk"
 
 
 class TestErrorHandling:

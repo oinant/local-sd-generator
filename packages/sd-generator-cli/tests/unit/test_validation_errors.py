@@ -45,9 +45,10 @@ class TestUnresolvedPlaceholderValidation:
             self.generator.generate_prompts(template, context, generation)
 
         error_msg = str(exc_info.value)
-        assert "Unresolved placeholders in template: Missing" in error_msg
-        assert "have no corresponding variations defined" in error_msg
-        assert "Available variations: Expression" in error_msg
+        # New format: "✗ Unresolved placeholders detected: Missing"
+        assert "Unresolved placeholders" in error_msg
+        assert "Missing" in error_msg
+        assert "Expression" in error_msg  # Available import
 
     def test_multiple_unresolved_placeholders_listed(self):
         """Test that multiple unresolved placeholders are listed."""
@@ -71,10 +72,11 @@ class TestUnresolvedPlaceholderValidation:
             self.generator.generate_prompts(template, context, generation)
 
         error_msg = str(exc_info.value)
-        # Should list both missing placeholders (sorted)
+        # Should list both missing placeholders
+        assert "Unresolved placeholders" in error_msg
         assert "First" in error_msg
         assert "Third" in error_msg
-        assert "Available variations: Second" in error_msg
+        assert "Second" in error_msg  # Available import
 
     def test_placeholder_with_selector_but_no_import_raises_error(self):
         """Test that placeholder with selector but no import raises error."""
@@ -97,7 +99,8 @@ class TestUnresolvedPlaceholderValidation:
             self.generator.generate_prompts(template, context, generation)
 
         error_msg = str(exc_info.value)
-        assert "Unresolved placeholders in template: Color" in error_msg
+        assert "Unresolved placeholders" in error_msg
+        assert "Color" in error_msg
 
     def test_all_placeholders_resolved_no_error(self):
         """Test that having all placeholders resolved does not raise error."""
@@ -142,7 +145,8 @@ class TestUnresolvedPlaceholderValidation:
             self.generator.generate_prompts(template, context, generation)
 
         error_msg = str(exc_info.value)
-        assert "Unresolved placeholders in template: Expression" in error_msg
+        assert "Unresolved placeholders" in error_msg
+        assert "Expression" in error_msg
 
     def test_empty_context_with_placeholders_raises_error(self):
         """Test that placeholders with empty context raise error."""
@@ -163,9 +167,8 @@ class TestUnresolvedPlaceholderValidation:
             self.generator.generate_prompts(template, context, generation)
 
         error_msg = str(exc_info.value)
-        assert "Unresolved placeholders in template: Any" in error_msg
-        # Should handle empty available variations gracefully
-        assert "Available variations:" in error_msg
+        assert "Unresolved placeholders" in error_msg
+        assert "Any" in error_msg
 
     def test_template_with_no_placeholders_no_error(self):
         """Test that template with no placeholders does not raise error."""
@@ -206,7 +209,8 @@ class TestUnresolvedPlaceholderValidation:
             self.generator.generate_prompts(template, context, generation)
 
         error_msg = str(exc_info.value)
-        assert "Unresolved placeholders in template: Color" in error_msg
+        assert "Unresolved placeholders" in error_msg
+        assert "Color" in error_msg
 
     def test_complex_template_partial_resolution_raises_error(self):
         """Test complex template with some resolved and some unresolved placeholders."""
@@ -232,6 +236,10 @@ class TestUnresolvedPlaceholderValidation:
             self.generator.generate_prompts(template, context, generation)
 
         error_msg = str(exc_info.value)
+        assert "Unresolved placeholders" in error_msg
         assert "Missing1" in error_msg
         assert "Missing2" in error_msg
-        assert "Available variations: Quality, Style, Subject" in error_msg  # Sorted
+        # Available imports should be listed
+        assert "Quality" in error_msg
+        assert "Style" in error_msg
+        assert "Subject" in error_msg

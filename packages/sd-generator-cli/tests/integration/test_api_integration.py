@@ -133,8 +133,8 @@ def test_execute_single_success(mock_api_client, temp_output_dir, sample_prompts
     assert result['image_path'].exists()
     assert result['metadata_path'].exists()
 
-    # Verify image file
-    assert result['image_path'].name == 'image_0001.png'
+    # Verify image file (includes seed in filename)
+    assert result['image_path'].name == 'image_0001_seed-42.png'
     assert result['image_path'].read_bytes() == b'fake_image_data'
 
     # Verify metadata
@@ -201,9 +201,9 @@ def test_execute_prompts_batch(mock_api_client, temp_output_dir, sample_prompts)
     # Verify API was called for each prompt
     assert mock_api_client.generate_image.call_count == 2
 
-    # Verify files were created
-    assert results[0]['image_path'].name == 'image_0001.png'
-    assert results[1]['image_path'].name == 'image_0002.png'
+    # Verify files were created (includes seed in filenames)
+    assert results[0]['image_path'].name == 'image_0001_seed-42.png'
+    assert results[1]['image_path'].name == 'image_0002_seed-43.png'
 
 
 def test_execute_prompts_with_progress(mock_api_client, temp_output_dir, sample_prompts):
