@@ -4,9 +4,41 @@
       v-if="isAuthenticated"
       v-model="drawer"
       app
-      clipped
+      :permanent="$vuetify.display.mdAndUp"
+      :temporary="!$vuetify.display.mdAndUp"
+      width="260"
     >
-      <v-list>
+      <!-- Header compact avec titre et infos -->
+      <v-list-item class="pa-3">
+        <v-list-item-title class="text-h6">
+          🎨 SD Generator
+        </v-list-item-title>
+        <v-list-item-subtitle class="mt-1">
+          <v-chip
+            v-if="user"
+            color="secondary"
+            size="x-small"
+            class="mr-1"
+          >
+            <v-icon size="x-small" class="mr-1">
+              {{ user.is_admin ? 'mdi-crown' : user.can_generate ? 'mdi-account' : 'mdi-eye' }}
+            </v-icon>
+            {{ user.is_admin ? 'Admin' : user.can_generate ? 'Gen' : 'RO' }}
+          </v-chip>
+          <v-chip
+            size="x-small"
+            variant="outlined"
+            :title="'Build: ' + buildTimestamp"
+          >
+            <v-icon size="x-small" class="mr-1">mdi-clock-outline</v-icon>
+            {{ buildInfo }}
+          </v-chip>
+        </v-list-item-subtitle>
+      </v-list-item>
+
+      <v-divider />
+
+      <v-list density="compact">
         <v-list-item
           v-for="item in menuItems"
           :key="item.title"
@@ -35,37 +67,14 @@
     </v-navigation-drawer>
 
     <v-app-bar
-      v-if="isAuthenticated"
+      v-if="isAuthenticated && !$vuetify.display.mdAndUp"
       app
-      clipped-left
       color="primary"
       dark
+      density="compact"
     >
       <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title>🎨 SD Image Generator</v-toolbar-title>
-
-      <v-spacer></v-spacer>
-
-      <v-chip
-        v-if="user"
-        color="secondary"
-        class="mr-4"
-      >
-        <v-icon left>
-          {{ user.is_admin ? 'mdi-crown' : user.can_generate ? 'mdi-account' : 'mdi-eye' }}
-        </v-icon>
-        {{ user.is_admin ? 'Admin' : user.can_generate ? 'Générateur' : 'Lecture seule' }}
-      </v-chip>
-
-      <v-chip
-        size="small"
-        variant="outlined"
-        class="mr-2"
-        :title="'Build: ' + buildTimestamp"
-      >
-        <v-icon left size="small">mdi-clock-outline</v-icon>
-        {{ buildInfo }}
-      </v-chip>
+      <v-toolbar-title class="text-subtitle-1">🎨 SD Generator</v-toolbar-title>
     </v-app-bar>
 
     <v-main>

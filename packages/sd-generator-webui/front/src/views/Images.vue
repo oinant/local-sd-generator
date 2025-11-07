@@ -83,28 +83,15 @@
       <v-col cols="9">
         <v-card flat height="100vh" class="d-flex flex-column">
           <v-card-title class="pb-2">
-            <div class="d-flex align-center w-100">
+            <div class="d-flex align-center w-100 gap-2">
               <v-icon class="mr-2">mdi-image-multiple</v-icon>
-              <span class="flex-grow-1">
+              <span class="text-no-wrap">
                 {{ selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session' }}
               </span>
-              <div v-if="selectedSession" class="d-flex align-center gap-2">
-                <v-chip color="primary" variant="outlined" size="small">
-                  {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
-                </v-chip>
-                <v-chip color="success" variant="tonal" size="small">
-                  <v-icon size="x-small" class="mr-1">mdi-update</v-icon>
-                  Auto (5s)
-                </v-chip>
-              </div>
-            </div>
-          </v-card-title>
 
-          <!-- Tags inline pour la session courante -->
-          <v-card-subtitle v-if="selectedSession" class="pt-0 pb-2">
-            <div class="d-flex align-center gap-2">
-              <v-icon size="small">mdi-tag-multiple</v-icon>
+              <!-- Tags inline entre le titre et les chips -->
               <v-combobox
+                v-if="selectedSession"
                 v-model="currentSessionTags"
                 :items="allTags"
                 label="Tags"
@@ -117,6 +104,9 @@
                 @update:model-value="handleTagsUpdate"
                 class="flex-grow-1"
               >
+                <template v-slot:prepend-inner>
+                  <v-icon size="small">mdi-tag-multiple</v-icon>
+                </template>
                 <template v-slot:chip="{ item, props }">
                   <v-chip
                     v-bind="props"
@@ -129,8 +119,18 @@
                   </v-chip>
                 </template>
               </v-combobox>
+
+              <div v-if="selectedSession" class="d-flex align-center gap-2">
+                <v-chip color="primary" variant="outlined" size="small">
+                  {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
+                </v-chip>
+                <v-chip color="success" variant="tonal" size="small">
+                  <v-icon size="x-small" class="mr-1">mdi-update</v-icon>
+                  Auto (5s)
+                </v-chip>
+              </div>
             </div>
-          </v-card-subtitle>
+          </v-card-title>
 
           <v-divider />
 
