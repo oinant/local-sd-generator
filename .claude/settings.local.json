@@ -78,7 +78,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Read(//tmp/**)",
-      "Bash(gh issue list:*)"
+      "Bash(gh issue list:*)",
+      "Bash(grep:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(gh issue create:*)"
     ],
     "deny": [],
     "ask": []

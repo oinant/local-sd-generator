@@ -7,9 +7,7 @@
             <div class="text-center">
               <div class="text-h3 mb-4">🎨</div>
               <div>SD Image Generator</div>
-              <div class="text-subtitle-1 text-medium-emphasis">
-                Authentification requise
-              </div>
+              <div class="text-subtitle-1 text-medium-emphasis">Authentification requise</div>
             </div>
           </v-card-title>
 
@@ -76,6 +74,21 @@ export default {
     }
   },
 
+  watch: {
+    isAuthenticated(newVal) {
+      if (newVal) {
+        this.$router.push('/')
+      }
+    }
+  },
+
+  created() {
+    // Rediriger si déjà authentifié
+    if (this.isAuthenticated) {
+      this.$router.push('/')
+    }
+  },
+
   methods: {
     async handleLogin() {
       this.errorMessage = ''
@@ -91,21 +104,6 @@ export default {
       } else {
         this.errorMessage = 'Token invalide'
       }
-    }
-  },
-
-  watch: {
-    isAuthenticated(newVal) {
-      if (newVal) {
-        this.$router.push('/')
-      }
-    }
-  },
-
-  created() {
-    // Rediriger si déjà authentifié
-    if (this.isAuthenticated) {
-      this.$router.push('/')
     }
   }
 }

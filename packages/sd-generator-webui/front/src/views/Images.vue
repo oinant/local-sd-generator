@@ -18,9 +18,9 @@
                 icon
                 size="small"
                 variant="text"
-                @click="refreshSessions"
                 :loading="loadingSessions"
                 title="Rafraîchir la liste des sessions"
+                @click="refreshSessions"
               >
                 <v-icon>mdi-refresh</v-icon>
               </v-btn>
@@ -29,8 +29,8 @@
                 size="small"
                 :variant="autoRefresh ? 'tonal' : 'text'"
                 :color="autoRefresh ? 'primary' : undefined"
-                @click="toggleAutoRefresh"
                 title="Auto-refresh (1 minute)"
+                @click="toggleAutoRefresh"
               >
                 <v-icon>{{ autoRefresh ? 'mdi-play-circle' : 'mdi-play-circle-outline' }}</v-icon>
               </v-btn>
@@ -38,8 +38,8 @@
                 icon
                 size="small"
                 variant="text"
-                @click="toggleSortOrder"
                 title="Inverser l'ordre de tri"
+                @click="toggleSortOrder"
               >
                 <v-icon>{{ sortDescending ? 'mdi-sort-descending' : 'mdi-sort-ascending' }}</v-icon>
               </v-btn>
@@ -47,8 +47,8 @@
                 icon
                 size="small"
                 variant="text"
-                @click="filtersDrawer = !filtersDrawer"
                 title="Filtres"
+                @click="filtersDrawer = !filtersDrawer"
               >
                 <v-icon>mdi-filter-variant</v-icon>
               </v-btn>
@@ -61,21 +61,17 @@
             <v-progress-linear v-if="loadingSessions" indeterminate />
 
             <!-- Virtual scroll pour performance avec grandes listes -->
-            <v-virtual-scroll
-              :items="filteredSessions"
-              :item-height="96"
-              class="flex-grow-1"
-            >
-              <template v-slot:default="{ item: session }">
+            <v-virtual-scroll :items="filteredSessions" :item-height="96" class="flex-grow-1">
+              <template #default="{ item: session }">
                 <session-card
                   :key="session.name"
                   :session="session"
                   :is-selected="selectedSession === session.name"
                   :metadata="sessionMetadata[session.name]"
+                  :data-session-name="session.name"
                   @select="selectSession"
                   @update-metadata="handleMetadataUpdate"
                   @add-note="openNoteDialog"
-                  :data-session-name="session.name"
                 />
               </template>
             </v-virtual-scroll>
@@ -90,7 +86,9 @@
             <div class="d-flex align-center w-100 gap-2">
               <v-icon class="mr-2">mdi-image-multiple</v-icon>
               <span class="text-no-wrap">
-                {{ selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session' }}
+                {{
+                  selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session'
+                }}
               </span>
 
               <!-- Tags inline entre le titre et les chips -->
@@ -105,20 +103,14 @@
                 density="compact"
                 variant="outlined"
                 hide-details
-                @update:model-value="handleTagsUpdate"
                 class="flex-grow-1"
+                @update:model-value="handleTagsUpdate"
               >
-                <template v-slot:prepend-inner>
+                <template #prepend-inner>
                   <v-icon size="small">mdi-tag-multiple</v-icon>
                 </template>
-                <template v-slot:chip="{ item, props }">
-                  <v-chip
-                    v-bind="props"
-                    size="small"
-                    closable
-                    color="primary"
-                    variant="tonal"
-                  >
+                <template #chip="{ item, props }">
+                  <v-chip v-bind="props" size="small" closable color="primary" variant="tonal">
                     {{ item.title }}
                   </v-chip>
                 </template>
@@ -142,17 +134,16 @@
             <!-- Message si aucune session sélectionnée -->
             <div v-if="!selectedSession && !loading" class="text-center py-16">
               <v-icon size="64" color="grey-lighten-2">mdi-folder-outline</v-icon>
-              <p class="text-h6 text-grey mt-4">
-                Sélectionnez une session dans la liste de gauche
-              </p>
+              <p class="text-h6 text-grey mt-4">Sélectionnez une session dans la liste de gauche</p>
             </div>
 
             <!-- Message si aucune image dans la session -->
-            <div v-else-if="selectedSession && allImages.length === 0 && !loading" class="text-center py-16">
+            <div
+              v-else-if="selectedSession && allImages.length === 0 && !loading"
+              class="text-center py-16"
+            >
               <v-icon size="64" color="grey-lighten-2">mdi-image-off-outline</v-icon>
-              <p class="text-h6 text-grey mt-4">
-                Aucune image dans cette session
-              </p>
+              <p class="text-h6 text-grey mt-4">Aucune image dans cette session</p>
             </div>
 
             <!-- Grille d'images -->
@@ -161,23 +152,23 @@
                 <v-col
                   v-for="image in filteredImages"
                   :key="image.id"
-                  cols="12" sm="6" md="4" lg="3" xl="2"
+                  cols="12"
+                  sm="6"
+                  md="4"
+                  lg="3"
+                  xl="2"
                 >
                   <v-card class="image-card" elevation="2">
-                    <div
-                      ref="imageRefs"
-                      :data-image-path="image.path"
-                      class="lazy-image-container"
-                    >
+                    <div ref="imageRefs" :data-image-path="image.path" class="lazy-image-container">
                       <v-img
                         v-if="image.thumbnail"
                         :src="image.thumbnail"
                         :aspect-ratio="1"
                         cover
-                        @click="openImageDialog(image)"
                         class="cursor-pointer"
+                        @click="openImageDialog(image)"
                       >
-                        <template v-slot:placeholder>
+                        <template #placeholder>
                           <div class="d-flex align-center justify-center fill-height">
                             <v-progress-circular indeterminate color="grey-lighten-2" />
                           </div>
@@ -188,7 +179,11 @@
                         class="d-flex align-center justify-center fill-height bg-grey-lighten-3"
                         style="aspect-ratio: 1"
                       >
-                        <v-progress-circular v-if="image.thumbnailLoading" indeterminate color="primary" />
+                        <v-progress-circular
+                          v-if="image.thumbnailLoading"
+                          indeterminate
+                          color="primary"
+                        />
                         <v-icon v-else size="48" color="grey-lighten-1">mdi-image-outline</v-icon>
                       </div>
                     </div>
@@ -237,9 +232,9 @@
                 :src="selectedImage.url"
                 contain
                 max-height="75vh"
-                @click="openFullscreen"
                 class="cursor-pointer fullscreen-trigger"
                 title="Cliquer pour afficher en plein écran"
+                @click="openFullscreen"
               />
 
               <!-- Bouton Suivant -->
@@ -256,7 +251,9 @@
 
               <div class="mt-2 d-flex gap-2">
                 <v-chip size="small" color="info">{{ selectedImage.session }}</v-chip>
-                <v-chip size="small" color="success">{{ formatDate(selectedImage.created) }}</v-chip>
+                <v-chip size="small" color="success">{{
+                  formatDate(selectedImage.created)
+                }}</v-chip>
                 <v-chip size="small" color="grey" variant="outlined">
                   {{ currentImageIndex + 1 }} / {{ allImages.length }}
                 </v-chip>
@@ -274,19 +271,25 @@
                 <v-progress-circular indeterminate />
               </div>
 
-              <div v-else-if="imageMetadata" style="max-height: 75vh; overflow-y: auto;">
+              <div v-else-if="imageMetadata" style="max-height: 75vh; overflow-y: auto">
                 <!-- Prompt -->
                 <div class="mb-3">
                   <div class="text-subtitle-2 mb-1">Prompt</div>
-                  <div class="text-caption pa-2 bg-grey-lighten-4 rounded" style="max-height: 150px; overflow-y: auto;">
+                  <div
+                    class="text-caption pa-2 bg-grey-lighten-4 rounded"
+                    style="max-height: 150px; overflow-y: auto"
+                  >
                     {{ imageMetadata.prompt }}
                   </div>
                 </div>
 
                 <!-- Negative Prompt -->
-                <div class="mb-3" v-if="imageMetadata.negative_prompt">
+                <div v-if="imageMetadata.negative_prompt" class="mb-3">
                   <div class="text-subtitle-2 mb-1">Negative Prompt</div>
-                  <div class="text-caption pa-2 bg-grey-lighten-4 rounded" style="max-height: 100px; overflow-y: auto;">
+                  <div
+                    class="text-caption pa-2 bg-grey-lighten-4 rounded"
+                    style="max-height: 100px; overflow-y: auto"
+                  >
                     {{ imageMetadata.negative_prompt }}
                   </div>
                 </div>
@@ -294,7 +297,7 @@
                 <!-- Paramètres -->
                 <div class="text-subtitle-2 mb-2">Paramètres</div>
                 <div class="d-flex flex-wrap gap-1">
-                  <v-chip size="small" v-for="(value, key) in metadataFields" :key="key">
+                  <v-chip v-for="(value, key) in metadataFields" :key="key" size="small">
                     <strong>{{ key }}:</strong>&nbsp;{{ value }}
                   </v-chip>
                 </div>
@@ -314,30 +317,55 @@
                   </div>
 
                   <!-- Applied Variations -->
-                  <div v-if="Object.keys(manifestDataForCurrentImage.appliedVariations).length > 0" class="mb-3">
+                  <div
+                    v-if="Object.keys(manifestDataForCurrentImage.appliedVariations).length > 0"
+                    class="mb-3"
+                  >
                     <div class="text-subtitle-2 mb-1">Variations Appliquées</div>
                     <div class="d-flex flex-wrap gap-1">
-                      <v-chip size="small" color="secondary" v-for="(value, key) in manifestDataForCurrentImage.appliedVariations" :key="key">
+                      <v-chip
+                        v-for="(value, key) in manifestDataForCurrentImage.appliedVariations"
+                        :key="key"
+                        size="small"
+                        color="secondary"
+                      >
                         <strong>{{ key }}:</strong>&nbsp;{{ value }}
                       </v-chip>
                     </div>
                   </div>
 
                   <!-- Generation Params -->
-                  <div v-if="Object.keys(manifestDataForCurrentImage.generationParams).length > 0" class="mb-3">
+                  <div
+                    v-if="Object.keys(manifestDataForCurrentImage.generationParams).length > 0"
+                    class="mb-3"
+                  >
                     <div class="text-subtitle-2 mb-1">Paramètres de Génération</div>
                     <div class="d-flex flex-wrap gap-1">
-                      <v-chip size="small" color="info" v-for="(value, key) in manifestDataForCurrentImage.generationParams" :key="key">
+                      <v-chip
+                        v-for="(value, key) in manifestDataForCurrentImage.generationParams"
+                        :key="key"
+                        size="small"
+                        color="info"
+                      >
                         <strong>{{ key }}:</strong>&nbsp;{{ value }}
                       </v-chip>
                     </div>
                   </div>
 
                   <!-- API Params (already in imageMetadata, but can show from manifest too) -->
-                  <div v-if="Object.keys(manifestDataForCurrentImage.apiParams).length > 0" class="mb-3">
+                  <div
+                    v-if="Object.keys(manifestDataForCurrentImage.apiParams).length > 0"
+                    class="mb-3"
+                  >
                     <div class="text-subtitle-2 mb-1">Paramètres API (session)</div>
                     <div class="d-flex flex-wrap gap-1">
-                      <v-chip size="small" color="grey" variant="outlined" v-for="(value, key) in manifestDataForCurrentImage.apiParams" :key="key">
+                      <v-chip
+                        v-for="(value, key) in manifestDataForCurrentImage.apiParams"
+                        :key="key"
+                        size="small"
+                        color="grey"
+                        variant="outlined"
+                      >
                         <strong>{{ key }}:</strong>&nbsp;{{ value }}
                       </v-chip>
                     </div>
@@ -422,19 +450,13 @@
     </v-overlay>
 
     <!-- Drawer pour les filtres -->
-    <v-navigation-drawer
-      v-model="filtersDrawer"
-      location="left"
-      temporary
-      width="350"
-    >
+    <v-navigation-drawer v-model="filtersDrawer" location="left" temporary width="350">
       <session-filters
         :filters="filters"
         :max-image-count="1000"
         @update:filters="filters = $event"
       />
     </v-navigation-drawer>
-
   </v-container>
 </template>
 
@@ -448,22 +470,22 @@ import { useNotificationStore } from '@/stores/notification'
 export default {
   name: 'ImagesView',
 
-  setup() {
-    const notificationStore = useNotificationStore()
-    return { notificationStore }
-  },
-
   components: {
     SessionCard,
     SessionFilters
+  },
+
+  setup() {
+    const notificationStore = useNotificationStore()
+    return { notificationStore }
   },
 
   data() {
     return {
       loading: false,
       loadingSessions: false,
-      sessions: [],  // Liste des sessions depuis l'API
-      sessionMetadata: {},  // Metadata indexé par session.name
+      sessions: [], // Liste des sessions depuis l'API
+      sessionMetadata: {}, // Metadata indexé par session.name
       allImages: [],
       selectedSession: null,
       imageDialog: false,
@@ -477,13 +499,13 @@ export default {
       intersectionObserver: null,
       sessionObserver: null,
       // Sort
-      sortDescending: true,  // Par défaut: plus récent d'abord
+      sortDescending: true, // Par défaut: plus récent d'abord
       // Auto-refresh
       autoRefresh: false,
       autoRefreshInterval: null,
       // Image polling (for current session)
       imagePollingInterval: null,
-      lastImageIndex: -1,  // Track highest known image index for polling
+      lastImageIndex: -1, // Track highest known image index for polling
       // Tags
       allTags: [],
       // Filtres
@@ -497,29 +519,6 @@ export default {
         dateStart: null,
         dateEnd: null,
         search: ''
-      }
-    }
-  },
-
-  watch: {
-    // Observer les changements dans filteredImages pour attacher l'observer
-    filteredImages: {
-      handler() {
-        // Attendre le prochain tick pour que le DOM soit mis à jour
-        this.$nextTick(() => {
-          this.attachObservers()
-        })
-      }
-    },
-
-    // Gérer les raccourcis clavier quand la modal est ouverte
-    imageDialog(isOpen) {
-      if (isOpen) {
-        window.addEventListener('keydown', this.handleKeyNavigation)
-      } else {
-        window.removeEventListener('keydown', this.handleKeyNavigation)
-        // Fermer aussi le fullscreen si la dialog se ferme
-        this.fullscreenOverlay = false
       }
     }
   },
@@ -575,9 +574,7 @@ export default {
       // Filter by search
       if (this.filters.search) {
         const search = this.filters.search.toLowerCase()
-        filtered = filtered.filter(session =>
-          session.displayName.toLowerCase().includes(search)
-        )
+        filtered = filtered.filter(session => session.displayName.toLowerCase().includes(search))
       }
 
       // Filter by date range
@@ -676,7 +673,16 @@ export default {
       if (!this.imageMetadata) return {}
 
       const fields = {}
-      const keys = ['seed', 'steps', 'sampler', 'scheduler', 'cfg_scale', 'model', 'width', 'height']
+      const keys = [
+        'seed',
+        'steps',
+        'sampler',
+        'scheduler',
+        'cfg_scale',
+        'model',
+        'width',
+        'height'
+      ]
 
       keys.forEach(key => {
         if (this.imageMetadata[key] !== undefined && this.imageMetadata[key] !== null) {
@@ -685,6 +691,29 @@ export default {
       })
 
       return fields
+    }
+  },
+
+  watch: {
+    // Observer les changements dans filteredImages pour attacher l'observer
+    filteredImages: {
+      handler() {
+        // Attendre le prochain tick pour que le DOM soit mis à jour
+        this.$nextTick(() => {
+          this.attachObservers()
+        })
+      }
+    },
+
+    // Gérer les raccourcis clavier quand la modal est ouverte
+    imageDialog(isOpen) {
+      if (isOpen) {
+        window.addEventListener('keydown', this.handleKeyNavigation)
+      } else {
+        window.removeEventListener('keydown', this.handleKeyNavigation)
+        // Fermer aussi le fullscreen si la dialog se ferme
+        this.fullscreenOverlay = false
+      }
     }
   },
 
@@ -723,7 +752,7 @@ export default {
           name: session.name,
           displayName: this.formatSessionName(session.name),
           date: new Date(session.created_at),
-          count: null,  // Sera chargé à la demande
+          count: null, // Sera chargé à la demande
           countLoading: false
         }))
 
@@ -733,7 +762,7 @@ export default {
         // Les counts seront chargés par le sessionObserver au scroll
       } catch (error) {
         console.error('Erreur lors du chargement des sessions:', error)
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Erreur lors du chargement des sessions',
           color: 'error'
         })
@@ -750,7 +779,7 @@ export default {
         threshold: 0.1 // Déclencher dès que 10% de l'élément est visible
       }
 
-      this.sessionObserver = new IntersectionObserver((entries) => {
+      this.sessionObserver = new IntersectionObserver(entries => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             const sessionName = entry.target.dataset.sessionName
@@ -800,7 +829,7 @@ export default {
         const response = await ApiService.getSessionImages(sessionName)
 
         // Préparer les images pour affichage
-        this.allImages = response.images.map((image) => ({
+        this.allImages = response.images.map(image => ({
           id: image.path,
           name: image.filename,
           path: image.path,
@@ -815,7 +844,7 @@ export default {
         this.lastImageIndex = this.allImages.length - 1
       } catch (error) {
         console.error(`Erreur chargement images session ${sessionName}:`, error)
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Erreur lors du chargement des images',
           color: 'error'
         })
@@ -844,7 +873,7 @@ export default {
         threshold: 0.01 // Déclencher dès que 1% de l'image est visible
       }
 
-      this.intersectionObserver = new IntersectionObserver((entries) => {
+      this.intersectionObserver = new IntersectionObserver(entries => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             const imgElement = entry.target
@@ -898,8 +927,8 @@ export default {
       this.stopImagePolling()
 
       this.selectedSession = sessionName
-      this.allImages = []  // Clear images
-      this.lastImageIndex = -1  // Reset polling index
+      this.allImages = [] // Clear images
+      this.lastImageIndex = -1 // Reset polling index
 
       if (sessionName) {
         // Charger les images de cette session
@@ -961,7 +990,7 @@ export default {
           })
           .catch(error => {
             console.error('Erreur lors du chargement des métadonnées:', error)
-            this.notificationStore.show( {
+            this.notificationStore.show({
               message: 'Erreur lors du chargement des métadonnées',
               color: 'error'
             })
@@ -1035,13 +1064,13 @@ export default {
         // Update local state
         this.$set(this.sessionMetadata, sessionName, metadata)
 
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Metadata mise à jour',
           color: 'success'
         })
       } catch (error) {
         console.error('Erreur mise à jour metadata:', error)
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Erreur lors de la mise à jour',
           color: 'error'
         })
@@ -1051,7 +1080,7 @@ export default {
     openNoteDialog(sessionName) {
       // TODO: Implémenter le dialog pour ajouter une note
       console.log('Open note dialog for', sessionName)
-      this.notificationStore.show( {
+      this.notificationStore.show({
         message: 'Dialog notes - À implémenter',
         color: 'info'
       })
@@ -1075,21 +1104,20 @@ export default {
 
       try {
         // Update metadata via API
-        const metadata = await ApiService.updateSessionMetadata(
-          this.selectedSession,
-          { tags: newTags }
-        )
+        const metadata = await ApiService.updateSessionMetadata(this.selectedSession, {
+          tags: newTags
+        })
 
         // Update local state (Vue 3 reactivity)
         this.sessionMetadata[this.selectedSession] = metadata
 
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Tags mis à jour',
           color: 'success'
         })
       } catch (error) {
         console.error('Erreur mise à jour tags:', error)
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Erreur lors de la mise à jour des tags',
           color: 'error'
         })
@@ -1125,8 +1153,10 @@ export default {
             // Ajouter les nouvelles sessions au début
             this.sessions.unshift(...newSessions)
 
-            this.notificationStore.show( {
-              message: `${newSessions.length} nouvelle${newSessions.length > 1 ? 's' : ''} session${newSessions.length > 1 ? 's' : ''} détectée${newSessions.length > 1 ? 's' : ''}`,
+            this.notificationStore.show({
+              message: `${newSessions.length} nouvelle${newSessions.length > 1 ? 's' : ''} session${
+                newSessions.length > 1 ? 's' : ''
+              } détectée${newSessions.length > 1 ? 's' : ''}`,
               color: 'info'
             })
           }
@@ -1159,7 +1189,7 @@ export default {
         if (response.images.length === 0) return
 
         // Transform new images
-        const newImages = response.images.map((image) => ({
+        const newImages = response.images.map(image => ({
           id: image.path,
           name: image.filename,
           path: image.path,
@@ -1176,8 +1206,10 @@ export default {
         // Update lastImageIndex to new highest index
         this.lastImageIndex = this.allImages.length - 1
 
-        this.notificationStore.show( {
-          message: `${newImages.length} nouvelle${newImages.length > 1 ? 's' : ''} image${newImages.length > 1 ? 's' : ''} détectée${newImages.length > 1 ? 's' : ''}`,
+        this.notificationStore.show({
+          message: `${newImages.length} nouvelle${newImages.length > 1 ? 's' : ''} image${
+            newImages.length > 1 ? 's' : ''
+          } détectée${newImages.length > 1 ? 's' : ''}`,
           color: 'info'
         })
 
@@ -1202,7 +1234,7 @@ export default {
           }
         }, 60000) // 1 minute
 
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Auto-refresh activé (1 minute)',
           color: 'info'
         })
@@ -1213,7 +1245,7 @@ export default {
           this.autoRefreshInterval = null
         }
 
-        this.notificationStore.show( {
+        this.notificationStore.show({
           message: 'Auto-refresh désactivé',
           color: 'info'
         })

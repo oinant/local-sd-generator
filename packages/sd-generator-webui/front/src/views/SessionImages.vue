@@ -4,14 +4,18 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <v-btn icon="mdi-arrow-left" variant="text" :to="{name: 'SessionDetail', params: {name: sessionName}}"></v-btn>
+            <v-btn
+              icon="mdi-arrow-left"
+              variant="text"
+              :to="{ name: 'SessionDetail', params: { name: sessionName } }"
+            ></v-btn>
             <span class="ml-2">Images: {{ sessionName }}</span>
           </v-card-title>
 
           <v-card-text>
             <v-alert type="info" variant="tonal">
               Session images grid - Coming soon!
-              <br><br>
+              <br /><br />
               Will display:
               <ul class="mt-2">
                 <li>Image grid with thumbnails</li>

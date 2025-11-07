@@ -4,31 +4,32 @@ class ApiService {
   constructor() {
     // Support for Cloudflare Tunnel via environment variable (Vue CLI uses process.env.VUE_APP_)
     const cloudflareBackend = process.env.VUE_APP_API_URL
-    this.baseURL = cloudflareBackend || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '')
+    this.baseURL =
+      cloudflareBackend || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '')
     this.token = localStorage.getItem('authToken') || ''
 
     this.client = axios.create({
       baseURL: this.baseURL,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       }
     })
 
     // Intercepteur pour ajouter le token
     this.client.interceptors.request.use(
-      (config) => {
+      config => {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`
         }
         return config
       },
-      (error) => Promise.reject(error)
+      error => Promise.reject(error)
     )
 
     // Intercepteur pour gérer les erreurs d'auth
     this.client.interceptors.response.use(
-      (response) => response,
-      (error) => {
+      response => response,
+      error => {
         if (error.response?.status === 401) {
           this.clearAuth()
         }
@@ -93,6 +94,11 @@ class ApiService {
 
   async getSessionManifest(sessionName) {
     const response = await this.client.get(`/api/sessions/${sessionName}/manifest`)
+    return response.data
+  }
+
+  async getSessionStats(sessionName) {
+    const response = await this.client.get(`/api/sessions/${sessionName}/stats`)
     return response.data
   }
 

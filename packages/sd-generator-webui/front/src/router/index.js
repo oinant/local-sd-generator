@@ -91,7 +91,7 @@ router.beforeEach((to, from, next) => {
     next('/login')
   } else if (requiresGenerate && !canGenerate) {
     notificationStore.show({
-      message: 'Vous n\'avez pas les permissions pour générer des images',
+      message: "Vous n'avez pas les permissions pour générer des images",
       color: 'error'
     })
     next('/')

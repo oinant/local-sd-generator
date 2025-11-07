@@ -4,14 +4,18 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <v-btn icon="mdi-arrow-left" variant="text" :to="{name: 'SessionDetail', params: {name: sessionName}}"></v-btn>
+            <v-btn
+              icon="mdi-arrow-left"
+              variant="text"
+              :to="{ name: 'SessionDetail', params: { name: sessionName } }"
+            ></v-btn>
             <span class="ml-2">Variation Rating: {{ sessionName }}</span>
           </v-card-title>
 
           <v-card-text>
             <v-alert type="info" variant="tonal">
               Variation Impact Rating - Coming soon!
-              <br><br>
+              <br /><br />
               For seed-sweep sessions, will allow:
               <ul class="mt-2">
                 <li>Rate each variation: "As Intended" / "No Effect" / "Unintended Effect"</li>

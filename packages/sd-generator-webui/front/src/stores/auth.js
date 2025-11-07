@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    canGenerate: (state) => state.user?.can_generate || false
+    canGenerate: state => state.user?.can_generate || false
   },
 
   actions: {

@@ -1,0 +1,29 @@
+# Multi-Prompt Batch Sessions Example
+# Format: <prompt_path>:theme:style:count
+#
+# Lines starting with # are ignored
+# Empty lines are ignored
+#
+# prompt_path can be:
+#   - Relative path (relative to current working directory)
+#   - Absolute path
+
+# Example 1: Same prompt, different themes
+prompts/hassaku-teasing.yaml:cyberpunk:default:50
+prompts/hassaku-teasing.yaml:pirates:default:50
+prompts/hassaku-teasing.yaml:arabesque:default:50
+
+# Example 2: Same prompt and theme, different styles
+prompts/hassaku-teasing.yaml:cyberpunk:sexy:30
+prompts/hassaku-teasing.yaml:cyberpunk:cartoon:30
+prompts/hassaku-teasing.yaml:cyberpunk:realistic:30
+
+# Example 3: Different prompts, same theme
+prompts/hassaku-portrait.yaml:cyberpunk:default:25
+prompts/hassaku-action.yaml:cyberpunk:default:25
+prompts/hassaku-closeup.yaml:cyberpunk:default:25
+
+# Example 4: Mix everything
+prompts/hassaku-teasing.yaml:pirates:sexy:40
+prompts/hassaku-portrait.yaml:arabesque:cartoon:35
+prompts/hassaku-action.yaml:cyberpunk:realistic:45

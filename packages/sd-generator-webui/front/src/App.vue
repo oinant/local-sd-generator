@@ -10,26 +10,15 @@
     >
       <!-- Header compact avec titre et infos -->
       <v-list-item class="pa-3">
-        <v-list-item-title class="text-h6">
-          🎨 SD Generator
-        </v-list-item-title>
+        <v-list-item-title class="text-h6"> 🎨 SD Generator </v-list-item-title>
         <v-list-item-subtitle class="mt-1">
-          <v-chip
-            v-if="user"
-            color="secondary"
-            size="x-small"
-            class="mr-1"
-          >
+          <v-chip v-if="user" color="secondary" size="x-small" class="mr-1">
             <v-icon size="x-small" class="mr-1">
               {{ user.is_admin ? 'mdi-crown' : user.can_generate ? 'mdi-account' : 'mdi-eye' }}
             </v-icon>
             {{ user.is_admin ? 'Admin' : user.can_generate ? 'Gen' : 'RO' }}
           </v-chip>
-          <v-chip
-            size="x-small"
-            variant="outlined"
-            :title="'Build: ' + buildTimestamp"
-          >
+          <v-chip size="x-small" variant="outlined" :title="'Build: ' + buildTimestamp">
             <v-icon size="x-small" class="mr-1">mdi-clock-outline</v-icon>
             {{ buildInfo }}
           </v-chip>
@@ -45,20 +34,16 @@
           :to="item.route"
           :disabled="item.disabled"
         >
-          <template v-slot:prepend>
+          <template #prepend>
             <v-icon>{{ item.icon }}</v-icon>
           </template>
           <v-list-item-title>{{ item.title }}</v-list-item-title>
         </v-list-item>
       </v-list>
 
-      <template v-slot:append>
+      <template #append>
         <div class="pa-2">
-          <v-btn
-            block
-            color="error"
-            @click="logout"
-          >
+          <v-btn block color="error" @click="logout">
             <v-icon left>mdi-logout</v-icon>
             Déconnexion
           </v-btn>
@@ -84,30 +69,16 @@
     </v-main>
 
     <!-- Snackbar global -->
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="4000"
-      top
-    >
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000" top>
       {{ snackbar.message }}
-      <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="hideSnackbar"
-        >
-          Fermer
-        </v-btn>
+      <template #actions>
+        <v-btn variant="text" @click="hideSnackbar"> Fermer </v-btn>
       </template>
     </v-snackbar>
 
     <!-- Loading overlay -->
     <v-overlay v-model="loading" class="align-center justify-center">
-      <v-progress-circular
-        color="primary"
-        indeterminate
-        size="64"
-      ></v-progress-circular>
+      <v-progress-circular color="primary" indeterminate size="64"></v-progress-circular>
     </v-overlay>
   </v-app>
 </template>
@@ -141,7 +112,7 @@ export default {
 
   data() {
     return {
-      drawer: true,
+      drawer: true
     }
   },
 
@@ -199,17 +170,6 @@ export default {
     }
   },
 
-  methods: {
-    hideSnackbar() {
-      this.notificationStore.hide()
-    },
-
-    async logout() {
-      this.authStore.logout()
-      this.$router.push('/login')
-    }
-  },
-
   async created() {
     // Vérifier si un token existe au démarrage
     const token = localStorage.getItem('authToken')
@@ -219,6 +179,17 @@ export default {
         this.$router.push('/login')
       }
     } else if (!this.isAuthenticated) {
+      this.$router.push('/login')
+    }
+  },
+
+  methods: {
+    hideSnackbar() {
+      this.notificationStore.hide()
+    },
+
+    async logout() {
+      this.authStore.logout()
       this.$router.push('/login')
     }
   }

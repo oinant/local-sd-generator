@@ -1,12 +1,12 @@
 <template>
   <v-list-item
     :active="isSelected"
-    @click="$emit('select', session.name)"
     class="session-card"
     :title="session.name"
+    @click="$emit('select', session.name)"
   >
     <!-- Session icon -->
-    <template v-slot:prepend>
+    <template #prepend>
       <v-icon :color="getSessionColor()">{{ getSessionIcon() }}</v-icon>
     </template>
 
@@ -19,44 +19,24 @@
     </v-list-item-subtitle>
 
     <!-- Actions and metadata -->
-    <template v-slot:append>
+    <template #append>
       <div class="d-flex align-center gap-1">
         <!-- Image count badge -->
-        <v-progress-circular
-          v-if="session.countLoading"
-          indeterminate
-          size="20"
-          width="2"
-        />
-        <v-chip
-          v-else-if="session.count !== null"
-          size="x-small"
-          :color="getCountColor()"
-        >
+        <v-progress-circular v-if="session.countLoading" indeterminate size="20" width="2" />
+        <v-chip v-else-if="session.count !== null" size="x-small" :color="getCountColor()">
           {{ session.count }}
         </v-chip>
-        <v-chip
-          v-else
-          size="x-small"
-          color="grey"
-          variant="outlined"
-        >
-          ?
-        </v-chip>
+        <v-chip v-else size="x-small" color="grey" variant="outlined"> ? </v-chip>
 
         <!-- Rating buttons (show on hover or when metadata exists) -->
-        <div
-          v-if="showActions"
-          class="rating-actions"
-          @click.stop
-        >
+        <div v-if="showActions" class="rating-actions" @click.stop>
           <!-- Favorite star -->
           <v-btn
             icon
             size="x-small"
             variant="text"
-            @click="toggleFavorite"
             :color="metadata?.is_favorite ? 'amber' : 'grey'"
+            @click="toggleFavorite"
           >
             <v-icon size="small">
               {{ metadata?.is_favorite ? 'mdi-star' : 'mdi-star-outline' }}
@@ -68,8 +48,8 @@
             icon
             size="x-small"
             variant="text"
-            @click="setRating('like')"
             :color="metadata?.user_rating === 'like' ? 'success' : 'grey'"
+            @click="setRating('like')"
           >
             <v-icon size="small">mdi-thumb-up</v-icon>
           </v-btn>
@@ -79,21 +59,16 @@
             icon
             size="x-small"
             variant="text"
-            @click="setRating('dislike')"
             :color="metadata?.user_rating === 'dislike' ? 'error' : 'grey'"
+            @click="setRating('dislike')"
           >
             <v-icon size="small">mdi-thumb-down</v-icon>
           </v-btn>
 
           <!-- More actions menu -->
           <v-menu>
-            <template v-slot:activator="{ props }">
-              <v-btn
-                icon
-                size="x-small"
-                variant="text"
-                v-bind="props"
-              >
+            <template #activator="{ props }">
+              <v-btn icon size="x-small" variant="text" v-bind="props">
                 <v-icon size="small">mdi-dots-vertical</v-icon>
               </v-btn>
             </template>
@@ -101,7 +76,7 @@
             <v-list density="compact">
               <!-- Test flag -->
               <v-list-item @click="toggleTest">
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-icon :color="metadata?.is_test ? 'warning' : ''">
                     {{ metadata?.is_test ? 'mdi-flask' : 'mdi-flask-outline' }}
                   </v-icon>
@@ -113,7 +88,7 @@
 
               <!-- Add note -->
               <v-list-item @click="$emit('add-note', session.name)">
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-icon>mdi-note-text-outline</v-icon>
                 </template>
                 <v-list-item-title>Ajouter une note</v-list-item-title>
@@ -235,9 +210,9 @@ export default {
 }
 
 /* Always show actions if metadata exists */
-.session-card:has(.v-btn[color="amber"]) .rating-actions,
-.session-card:has(.v-btn[color="success"]) .rating-actions,
-.session-card:has(.v-btn[color="error"]) .rating-actions {
+.session-card:has(.v-btn[color='amber']) .rating-actions,
+.session-card:has(.v-btn[color='success']) .rating-actions,
+.session-card:has(.v-btn[color='error']) .rating-actions {
   opacity: 1;
 }
 </style>

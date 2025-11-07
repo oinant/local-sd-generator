@@ -56,7 +56,7 @@
         <h2 class="text-h5 mb-4">Quick Actions</h2>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card :to="{name: 'Sessions'}" hover>
+        <v-card :to="{ name: 'Sessions' }" hover>
           <v-card-title>
             <v-icon class="mr-2">mdi-folder-multiple</v-icon>
             Browse Sessions
@@ -67,25 +67,21 @@
         </v-card>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card :to="{name: 'Generate'}" hover>
+        <v-card :to="{ name: 'Generate' }" hover>
           <v-card-title>
             <v-icon class="mr-2">mdi-creation</v-icon>
             New Generation
           </v-card-title>
-          <v-card-text>
-            Start a new image generation session
-          </v-card-text>
+          <v-card-text> Start a new image generation session </v-card-text>
         </v-card>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card :to="{name: 'Gallery'}" hover>
+        <v-card :to="{ name: 'Gallery' }" hover>
           <v-card-title>
             <v-icon class="mr-2">mdi-image-multiple</v-icon>
             Gallery
           </v-card-title>
-          <v-card-text>
-            Browse images from all sessions
-          </v-card-text>
+          <v-card-text> Browse images from all sessions </v-card-text>
         </v-card>
       </v-col>
     </v-row>
@@ -95,7 +91,8 @@
       <v-col cols="12">
         <h2 class="text-h5 mb-4">Recently Liked</h2>
         <v-alert type="info" variant="tonal">
-          Recently liked sessions and images will appear here (coming soon with Session Stats Dashboard feature)
+          Recently liked sessions and images will appear here (coming soon with Session Stats
+          Dashboard feature)
         </v-alert>
       </v-col>
     </v-row>

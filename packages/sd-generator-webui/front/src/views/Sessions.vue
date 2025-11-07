@@ -177,7 +177,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '@/services/api'
 
 export default {
   name: 'SessionsView',
@@ -201,8 +201,8 @@ export default {
       this.error = null
 
       try {
-        const response = await axios.get('/api/sessions/')
-        this.sessions = response.data.sessions
+        const response = await api.getSessions()
+        this.sessions = response.sessions
 
         // Attach empty stats/metadata objects for reactivity
         this.sessions.forEach(session => {
@@ -226,12 +226,12 @@ export default {
       this.$set(this.loadingStats, sessionName, true)
 
       try {
-        const response = await axios.get(`/api/sessions/${sessionName}/stats`)
+        const stats = await api.getSessionStats(sessionName)
 
         // Find session and attach stats
         const session = this.sessions.find(s => s.name === sessionName)
         if (session) {
-          this.$set(session, 'stats', response.data)
+          this.$set(session, 'stats', stats)
         }
       } catch (err) {
         console.error(`Failed to load stats for ${sessionName}:`, err)

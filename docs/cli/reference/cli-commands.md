@@ -61,6 +61,13 @@ sdgen generate -t template.yaml --api-url http://192.168.1.100:7860
 | `--count` | `-n` | int | Limite le nombre d'images |
 | `--dry-run` | - | flag | Génère JSON sans appeler l'API |
 | `--api-url` | - | url | URL de l'API SD (défaut: http://127.0.0.1:7860) |
+| `--session-name` | `-sn` | str | Nom personnalisé pour le dossier de session |
+| `--theme` | - | str | Nom du thème (pour templates thématiques) |
+| `--theme-file` | - | path | Fichier theme.yaml personnalisé |
+| `--style` | - | str | Style artistique (default, cartoon, realistic, etc.) |
+| `--skip-validation` | - | flag | Ignore la validation YAML |
+| `--use-fixed` | `--fix` | str | Fixer des placeholders (format: `placeholder:key\|placeholder2:key2`) |
+| `--seeds` | - | str | **Seed-sweep mode**: Liste de seeds (`1000,1005,1008` \| `1000-1019` \| `20#1000`) |
 
 **Exemples** :
 
@@ -76,6 +83,17 @@ sdgen generate -t prompts/test.yaml --dry-run
 
 # API distante
 sdgen generate -t prompts/test.yaml --api-url http://192.168.1.50:7860
+
+# Seed-sweep mode (test variations sur mêmes seeds)
+sdgen generate -t test.yaml --seeds 20#1000  # 20 seeds à partir de 1000
+sdgen generate -t test.yaml --seeds 1000-1019  # Range de seeds
+sdgen generate -t test.yaml --seeds 1000,1005,1008  # Seeds spécifiques
+
+# Combiner seed-sweep avec fixed placeholders
+sdgen generate -t char.yaml --use-fixed "Outfit:jeans" --seeds 20#1000
+
+# Themes avec seed-sweep
+sdgen generate -t char.template.yaml --theme cyberpunk --seeds 30#1000
 ```
 
 **Sortie** :
@@ -86,8 +104,22 @@ apioutput/
     ├── portrait_0001.png
     ├── portrait_0002.png
     ├── ...
-    └── portrait_manifest.json
+    └── manifest.json
 ```
+
+**Sortie (seed-sweep mode)** :
+
+```
+apioutput/
+└── 20251107_153052_test/
+    ├── test_0001_seed-1000.png
+    ├── test_0002_seed-1001.png
+    ├── test_0003_seed-1002.png
+    ├── ...
+    └── manifest.json  # Includes seed_list in generation_params
+```
+
+**Voir aussi** : [Seed-Sweep Mode Guide](../usage/seed-sweep-mode.md)
 
 ---
 

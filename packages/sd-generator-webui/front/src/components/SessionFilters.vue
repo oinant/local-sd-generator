@@ -5,12 +5,7 @@
         <v-icon class="mr-2">mdi-filter-variant</v-icon>
         Filtres
       </span>
-      <v-btn
-        v-if="hasActiveFilters"
-        size="small"
-        variant="text"
-        @click="clearFilters"
-      >
+      <v-btn v-if="hasActiveFilters" size="small" variant="text" @click="clearFilters">
         Réinitialiser
       </v-btn>
     </v-card-title>
@@ -21,42 +16,20 @@
       <!-- Rating filter -->
       <div class="mb-3">
         <div class="text-caption font-weight-bold mb-2">Notation</div>
-        <v-chip-group
-          v-model="localFilters.rating"
-          selected-class="text-primary"
-          column
-        >
-          <v-chip
-            value="all"
-            size="small"
-            variant="outlined"
-          >
+        <v-chip-group v-model="localFilters.rating" selected-class="text-primary" column>
+          <v-chip value="all" size="small" variant="outlined">
             <v-icon start>mdi-all-inclusive</v-icon>
             Toutes
           </v-chip>
-          <v-chip
-            value="like"
-            size="small"
-            variant="outlined"
-            color="success"
-          >
+          <v-chip value="like" size="small" variant="outlined" color="success">
             <v-icon start>mdi-thumb-up</v-icon>
             Aimées
           </v-chip>
-          <v-chip
-            value="dislike"
-            size="small"
-            variant="outlined"
-            color="error"
-          >
+          <v-chip value="dislike" size="small" variant="outlined" color="error">
             <v-icon start>mdi-thumb-down</v-icon>
             Non aimées
           </v-chip>
-          <v-chip
-            value="unrated"
-            size="small"
-            variant="outlined"
-          >
+          <v-chip value="unrated" size="small" variant="outlined">
             <v-icon start>mdi-help</v-icon>
             Non notées
           </v-chip>
@@ -68,36 +41,16 @@
       <!-- Flags filter -->
       <div class="mb-3">
         <div class="text-caption font-weight-bold mb-2">Statut</div>
-        <v-chip-group
-          v-model="localFilters.flags"
-          selected-class="text-primary"
-          multiple
-          column
-        >
-          <v-chip
-            value="favorite"
-            size="small"
-            variant="outlined"
-            color="amber"
-          >
+        <v-chip-group v-model="localFilters.flags" selected-class="text-primary" multiple column>
+          <v-chip value="favorite" size="small" variant="outlined" color="amber">
             <v-icon start>mdi-star</v-icon>
             Favoris
           </v-chip>
-          <v-chip
-            value="test"
-            size="small"
-            variant="outlined"
-            color="warning"
-          >
+          <v-chip value="test" size="small" variant="outlined" color="warning">
             <v-icon start>mdi-flask</v-icon>
             Tests
           </v-chip>
-          <v-chip
-            value="complete"
-            size="small"
-            variant="outlined"
-            color="success"
-          >
+          <v-chip value="complete" size="small" variant="outlined" color="success">
             <v-icon start>mdi-check-circle</v-icon>
             Complètes
           </v-chip>
@@ -126,11 +79,7 @@
       <!-- Date range filter -->
       <div class="mb-3">
         <div class="text-caption font-weight-bold mb-2">Période</div>
-        <v-chip-group
-          v-model="localFilters.dateRange"
-          selected-class="text-primary"
-          column
-        >
+        <v-chip-group v-model="localFilters.dateRange" selected-class="text-primary" column>
           <v-chip value="all" size="small" variant="outlined">
             <v-icon start>mdi-calendar</v-icon>
             Toutes
@@ -204,13 +153,7 @@
 
     <v-card-actions>
       <v-spacer />
-      <v-btn
-        color="primary"
-        variant="elevated"
-        @click="applyFilters"
-      >
-        Appliquer
-      </v-btn>
+      <v-btn color="primary" variant="elevated" @click="applyFilters"> Appliquer </v-btn>
     </v-card-actions>
   </v-card>
 </template>

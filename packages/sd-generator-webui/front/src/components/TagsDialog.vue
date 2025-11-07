@@ -23,17 +23,15 @@
               :key="tag"
               size="small"
               closable
-              @click:close="removeTag(tag)"
               color="primary"
               variant="tonal"
+              @click:close="removeTag(tag)"
             >
               {{ tag }}
             </v-chip>
           </div>
         </div>
-        <div v-else class="mb-4 text-caption text-grey">
-          Aucun tag pour cette session
-        </div>
+        <div v-else class="mb-4 text-caption text-grey">Aucun tag pour cette session</div>
 
         <v-divider class="my-3" />
 
@@ -50,13 +48,13 @@
             hide-details
             @keydown.enter="addTag"
           >
-            <template v-slot:append>
+            <template #append>
               <v-btn
                 icon
                 size="small"
                 variant="text"
-                @click="addTag"
                 :disabled="!newTag || newTag.trim() === ''"
+                @click="addTag"
               >
                 <v-icon>mdi-plus</v-icon>
               </v-btn>
@@ -72,9 +70,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="close">
-          Fermer
-        </v-btn>
+        <v-btn variant="text" @click="close"> Fermer </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

@@ -434,3 +434,11 @@ sdgen generate -t prompt.yaml -n 1 && cat apioutput/<session>/manifest.json | jq
 parse_fixed_values("mood:sad|time:12:30:45")
 # Returns: {"mood": "sad", "time": "12:30:45"}
 ```
+
+---
+
+## See Also
+
+- [Seed-Sweep Mode](./seed-sweep-mode.md) - Test variations on controlled seed sets (perfect combo with `--use-fixed`)
+- [Generation Modes](../reference/template-syntax.md#generation) - Combinatorial vs Random generation
+- [CLI Commands Reference](../reference/cli-commands.md) - All CLI options

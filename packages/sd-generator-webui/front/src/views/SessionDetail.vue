@@ -219,6 +219,175 @@
                 </v-card>
               </v-col>
             </v-row>
+
+            <!-- Metadata section (Feature 5: Editable Metadata) -->
+            <v-row class="mt-4">
+              <v-col cols="12">
+                <v-card variant="outlined">
+                  <v-card-title class="text-h6">
+                    <v-icon class="mr-2">mdi-tag-multiple</v-icon>
+                    Session Metadata
+                  </v-card-title>
+
+                  <v-card-text>
+                    <!-- Flags -->
+                    <div class="mb-4">
+                      <div class="text-caption text-medium-emphasis mb-2">Flags</div>
+                      <v-chip-group>
+                        <v-chip
+                          :color="metadata?.is_favorite ? 'yellow' : 'grey'"
+                          :variant="metadata?.is_favorite ? 'flat' : 'outlined'"
+                          @click="toggleFlag('is_favorite')"
+                          class="cursor-pointer"
+                        >
+                          <v-icon start>mdi-star</v-icon>
+                          Favorite
+                        </v-chip>
+
+                        <v-chip
+                          :color="metadata?.is_test ? 'orange' : 'grey'"
+                          :variant="metadata?.is_test ? 'flat' : 'outlined'"
+                          @click="toggleFlag('is_test')"
+                          class="cursor-pointer"
+                        >
+                          <v-icon start>mdi-test-tube</v-icon>
+                          Test
+                        </v-chip>
+
+                        <v-chip
+                          :color="metadata?.is_complete ? 'green' : 'grey'"
+                          :variant="metadata?.is_complete ? 'flat' : 'outlined'"
+                          @click="toggleFlag('is_complete')"
+                          class="cursor-pointer"
+                        >
+                          <v-icon start>mdi-check-circle</v-icon>
+                          Complete
+                        </v-chip>
+                      </v-chip-group>
+                    </div>
+
+                    <!-- Rating -->
+                    <div class="mb-4">
+                      <div class="text-caption text-medium-emphasis mb-2">Rating</div>
+                      <v-chip-group>
+                        <v-chip
+                          :color="metadata?.user_rating === 'like' ? 'success' : 'grey'"
+                          :variant="metadata?.user_rating === 'like' ? 'flat' : 'outlined'"
+                          @click="setRating('like')"
+                          class="cursor-pointer"
+                        >
+                          <v-icon start>mdi-thumb-up</v-icon>
+                          Like
+                        </v-chip>
+
+                        <v-chip
+                          :color="metadata?.user_rating === 'dislike' ? 'error' : 'grey'"
+                          :variant="metadata?.user_rating === 'dislike' ? 'flat' : 'outlined'"
+                          @click="setRating('dislike')"
+                          class="cursor-pointer"
+                        >
+                          <v-icon start>mdi-thumb-down</v-icon>
+                          Dislike
+                        </v-chip>
+
+                        <v-chip
+                          v-if="metadata?.user_rating"
+                          color="grey"
+                          variant="outlined"
+                          @click="setRating(null)"
+                          class="cursor-pointer"
+                        >
+                          <v-icon start>mdi-close</v-icon>
+                          Clear
+                        </v-chip>
+                      </v-chip-group>
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="mb-4">
+                      <div class="text-caption text-medium-emphasis mb-2">Tags</div>
+                      <div class="d-flex flex-wrap align-center">
+                        <v-chip
+                          v-for="tag in metadata?.tags || []"
+                          :key="tag"
+                          size="small"
+                          closable
+                          @click:close="removeTag(tag)"
+                          class="mr-1 mb-1"
+                        >
+                          {{ tag }}
+                        </v-chip>
+
+                        <!-- Add tag input -->
+                        <v-chip
+                          v-if="!showTagInput"
+                          size="small"
+                          variant="outlined"
+                          @click="showTagInput = true"
+                          class="cursor-pointer"
+                        >
+                          <v-icon start>mdi-plus</v-icon>
+                          Add tag
+                        </v-chip>
+
+                        <v-text-field
+                          v-if="showTagInput"
+                          v-model="newTag"
+                          density="compact"
+                          variant="outlined"
+                          placeholder="Enter tag name"
+                          hide-details
+                          @keyup.enter="addTag"
+                          @blur="cancelAddTag"
+                          class="ml-2"
+                          style="max-width: 200px"
+                        >
+                          <template #append-inner>
+                            <v-icon @click="addTag" class="cursor-pointer">mdi-check</v-icon>
+                          </template>
+                        </v-text-field>
+                      </div>
+                    </div>
+
+                    <!-- User notes -->
+                    <div>
+                      <div class="text-caption text-medium-emphasis mb-2">Notes</div>
+                      <v-textarea
+                        v-model="metadata.user_notes"
+                        variant="outlined"
+                        placeholder="Add your notes about this session..."
+                        rows="3"
+                        @blur="saveMetadata"
+                        hide-details
+                      ></v-textarea>
+                    </div>
+
+                    <!-- Save indicator -->
+                    <v-alert
+                      v-if="savingMetadata"
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="mt-2"
+                    >
+                      <v-icon start>mdi-content-save</v-icon>
+                      Saving...
+                    </v-alert>
+
+                    <v-alert
+                      v-if="metadataSaved"
+                      type="success"
+                      variant="tonal"
+                      density="compact"
+                      class="mt-2"
+                    >
+                      <v-icon start>mdi-check</v-icon>
+                      Saved successfully
+                    </v-alert>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-card-text>
         </v-card>
       </v-col>
@@ -227,7 +396,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '@/services/api'
 
 export default {
   name: 'SessionDetailView',
@@ -236,8 +405,13 @@ export default {
     return {
       stats: null,
       manifest: null,
+      metadata: null,
       loading: false,
-      error: null
+      error: null,
+      showTagInput: false,
+      newTag: '',
+      savingMetadata: false,
+      metadataSaved: false
     }
   },
 
@@ -258,12 +432,25 @@ export default {
 
       try {
         // Load stats
-        const statsResponse = await axios.get(`/api/sessions/${this.sessionName}/stats`)
-        this.stats = statsResponse.data
+        this.stats = await api.getSessionStats(this.sessionName)
 
         // Load manifest
-        const manifestResponse = await axios.get(`/api/sessions/${this.sessionName}/manifest`)
-        this.manifest = manifestResponse.data
+        this.manifest = await api.getSessionManifest(this.sessionName)
+
+        // Load metadata
+        try {
+          this.metadata = await api.getSessionMetadata(this.sessionName)
+        } catch (err) {
+          // Metadata might not exist yet, initialize default
+          this.metadata = {
+            is_favorite: false,
+            is_test: false,
+            is_complete: false,
+            user_rating: null,
+            tags: [],
+            user_notes: ''
+          }
+        }
       } catch (err) {
         console.error('Failed to load session data:', err)
         this.error = err.response?.data?.detail || 'Failed to load session data'
@@ -274,6 +461,74 @@ export default {
 
     async refreshSession() {
       await this.loadSessionData()
+    },
+
+    async saveMetadata() {
+      this.savingMetadata = true
+      this.metadataSaved = false
+
+      try {
+        await api.client.put(`/api/sessions/${this.sessionName}/metadata`, this.metadata)
+        this.metadataSaved = true
+
+        // Hide success message after 2 seconds
+        setTimeout(() => {
+          this.metadataSaved = false
+        }, 2000)
+      } catch (err) {
+        console.error('Failed to save metadata:', err)
+        this.error = err.response?.data?.detail || 'Failed to save metadata'
+      } finally {
+        this.savingMetadata = false
+      }
+    },
+
+    async toggleFlag(flagName) {
+      if (!this.metadata) return
+      this.metadata[flagName] = !this.metadata[flagName]
+      await this.saveMetadata()
+    },
+
+    async setRating(rating) {
+      if (!this.metadata) return
+      this.metadata.user_rating = rating
+      await this.saveMetadata()
+    },
+
+    async addTag() {
+      if (!this.newTag.trim()) return
+      if (!this.metadata) return
+
+      if (!this.metadata.tags) {
+        this.metadata.tags = []
+      }
+
+      // Avoid duplicates
+      if (!this.metadata.tags.includes(this.newTag.trim())) {
+        this.metadata.tags.push(this.newTag.trim())
+        await this.saveMetadata()
+      }
+
+      this.newTag = ''
+      this.showTagInput = false
+    },
+
+    cancelAddTag() {
+      // Delay to allow click on check icon
+      setTimeout(() => {
+        this.newTag = ''
+        this.showTagInput = false
+      }, 200)
+    },
+
+    async removeTag(tag) {
+      if (!this.metadata || !this.metadata.tags) return
+
+      const index = this.metadata.tags.indexOf(tag)
+      if (index !== -1) {
+        this.metadata.tags.splice(index, 1)
+        await this.saveMetadata()
+      }
     },
 
     formatSessionName(name) {
@@ -312,5 +567,9 @@ pre {
   word-wrap: break-word;
   max-height: 400px;
   overflow-y: auto;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>

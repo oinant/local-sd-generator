@@ -15,6 +15,56 @@
 
 _Items braindumped but not yet processed by Agent PO_
 
+- **[Bug]** WebUI: Image refresh appends duplicates to session (should replace, not append)
+  - **Context:** When refreshing images in a session, the UI appends the same images again instead of replacing the list
+  - **Expected:** Refresh should clear and reload the image list
+  - **Impact:** Confusing UX, duplicate images displayed
+
+- **[Bug/UX]** WebUI: Mobile UI is unusable - Need session list/results split screen
+  - **Context:** On mobile, the webapp is completely unusable
+  - **Problems:**
+    1. Session list and session results are shown on same screen → too cramped
+    2. No way to navigate back from results to session list easily
+  - **Proposed solution:**
+    - Split into 2 screens: "Session List" and "Session Results"
+    - Swipe left on "Session Results" → goes back to "Session List"
+    - BUT: Swipe should NOT trigger when viewing image details (only on gallery)
+  - **Priority:** High (mobile is currently broken)
+
+- **[UX]** WebUI: Header bar wastes space on Session Results screen
+  - **Context:** The app header (logo + title?) appears above Session Results even in desktop mode
+  - **Problem:** Takes vertical space for no reason when viewing images
+  - **Proposed solution:** Header should only appear on Session List screen, not on Results screen
+  - **Benefit:** More space for image gallery (especially on mobile)
+
+- **[Bug]** WebUI: Double scrollbar in Session Results (window + gallery)
+  - **Context:** Two scrollbars appear:
+    1. One for the gallery content itself
+    2. One for the entire window/app
+  - **Problem:** Confusing scroll behavior, harder to navigate
+  - **Proposed solution:** Size the gallery container correctly so only ONE scrollbar (gallery) is needed
+  - **Expected:** Window should not scroll, only the gallery container
+
+- **[UX]** WebUI: Tags textbox placement is wrong
+  - **Context:** Tags textbox is not positioned logically
+  - **Proposed placement:** Between session name and image count chip
+  - **Current:** (Unknown - somewhere else?)
+
+- **[Question]** WebUI: What is the tags textbox for? (Non-functional currently)
+  - **Context:** There's a tags textbox but it doesn't seem to do anything
+  - **Question:** What's the intended purpose?
+    - Filter by tags?
+    - Add tags to session?
+    - Search tags?
+  - **Status:** Non-functional, needs clarification of intended behavior
+
+- **[Bug/UX]** WebUI: Thumbnails are blurry (cropped to square + zoomed)
+  - **Context:** In Session Results gallery, image thumbnails are blurry
+  - **Problem:** Images are cropped to square format then zoomed/upscaled → quality loss
+  - **Proposed solution:** Don't crop, display at original resolution (maintain aspect ratio)
+  - **Expected:** Sharp thumbnails with original aspect ratio (e.g., 512×768 displayed as 512×768 thumbnail, not cropped to 512×512)
+  - **Impact:** Medium (usability - harder to evaluate image quality at a glance)
+
 - **[Feature]** Tag the model used for generation in file metadata (call the api? use an headless browser?)
 - **[Feature]** CLI: Interactive selector for placeholders
 - **[Feature]** WebUI: Flag failed generations (image by image)
@@ -284,6 +334,59 @@ _Items currently being structured by Agent PO_
 ## 📋 Tracked on GitHub
 
 _Items with GitHub issues created (ready for implementation)_
+
+### 2025-11-06 Session - Seed-based Variation Comparison
+
+- **[Feature]** WebUI: Seed-based Variation Comparison View → [#65](https://github.com/oinant/local-sd-generator/issues/65)
+  - **Priority:** P4-P5 (High/Medium), **Effort:** Medium (~12-16h)
+  - **Goal:** Interactive UI to compare variations side-by-side for same seed (scientific A/B testing)
+  - **Perfect synergy with:** #64 (Seed-sweep mode - data producer), #62 (Variation tagging - feedback loop)
+  - **Key features:**
+    - Seed selector: Iterate through all seeds used in session
+    - Placeholder pivot: Choose which placeholder to analyze (e.g., HairColor)
+    - Fixed value filters: Filter by other placeholders (Pose=standing, Outfit=dress)
+    - Side-by-side comparison grid: 2-4 variations at once
+    - Quick tagging: Reuse #62 tagging system (OK/KO buttons)
+    - Gallery filter extension: Filter main gallery by variation values
+  - **Use cases:**
+    1. Scientific A/B testing: Compare "red hair" vs "crimson hair" on same seed
+    2. Seed bias detection: Find which seeds work best across variations
+    3. Variation stability: Identify which variations give consistent results
+    4. Multi-placeholder analysis: Test one placeholder while fixing others
+  - **Benefits:** Data-driven prompt engineering, 20 seeds reviewed in 5 min (vs manual), foundation for CLIP validation
+
+### 2025-11-05 Session - Quality Control & Analysis Workflow Epic
+
+- **[Epic]** Quality Control & Analysis Workflow (Session Review & Tagging System)
+  - **Goal:** Rapid quality assessment + identify low-impact variations
+  - **MVP Issues (P4-P6, ~40h total):**
+    - [#61](https://github.com/oinant/local-sd-generator/issues/61) - [Feature] Image Quality Tagging System
+      - Priority: P4 (High), Effort: Medium (~16h)
+      - Image-level tags: favorite/interesting/trash
+      - Backend: SQLite table + REST API
+      - Frontend: Tag buttons + filters
+    - [#62](https://github.com/oinant/local-sd-generator/issues/62) - [Feature] Placeholder Variation Quality Tagging
+      - Priority: P4 (High), Effort: Medium (~18h)
+      - Variation-level tags: OK/KO per placeholder value
+      - Statistics: Success rates per variation
+      - Use case: "Position:standing works 90%, crouching fails 60%"
+    - [#63](https://github.com/oinant/local-sd-generator/issues/63) - [Enhancement] Gallery UI with Keyboard Navigation
+      - Priority: P6 (Medium), Effort: Small (~8h)
+      - Keyboard shortcuts: F/T/I/U for tagging, arrows for navigation
+      - Quick review: 100 images in 5 min vs 30 min
+  - **Phase 2 (Pending creation):**
+    - Variation Analysis Statistics Dashboard (P6, ~12h)
+    - Perceptual Hash Similarity Detection (P5, ~24h)
+  - **Strategic value:** Foundation for CLIP validation + ML workflows
+
+- **[Feature]** Consistency Test Mode - Seed-Sweep Generation → [#64](https://github.com/oinant/local-sd-generator/issues/64)
+  - **Priority:** P5 (Medium-High), **Effort:** Medium (~14-18h)
+  - **Goal:** Reverse engineering semantic understanding of the model
+  - **Use case:** Test each variation on SAME seeds to measure stability
+  - **Example:** "red hair" → 18/20 seeds OK (90% stable) ✅ vs "crimson hair" → 8/20 OK (40% stable) ❌
+  - **CLI:** `sdgen generate -t template.yaml --mode consistency --seeds 1000-1019`
+  - **Synergy:** Perfect workflow with #61, #62 (consistency mode → tagging → statistics)
+  - **Strategic value:** Foundation for semantic optimization + LoRA training
 
 ### 2025-10-29 Session - Themable Templates Improvements
 
