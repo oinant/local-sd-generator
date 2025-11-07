@@ -69,8 +69,9 @@ class ApiService {
     return response.data
   }
 
-  async getSessionImages(sessionName) {
-    const response = await this.client.get(`/api/sessions/${sessionName}/images`)
+  async getSessionImages(sessionName, since = null) {
+    const params = since !== null ? { since } : {}
+    const response = await this.client.get(`/api/sessions/${sessionName}/images`, { params })
     return response.data
   }
 

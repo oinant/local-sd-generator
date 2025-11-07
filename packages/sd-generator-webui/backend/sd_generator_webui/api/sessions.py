@@ -146,12 +146,22 @@ async def get_session_count(
 @router.get("/{session_name}/images")
 async def list_session_images(
     session_name: str,
+    since: Optional[int] = None,
     user_guid: str = Depends(AuthService.validate_guid)
 ):
     """
-    Liste toutes les images d'une session spécifique.
+    Liste les images d'une session spécifique.
 
-    Utilisé quand l'utilisateur clique sur une session.
+    Args:
+        session_name: Nom de la session
+        since: Index de la dernière image connue par le client.
+               Si fourni, ne retourne que les images APRÈS cet index (polling mode).
+               Si None, retourne toutes les images (initial load).
+
+    Utilisé pour:
+    - Initial load: GET /sessions/{name}/images (retourne tout)
+    - Polling: GET /sessions/{name}/images?since=42 (retourne images 43+)
+
     Ne charge PAS les thumbnails - ils seront lazy-loadés par le frontend.
     """
     session_path = IMAGES_DIR / session_name
@@ -166,6 +176,11 @@ async def list_session_images(
 
     # Trier par nom de fichier
     image_files.sort()
+
+    # Polling mode: skip images before 'since' index
+    if since is not None:
+        # since=42 means client has images 0-42, so return 43+
+        image_files = image_files[since + 1:]
 
     # Créer les infos d'images (minimaliste)
     images = []

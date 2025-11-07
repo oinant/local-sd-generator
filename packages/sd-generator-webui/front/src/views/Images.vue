@@ -92,16 +92,10 @@
                 <v-chip color="primary" variant="outlined" size="small">
                   {{ allImages.length }} image{{ allImages.length > 1 ? 's' : '' }}
                 </v-chip>
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  @click="refreshCurrentSession"
-                  :loading="loading"
-                  title="Rafraîchir les images de cette session"
-                >
-                  <v-icon>mdi-refresh</v-icon>
-                </v-btn>
+                <v-chip color="success" variant="tonal" size="small">
+                  <v-icon size="x-small" class="mr-1">mdi-update</v-icon>
+                  Auto (5s)
+                </v-chip>
               </div>
             </div>
           </v-card-title>
@@ -476,6 +470,9 @@ export default {
       // Auto-refresh
       autoRefresh: false,
       autoRefreshInterval: null,
+      // Image polling (for current session)
+      imagePollingInterval: null,
+      lastImageIndex: -1,  // Track highest known image index for polling
       // Tags
       allTags: [],
       // Filtres
@@ -699,6 +696,8 @@ export default {
     if (this.autoRefreshInterval) {
       clearInterval(this.autoRefreshInterval)
     }
+    // Nettoyer le polling des images
+    this.stopImagePolling()
   },
 
   methods: {
@@ -800,6 +799,9 @@ export default {
           thumbnailLoading: false,
           created: new Date(image.created_at)
         }))
+
+        // Initialize lastImageIndex for polling (length - 1 because 0-indexed)
+        this.lastImageIndex = this.allImages.length - 1
       } catch (error) {
         console.error(`Erreur chargement images session ${sessionName}:`, error)
         this.$store.dispatch('showSnackbar', {
@@ -808,6 +810,18 @@ export default {
         })
       } finally {
         this.loading = false
+      }
+    },
+
+    async loadSessionMetadata(sessionName) {
+      try {
+        const metadata = await ApiService.getSessionMetadata(sessionName)
+        this.$set(this.sessionMetadata, sessionName, metadata)
+      } catch (error) {
+        // Metadata is optional, so don't show error if not found
+        if (error.response?.status !== 404) {
+          console.error(`Erreur chargement metadata ${sessionName}:`, error)
+        }
       }
     },
 
@@ -869,8 +883,12 @@ export default {
     },
 
     async selectSession(sessionName) {
+      // Stop polling for previous session
+      this.stopImagePolling()
+
       this.selectedSession = sessionName
       this.allImages = []  // Clear images
+      this.lastImageIndex = -1  // Reset polling index
 
       if (sessionName) {
         // Charger les images de cette session
@@ -883,6 +901,26 @@ export default {
 
         // Charger tous les tags disponibles pour l'autocomplete
         await this.loadAllTags()
+
+        // Start polling for new images every 5 seconds
+        this.startImagePolling()
+      }
+    },
+
+    startImagePolling() {
+      // Clear any existing interval
+      this.stopImagePolling()
+
+      // Poll every 5 seconds
+      this.imagePollingInterval = setInterval(() => {
+        this.refreshCurrentSession()
+      }, 5000)
+    },
+
+    stopImagePolling() {
+      if (this.imagePollingInterval) {
+        clearInterval(this.imagePollingInterval)
+        this.imagePollingInterval = null
       }
     },
 
@@ -1131,11 +1169,17 @@ export default {
       if (!this.selectedSession) return
 
       try {
-        // Refresh incrémental : récupérer toutes les images
-        const response = await ApiService.getSessionImages(this.selectedSession)
+        // Polling mode: fetch only new images after lastImageIndex
+        const response = await ApiService.getSessionImages(
+          this.selectedSession,
+          this.lastImageIndex
+        )
 
-        // Transformer les nouvelles images
-        const allImages = response.images.map((image) => ({
+        // If no new images, response.images will be empty
+        if (response.images.length === 0) return
+
+        // Transform new images
+        const newImages = response.images.map((image) => ({
           id: image.path,
           name: image.filename,
           path: image.path,
@@ -1146,31 +1190,21 @@ export default {
           created: new Date(image.created_at)
         }))
 
-        // Trouver l'image la plus récente actuelle
-        const mostRecentImage = this.allImages.length > 0 ? this.allImages[0] : null
+        // Append new images to the end (backend returns them sorted)
+        this.allImages.push(...newImages)
 
-        if (mostRecentImage) {
-          // Filtrer uniquement les nouvelles images (plus récentes)
-          const newImages = allImages.filter(img => img.created > mostRecentImage.created)
+        // Update lastImageIndex to new highest index
+        this.lastImageIndex = this.allImages.length - 1
 
-          if (newImages.length > 0) {
-            // Ajouter les nouvelles images au début
-            this.allImages.unshift(...newImages)
+        this.$store.dispatch('showSnackbar', {
+          message: `${newImages.length} nouvelle${newImages.length > 1 ? 's' : ''} image${newImages.length > 1 ? 's' : ''} détectée${newImages.length > 1 ? 's' : ''}`,
+          color: 'info'
+        })
 
-            this.$store.dispatch('showSnackbar', {
-              message: `${newImages.length} nouvelle${newImages.length > 1 ? 's' : ''} image${newImages.length > 1 ? 's' : ''} détectée${newImages.length > 1 ? 's' : ''}`,
-              color: 'info'
-            })
-
-            // Attacher les observers pour lazy loading
-            this.$nextTick(() => {
-              this.attachObservers()
-            })
-          }
-        } else {
-          // Première fois : charger toutes les images
-          this.allImages = allImages
-        }
+        // Attach observers for lazy loading
+        this.$nextTick(() => {
+          this.attachObservers()
+        })
       } catch (error) {
         console.error(`Erreur refresh images session ${this.selectedSession}:`, error)
       }
