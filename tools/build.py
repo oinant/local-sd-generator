@@ -104,9 +104,14 @@ class BuildRunner:
         # Frontend checks
         if not self.skip_frontend:
             self._run_step("Frontend Linting", self._lint_frontend)
+            if not self.skip_tests:
+                self._run_step("Frontend Tests", self._test_frontend)
+            else:
+                self._skip_step("Frontend Tests")
             self._run_step("Frontend Build", self._build_frontend)
         else:
             self._skip_step("Frontend Linting")
+            self._skip_step("Frontend Tests")
             self._skip_step("Frontend Build")
 
         # Packaging
@@ -532,6 +537,69 @@ class BuildRunner:
                 duration=0,
                 message=f"{error_count} errors",
                 details={"error_count": error_count}
+            )
+
+    def _test_frontend(self) -> StepResult:
+        """Run Vitest tests on frontend"""
+        frontend_dir = self.project_root / "packages/sd-generator-webui/front"
+
+        if not frontend_dir.exists():
+            return StepResult(
+                name="Frontend Tests",
+                status="warning",
+                duration=0,
+                message="frontend directory not found"
+            )
+
+        cmd = ["npm", "test", "--", "--run"]
+        result = self._run_command(cmd, cwd=frontend_dir)
+
+        # Parse output for test counts
+        output = result.stdout + result.stderr
+
+        # Extract test file count and total test count
+        # Example: "Test Files  1 passed (1)"
+        # Example: "Tests  9 passed (9)"
+        import re
+        test_files_match = re.search(r'Test Files\s+(\d+)\s+passed', output)
+        tests_match = re.search(r'Tests\s+(\d+)\s+passed', output)
+        failed_match = re.search(r'(\d+)\s+failed', output)
+
+        test_files = int(test_files_match.group(1)) if test_files_match else 0
+        tests_passed = int(tests_match.group(1)) if tests_match else 0
+        tests_failed = int(failed_match.group(1)) if failed_match else 0
+
+        if result.returncode == 0 and tests_passed > 0:
+            return StepResult(
+                name="Frontend Tests",
+                status="success",
+                duration=0,
+                message=f"{tests_passed} passed in {test_files} file(s)",
+                details={
+                    "test_files": test_files,
+                    "passed": tests_passed,
+                    "failed": tests_failed
+                }
+            )
+        elif tests_failed > 0:
+            return StepResult(
+                name="Frontend Tests",
+                status="error",
+                duration=0,
+                message=f"{tests_failed} failed, {tests_passed} passed",
+                details={
+                    "test_files": test_files,
+                    "passed": tests_passed,
+                    "failed": tests_failed
+                }
+            )
+        else:
+            # No tests found or failed to run
+            return StepResult(
+                name="Frontend Tests",
+                status="warning",
+                duration=0,
+                message="no tests found or tests failed to run"
             )
 
     def _build_frontend(self) -> StepResult:

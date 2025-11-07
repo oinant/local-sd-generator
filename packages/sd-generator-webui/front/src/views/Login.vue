@@ -45,10 +45,22 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
 
 export default {
   name: 'LoginView',
+
+  setup() {
+    const authStore = useAuthStore()
+    const { loading, isAuthenticated } = storeToRefs(authStore)
+
+    return {
+      authStore,
+      loading,
+      isAuthenticated
+    }
+  },
 
   data() {
     return {
@@ -64,13 +76,7 @@ export default {
     }
   },
 
-  computed: {
-    ...mapGetters(['loading', 'isAuthenticated'])
-  },
-
   methods: {
-    ...mapActions(['login']),
-
     async handleLogin() {
       this.errorMessage = ''
 
@@ -79,7 +85,7 @@ export default {
         return
       }
 
-      const success = await this.login(this.token)
+      const success = await this.authStore.login(this.token)
       if (success) {
         this.$router.push('/')
       } else {

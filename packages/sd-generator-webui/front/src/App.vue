@@ -113,10 +113,31 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
+import { storeToRefs } from 'pinia'
 
 export default {
   name: 'App',
+
+  setup() {
+    const authStore = useAuthStore()
+    const notificationStore = useNotificationStore()
+
+    // Extract reactive refs from stores
+    const { isAuthenticated, user, loading, canGenerate } = storeToRefs(authStore)
+    const snackbar = storeToRefs(notificationStore)
+
+    return {
+      authStore,
+      notificationStore,
+      isAuthenticated,
+      user,
+      loading,
+      canGenerate,
+      snackbar
+    }
+  },
 
   data() {
     return {
@@ -125,8 +146,6 @@ export default {
   },
 
   computed: {
-    ...mapGetters(['isAuthenticated', 'user', 'loading', 'snackbar', 'canGenerate']),
-
     buildTimestamp() {
       return __BUILD_TIMESTAMP__
     },
@@ -175,10 +194,12 @@ export default {
   },
 
   methods: {
-    ...mapActions(['logout', 'hideSnackbar']),
+    hideSnackbar() {
+      this.notificationStore.hide()
+    },
 
     async logout() {
-      await this.$store.dispatch('logout')
+      this.authStore.logout()
       this.$router.push('/login')
     }
   },
@@ -187,7 +208,7 @@ export default {
     // Vérifier si un token existe au démarrage
     const token = localStorage.getItem('authToken')
     if (token && !this.isAuthenticated) {
-      await this.$store.dispatch('login', token)
+      await this.authStore.login(token)
       if (!this.isAuthenticated) {
         this.$router.push('/login')
       }

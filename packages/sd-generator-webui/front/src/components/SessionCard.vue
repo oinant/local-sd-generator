@@ -127,6 +127,8 @@
 </template>
 
 <script>
+import { formatSessionName, formatDate } from '@/utils/formatters'
+
 export default {
   name: 'SessionCard',
 
@@ -155,41 +157,12 @@ export default {
 
   computed: {
     displayName() {
-      // Support two formats:
-      // Old: 2025-10-14_163854_hassaku_actualportrait.prompt
-      // New: 20251014_163854-Hassaku-fantasy-default
-      const name = this.session.name
-
-      // Try old format (YYYY-MM-DD_HHMMSS_name)
-      const oldMatch = name.match(/^(\d{4}-\d{2}-\d{2})_\d{6}_(.+)/)
-      if (oldMatch) {
-        const date = oldMatch[1]
-        const sessionName = oldMatch[2].replace('.prompt', '')
-        return `${date} · ${sessionName}`
-      }
-
-      // Try new format (YYYYMMDD_HHMMSS-name)
-      const newMatch = name.match(/^(\d{4})(\d{2})(\d{2})_\d{6}-(.+)/)
-      if (newMatch) {
-        const date = `${newMatch[1]}-${newMatch[2]}-${newMatch[3]}`
-        const sessionName = newMatch[4].replace(/-/g, ' ')
-        return `${date} · ${sessionName}`
-      }
-
-      return name
+      return formatSessionName(this.session.name)
     }
   },
 
   methods: {
-    formatDate(date) {
-      return new Intl.DateTimeFormat('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date)
-    },
+    formatDate,
 
     getSessionIcon() {
       if (this.metadata?.is_favorite) return 'mdi-folder-star'

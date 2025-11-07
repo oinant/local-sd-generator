@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import store from '@/store'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
 
 const routes = [
   {
@@ -39,15 +40,18 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore()
+  const notificationStore = useNotificationStore()
+
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresGenerate = to.matched.some(record => record.meta.requiresGenerate)
-  const isAuthenticated = store.getters.isAuthenticated
-  const canGenerate = store.getters.canGenerate
+  const isAuthenticated = authStore.isAuthenticated
+  const canGenerate = authStore.canGenerate
 
   if (requiresAuth && !isAuthenticated) {
     next('/login')
   } else if (requiresGenerate && !canGenerate) {
-    store.dispatch('showSnackbar', {
+    notificationStore.show({
       message: 'Vous n\'avez pas les permissions pour générer des images',
       color: 'error'
     })

@@ -29,6 +29,7 @@ python3 tools/build.py --skip-frontend
 
 ### 2. Frontend Quality
 - **Linting** (ESLint) - JavaScript/Vue.js code quality
+- **Tests** (Vitest) - Vue component and utility tests
 - **Build** (Vue CLI) - Production build
 
 ### 3. Packaging
@@ -62,6 +63,7 @@ Options:
 │  ⚠ Dead Code Detection    3 unused variables                 │
 │  ✓ Security Scan          0 vulnerabilities                  │
 │  ✓ Frontend Linting       0 errors                           │
+│  ✓ Frontend Tests         9 passed in 1 file(s)              │
 │  ✓ Frontend Build         2.3 MB                             │
 │  ✓ Python Packaging       sdgen-0.1.0.tar.gz created         │
 │                                                               │

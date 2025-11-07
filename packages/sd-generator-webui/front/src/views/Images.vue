@@ -438,9 +438,16 @@
 import ApiService from '@/services/api'
 import SessionCard from '@/components/SessionCard.vue'
 import SessionFilters from '@/components/SessionFilters.vue'
+import { formatSessionName, formatDate } from '@/utils/formatters'
+import { useNotificationStore } from '@/stores/notification'
 
 export default {
   name: 'ImagesView',
+
+  setup() {
+    const notificationStore = useNotificationStore()
+    return { notificationStore }
+  },
 
   components: {
     SessionCard,
@@ -722,7 +729,7 @@ export default {
         // Les counts seront chargés par le sessionObserver au scroll
       } catch (error) {
         console.error('Erreur lors du chargement des sessions:', error)
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Erreur lors du chargement des sessions',
           color: 'error'
         })
@@ -804,7 +811,7 @@ export default {
         this.lastImageIndex = this.allImages.length - 1
       } catch (error) {
         console.error(`Erreur chargement images session ${sessionName}:`, error)
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Erreur lors du chargement des images',
           color: 'error'
         })
@@ -950,7 +957,7 @@ export default {
           })
           .catch(error => {
             console.error('Erreur lors du chargement des métadonnées:', error)
-            this.$store.dispatch('showSnackbar', {
+            this.notificationStore.show( {
               message: 'Erreur lors du chargement des métadonnées',
               color: 'error'
             })
@@ -974,39 +981,8 @@ export default {
       ])
     },
 
-    formatSessionName(sessionName) {
-      // Support two formats:
-      // Old: 2025-10-14_163854_hassaku_actualportrait.prompt
-      // New: 20251014_163854-Hassaku-fantasy-default
-
-      // Try old format (YYYY-MM-DD_HHMMSS_name)
-      const oldMatch = sessionName.match(/^(\d{4}-\d{2}-\d{2})_\d{6}_(.+)/)
-      if (oldMatch) {
-        const date = oldMatch[1]
-        const name = oldMatch[2].replace('.prompt', '')
-        return `${date} · ${name}`
-      }
-
-      // Try new format (YYYYMMDD_HHMMSS-name)
-      const newMatch = sessionName.match(/^(\d{4})(\d{2})(\d{2})_\d{6}-(.+)/)
-      if (newMatch) {
-        const date = `${newMatch[1]}-${newMatch[2]}-${newMatch[3]}`
-        const name = newMatch[4].replace(/-/g, ' ')
-        return `${date} · ${name}`
-      }
-
-      return sessionName
-    },
-
-    formatDate(date) {
-      return new Intl.DateTimeFormat('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date)
-    },
+    formatSessionName,
+    formatDate,
 
     showPreviousImage() {
       if (this.hasPreviousImage) {
@@ -1055,13 +1031,13 @@ export default {
         // Update local state
         this.$set(this.sessionMetadata, sessionName, metadata)
 
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Metadata mise à jour',
           color: 'success'
         })
       } catch (error) {
         console.error('Erreur mise à jour metadata:', error)
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Erreur lors de la mise à jour',
           color: 'error'
         })
@@ -1071,7 +1047,7 @@ export default {
     openNoteDialog(sessionName) {
       // TODO: Implémenter le dialog pour ajouter une note
       console.log('Open note dialog for', sessionName)
-      this.$store.dispatch('showSnackbar', {
+      this.notificationStore.show( {
         message: 'Dialog notes - À implémenter',
         color: 'info'
       })
@@ -1103,13 +1079,13 @@ export default {
         // Update local state (Vue 3 reactivity)
         this.sessionMetadata[this.selectedSession] = metadata
 
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Tags mis à jour',
           color: 'success'
         })
       } catch (error) {
         console.error('Erreur mise à jour tags:', error)
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Erreur lors de la mise à jour des tags',
           color: 'error'
         })
@@ -1145,7 +1121,7 @@ export default {
             // Ajouter les nouvelles sessions au début
             this.sessions.unshift(...newSessions)
 
-            this.$store.dispatch('showSnackbar', {
+            this.notificationStore.show( {
               message: `${newSessions.length} nouvelle${newSessions.length > 1 ? 's' : ''} session${newSessions.length > 1 ? 's' : ''} détectée${newSessions.length > 1 ? 's' : ''}`,
               color: 'info'
             })
@@ -1196,7 +1172,7 @@ export default {
         // Update lastImageIndex to new highest index
         this.lastImageIndex = this.allImages.length - 1
 
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: `${newImages.length} nouvelle${newImages.length > 1 ? 's' : ''} image${newImages.length > 1 ? 's' : ''} détectée${newImages.length > 1 ? 's' : ''}`,
           color: 'info'
         })
@@ -1222,7 +1198,7 @@ export default {
           }
         }, 60000) // 1 minute
 
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Auto-refresh activé (1 minute)',
           color: 'info'
         })
@@ -1233,7 +1209,7 @@ export default {
           this.autoRefreshInterval = null
         }
 
-        this.$store.dispatch('showSnackbar', {
+        this.notificationStore.show( {
           message: 'Auto-refresh désactivé',
           color: 'info'
         })
