@@ -615,7 +615,7 @@ class BuildRunner:
             )
 
     def _build_frontend(self) -> StepResult:
-        """Build frontend with Vue.js"""
+        """Build frontend with Vite"""
         frontend_dir = self.project_root / "packages/sd-generator-webui/front"
 
         if not frontend_dir.exists():
@@ -630,8 +630,9 @@ class BuildRunner:
         result = self._run_command(cmd, cwd=frontend_dir)
 
         if result.returncode == 0:
-            # Try to get build size
-            dist_dir = frontend_dir / "dist"
+            # Try to get build size (Vite outputs to ../backend/static/dist)
+            backend_dir = self.project_root / "packages/sd-generator-webui/backend"
+            dist_dir = backend_dir / "static/dist"
             size_mb = 0.0
             if dist_dir.exists():
                 total_bytes = sum(
