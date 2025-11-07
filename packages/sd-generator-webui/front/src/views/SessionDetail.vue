@@ -468,7 +468,7 @@ export default {
       this.metadataSaved = false
 
       try {
-        await api.client.put(`/api/sessions/${this.sessionName}/metadata`, this.metadata)
+        await api.updateSessionMetadata(this.sessionName, this.metadata)
         this.metadataSaved = true
 
         // Hide success message after 2 seconds

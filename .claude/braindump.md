@@ -15,6 +15,37 @@
 
 _Items braindumped but not yet processed by Agent PO_
 
+### Epic #67 - Session Dashboard - Issues identifiés 2025-11-08
+
+- **[UX]** Sessions list: 1088 sessions without pagination/filtering
+  - **Context:** Sessions.vue displays all 1088 sessions at once in grid
+  - **Problem:** Performance issue, hard to find specific session, overwhelming UI
+  - **Proposed solution:** Add pagination (20-50 per page) and/or filters (by date, name, tags, favorite)
+  - **Priority:** Medium-High (usability issue with large datasets)
+
+- **[Feature]** Sessions list: Lazy loading stats should show loading spinner
+  - **Context:** "LOAD STATS" button shows no feedback while loading
+  - **Proposed:** Show spinner inside button during API call
+  - **Priority:** Low (UX polish)
+
+- **[Feature]** SessionDetail: Manifest endpoint might not exist yet
+  - **Context:** Feature 4 calls GET /api/sessions/{name}/manifest
+  - **Status:** Need to verify if backend endpoint exists
+  - **Priority:** High (Feature 4 depends on it)
+
+- **[Bug]** Session stats: Completion percentage calculation is wrong
+  - **Context:** Completion % should be calculated as: (images_in_directory / num_images_from_manifest) * 100
+  - **Current:** Unknown calculation method (likely using variations_theoretical instead of num_images)
+  - **Impact:** Misleading completion indicator
+  - **Priority:** High (core feature accuracy)
+  - **Location:** Backend - SessionStatsService.compute_stats()
+
+- **[Feature]** SessionDetail: Metadata PUT endpoint might not exist
+  - **Context:** Feature 5 calls PUT /api/sessions/{name}/metadata
+  - **Status:** Need to verify if backend endpoint exists (only GET/PATCH/DELETE in api.js)
+  - **Priority:** High (Feature 5 depends on it)
+  - **Resolution:** Fixed - uses PATCH via api.updateSessionMetadata()
+
 - **[Bug]** WebUI: Image refresh appends duplicates to session (should replace, not append)
   - **Context:** When refreshing images in a session, the UI appends the same images again instead of replacing the list
   - **Expected:** Refresh should clear and reload the image list
