@@ -496,12 +496,20 @@ class BuildRunner:
                 }
             )
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            # If bandit returns 0 issues, it may exit with 0 and empty JSON
+            if result.returncode == 0 and not result.stdout.strip():
+                return StepResult(
+                    name="Security Scan",
+                    status="success",
+                    duration=0,
+                    message="no vulnerabilities"
+                )
             return StepResult(
                 name="Security Scan",
                 status="warning",
                 duration=0,
-                message="Failed to parse bandit output"
+                message=f"Failed to parse bandit output: {str(e)[:50]}"
             )
 
     # ==================== Frontend Checks ====================
@@ -557,13 +565,17 @@ class BuildRunner:
         # Parse output for test counts
         output = result.stdout + result.stderr
 
+        # Remove ANSI color codes for easier parsing
+        import re
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        clean_output = ansi_escape.sub('', output)
+
         # Extract test file count and total test count
         # Example: "Test Files  1 passed (1)"
         # Example: "Tests  9 passed (9)"
-        import re
-        test_files_match = re.search(r'Test Files\s+(\d+)\s+passed', output)
-        tests_match = re.search(r'Tests\s+(\d+)\s+passed', output)
-        failed_match = re.search(r'(\d+)\s+failed', output)
+        test_files_match = re.search(r'Test Files\s+(\d+)\s+passed', clean_output)
+        tests_match = re.search(r'Tests\s+(\d+)\s+passed', clean_output)
+        failed_match = re.search(r'(\d+)\s+failed', clean_output)
 
         test_files = int(test_files_match.group(1)) if test_files_match else 0
         tests_passed = int(tests_match.group(1)) if tests_match else 0
@@ -719,6 +731,9 @@ class BuildRunner:
         if actions:
             self._print_priority_actions(actions)
 
+        # Save report to file
+        self._save_report_to_file(total_duration, error_count, warning_count, actions)
+
     def _get_priority_actions(self) -> List[Action]:
         """Calculate top 5 priority actions"""
         actions = []
@@ -796,6 +811,63 @@ class BuildRunner:
         # Sort by priority and take top 5
         actions.sort(key=lambda a: a.priority, reverse=True)
         return actions[:5]
+
+    def _save_report_to_file(
+        self,
+        total_duration: float,
+        error_count: int,
+        warning_count: int,
+        actions: List[Action]
+    ):
+        """Save build report to JSON file"""
+        from datetime import datetime
+
+        # Determine status
+        if error_count > 0:
+            overall_status = "FAILED"
+        elif warning_count > 0:
+            overall_status = "WARNING"
+        else:
+            overall_status = "SUCCESS"
+
+        # Build report data
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "duration_seconds": round(total_duration, 1),
+            "overall_status": overall_status,
+            "error_count": error_count,
+            "warning_count": warning_count,
+            "steps": [
+                {
+                    "name": r.name,
+                    "status": r.status,
+                    "message": r.message,
+                    "duration": round(r.duration, 2),
+                    "details": r.details or {}
+                }
+                for r in self.results
+            ],
+            "priority_actions": [
+                {
+                    "priority": a.priority,
+                    "category": a.category,
+                    "description": a.description,
+                    "location": a.location,
+                    "current_value": a.current_value,
+                    "target_value": a.target_value
+                }
+                for a in actions
+            ]
+        }
+
+        # Save to file
+        report_file = self.project_root / "build-report.json"
+        try:
+            with open(report_file, 'w') as f:
+                json.dump(report, f, indent=2)
+            console.print(f"\n[dim]Report saved to: {report_file}[/dim]")
+        except Exception as e:
+            console.print(f"\n[yellow]Warning: Could not save report to file: {e}[/yellow]")
 
     def _print_priority_actions(self, actions: List[Action]):
         """Print priority actions panel"""
