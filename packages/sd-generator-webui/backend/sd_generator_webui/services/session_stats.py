@@ -175,35 +175,46 @@ class SessionStatsService:
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
 
-        # Extract generation info
-        stats.sd_model = manifest.get("sd_model")
-        stats.sampler_name = manifest.get("sampler_name")
-        stats.scheduler = manifest.get("scheduler")
-        stats.cfg_scale = manifest.get("cfg_scale")
-        stats.steps = manifest.get("steps")
-        stats.width = manifest.get("width")
-        stats.height = manifest.get("height")
+        # Extract generation info from nested structure
+        snapshot = manifest.get("snapshot", {})
+        runtime_info = snapshot.get("runtime_info", {})
+        api_params = snapshot.get("api_params", {})
+
+        # SD model from runtime_info
+        stats.sd_model = runtime_info.get("sd_model_checkpoint")
+
+        # API params
+        stats.sampler_name = api_params.get("sampler")
+        stats.scheduler = api_params.get("scheduler")
+        stats.cfg_scale = api_params.get("cfg_scale")
+        stats.steps = api_params.get("steps")
+        stats.width = api_params.get("width")
+        stats.height = api_params.get("height")
 
         # Images count
         images = manifest.get("images", [])
-        stats.images_requested = len(images)
+        generation_params = snapshot.get("generation_params", {})
+
+        # Requested images from generation_params (more reliable than len(images))
+        stats.images_requested = generation_params.get("num_images", len(images))
         stats.images_actual = len(list(session_path.glob("*.png")))
 
         # Completion percentage
         if stats.images_requested > 0:
             stats.completion_percent = stats.images_actual / stats.images_requested
 
-        # Placeholders & Variations
-        template_config = manifest.get("template_config", {})
-        variations = template_config.get("variations", {})
+        # Placeholders & Variations (from snapshot.variations)
+        variations = snapshot.get("variations", {})
 
         if variations:
             stats.placeholders = list(variations.keys())
             stats.placeholders_count = len(stats.placeholders)
 
             # Variations summary: {placeholder: count}
+            # New format has 'count' key in each variation
             stats.variations_summary = {
-                ph: len(vals) for ph, vals in variations.items()
+                ph: var_data.get("count", len(var_data.get("used", [])))
+                for ph, var_data in variations.items()
             }
 
             # Theoretical max combinations
@@ -211,6 +222,11 @@ class SessionStatsService:
             stats.variations_theoretical = 1
             for count in counts:
                 stats.variations_theoretical *= count
+
+            # Cap to SQLite INTEGER max (2^63 - 1) to avoid overflow
+            MAX_SQLITE_INT = 9223372036854775807
+            if stats.variations_theoretical > MAX_SQLITE_INT:
+                stats.variations_theoretical = MAX_SQLITE_INT
 
         # Detect session type (seed-sweep)
         stats.session_type, stats.is_seed_sweep = self._detect_session_type(manifest)
