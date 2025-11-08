@@ -33,6 +33,78 @@ _Items braindumped but not yet processed by Agent PO_
   - **Status:** Need to verify if backend endpoint exists
   - **Priority:** High (Feature 4 depends on it)
 
+- **[Bug/Investigation]** Navigation bug from /sessions - not consistently reproducible
+  - **Context:** User reports cannot navigate to /gallery or other routes after visiting /sessions
+  - **Investigation results:**
+    - Tested with Playwright: Navigation works from /sessions to /gallery
+    - Router config looks normal (no blocking guards)
+    - Sessions.vue has no beforeRouteLeave hook
+    - Menu items use standard `:to` binding
+  - **Hypothesis 1:** Performance issue with 1088 session cards (each with `:to` creates router-link)
+    - May cause browser slowdown/lag that feels like navigation is broken
+    - User might click before page is fully rendered
+  - **Hypothesis 2:** Race condition with loading state
+    - Loading overlay might block clicks intermittently
+  - **Status:** Cannot reproduce consistently, needs more investigation
+  - **Priority:** Medium (may be perception/performance issue rather than true bug)
+
+- **[Bug] Gallery route shows "Sessions" header and wrong content
+  - **Context:** Navigating to /gallery shows "Sessions" title and "Select a session" message
+  - **Location:** /packages/sd-generator-webui/front/src/views/Images.vue (Gallery component)
+  - **Impact:** Confusing UX, wrong page title
+  - **Status:** DEFER - Legacy code, keep for now
+  - **Priority:** Low (deferred)
+
+- **[UX]** Ultra-wide screens (3440x1440): Wasted space on Sessions & Stats pages
+  - **Context:** On ultra-wide monitors, cards/boxes are too wide, lots of unused space
+  - **Affected pages:** /sessions (session cards), session detail stats
+  - **Proposed solution:** Max-width constraint on cards (e.g., max-width: 1200px or use narrower grid)
+  - **Priority:** Medium (UX improvement for ultra-wide users)
+
+- **[Bug]** Gallery: Cannot open image detail if thumbnail failed to load
+  - **Context:** When thumbnail fails to load, clicking on the placeholder doesn't open detail popup
+  - **Expected:** Click should still open detail view even if thumbnail is broken
+  - **Impact:** Cannot view images with broken thumbnails
+  - **Priority:** Medium-High (usability issue)
+
+- **[Feature]** Session stats: Import manifest data (model, sampler, etc.) into database
+  - **Context:** Currently, session_stats table has empty columns for model info:
+    ```
+    sd_model, sampler, scheduler, cfg_scale, steps, width, height
+    ```
+  - **Current state:** These are NULL in DB (not populated from manifest.json)
+  - **Need:** Bulk import script to populate from existing manifest.json files
+  - **Data source:** Read each session's manifest.json and extract:
+    - `sd_model` from generation params
+    - `sampler`, `scheduler`, `cfg_scale`, `steps`, `width`, `height`
+  - **Priority:** High (needed for proper stats display)
+
+- **[Architecture]** Migration: Sessions list from filesystem to database-driven
+  - **Current:** /api/sessions/ reads filesystem, generates stats on-the-fly
+  - **Problem:** Slow with 1088+ sessions, no caching
+  - **Proposed architecture:**
+    1. **Database as source of truth** - session_stats table contains all session info
+    2. **Bulk import script** - One-time script to populate DB from existing sessions
+    3. **Incremental updates:**
+       - Option A: "Load new sessions" button (manual trigger)
+       - Option B: Background worker/polling (auto-detect new sessions)
+    4. **API changes:**
+       - GET /api/sessions/ → Query DB instead of filesystem
+       - POST /api/sessions/import → Trigger import of new sessions
+  - **Benefits:**
+    - Fast listing (DB query vs filesystem scan)
+    - Filtering/sorting (SQL vs in-memory)
+    - Pagination (offset/limit)
+    - Search (SQL LIKE/FTS)
+  - **Migration plan:**
+    1. Write bulk import script (Python)
+    2. Populate DB from existing 1088 sessions
+    3. Update API to query DB
+    4. Add "Import new sessions" endpoint
+    5. (Optional) Add background worker for auto-import
+  - **Priority:** High (architecture improvement, prerequisite for scaling)
+  - **Effort:** Large (requires script + API changes + testing)
+
 - **[Bug]** Session stats: Completion percentage calculation is wrong
   - **Context:** Completion % should be calculated as: (images_in_directory / num_images_from_manifest) * 100
   - **Current:** Unknown calculation method (likely using variations_theoretical instead of num_images)
