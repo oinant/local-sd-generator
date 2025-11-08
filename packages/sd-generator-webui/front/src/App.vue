@@ -69,7 +69,7 @@
     </v-main>
 
     <!-- Snackbar global -->
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000" top>
+    <v-snackbar v-model="snackbar.visible" :color="snackbar.color" :timeout="4000" top>
       {{ snackbar.message }}
       <template #actions>
         <v-btn variant="text" @click="hideSnackbar"> Fermer </v-btn>
