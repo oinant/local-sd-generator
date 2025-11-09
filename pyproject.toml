@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "sd-generator-monorepo"
+version = "2.0.0"
+description = "Stable Diffusion image generation toolkit - Monorepo"
+authors = ["SD Generator <noreply@example.com>"]
+readme = "README.md"
+license = "MIT"
+package-mode = false  # This is a workspace root, not a package
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Workspace packages - installed in editable/develop mode
+sd-generator-cli = {path = "packages/sd-generator-cli", develop = true}
+sd-generator-webui = {path = "packages/sd-generator-webui", develop = true}
+sd-generator-watchdog = {path = "packages/sd-generator-watchdog", develop = true}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-cov = "^5.0.0"
+pytest-asyncio = "^0.23.0"
+flake8 = "^7.0.0"
+mypy = "^1.8.0"
+radon = "^6.0.0"
+vulture = "^2.11.0"
+bandit = "^1.7.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

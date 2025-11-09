@@ -386,6 +386,19 @@ def webui_start(
             console.print("[red]✗ WebUI package not found[/red]")
             raise typer.Exit(code=1)
 
+        # Get sessions directory from config
+        try:
+            config = load_global_config()
+            sessions_dir = config.output_dir
+        except Exception:
+            # Fallback to default
+            sessions_dir = Path.cwd() / "apioutput"
+
+        # Start watchdog service
+        console.print("[cyan]→ Starting watchdog service...[/cyan]")
+        daemon.start_watchdog(sessions_dir)
+        time.sleep(1)
+
         # Start backend
         console.print("[cyan]→ Starting backend...[/cyan]")
         daemon.start_backend(backend_port, webui_path, no_reload, dev_mode=dev_mode)
@@ -427,17 +440,18 @@ def webui_start(
 @webui_app.command(name="stop")
 def webui_stop():
     """
-    Stop WebUI services (backend + frontend).
+    Stop WebUI services (backend + frontend + watchdog).
 
     Examples:
         sdgen webui stop
     """
     console.print("[cyan]Stopping WebUI services...[/cyan]\n")
 
+    watchdog_stopped = daemon.stop_service("watchdog")
     backend_stopped = daemon.stop_service("backend")
     frontend_stopped = daemon.stop_service("frontend")
 
-    if backend_stopped and frontend_stopped:
+    if watchdog_stopped and backend_stopped and frontend_stopped:
         console.print("[bold green]✓ WebUI services stopped[/bold green]")
     else:
         console.print("[yellow]⚠ Some services failed to stop[/yellow]")
@@ -452,7 +466,7 @@ def webui_restart(
     no_reload: bool = typer.Option(False, "--no-reload", help="Disable backend auto-reload"),
 ):
     """
-    Restart WebUI services (backend + frontend).
+    Restart WebUI services (backend + frontend + watchdog).
 
     Examples:
         sdgen webui restart
@@ -462,6 +476,7 @@ def webui_restart(
     console.print(f"[cyan]Restarting WebUI services ({mode_str} mode)...[/cyan]\n")
 
     # Stop first
+    daemon.stop_service("watchdog")
     daemon.stop_service("backend")
     daemon.stop_service("frontend")
     time.sleep(1)
@@ -472,6 +487,17 @@ def webui_restart(
         if not webui_path:
             console.print("[red]✗ WebUI package not found[/red]")
             raise typer.Exit(code=1)
+
+        # Get sessions directory from config
+        try:
+            config = load_global_config()
+            sessions_dir = config.output_dir
+        except Exception:
+            sessions_dir = Path.cwd() / "apioutput"
+
+        console.print("[cyan]→ Starting watchdog service...[/cyan]")
+        daemon.start_watchdog(sessions_dir)
+        time.sleep(1)
 
         console.print("[cyan]→ Starting backend...[/cyan]")
         daemon.start_backend(backend_port, webui_path, no_reload, dev_mode=dev_mode)
@@ -491,11 +517,12 @@ def webui_restart(
 @webui_app.command(name="status")
 def webui_status():
     """
-    Show WebUI services status (backend + frontend).
+    Show WebUI services status (watchdog + backend + frontend).
 
     Examples:
         sdgen webui status
     """
+    watchdog_running, watchdog_pid = daemon.get_service_status("watchdog")
     backend_running, backend_pid = daemon.get_service_status("backend")
     frontend_running, frontend_pid = daemon.get_service_status("frontend")
 
@@ -504,6 +531,11 @@ def webui_status():
     table.add_column("Status", style="bold")
     table.add_column("PID", style="blue")
 
+    table.add_row(
+        "Watchdog",
+        "[green]Running[/green]" if watchdog_running else "[red]Stopped[/red]",
+        str(watchdog_pid) if watchdog_pid else "—"
+    )
     table.add_row(
         "Backend",
         "[green]Running[/green]" if backend_running else "[red]Stopped[/red]",

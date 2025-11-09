@@ -80,6 +80,9 @@ async def lifespan(app: FastAPI):
             app.state.frontend_path = None
             app.state.production_mode = True  # Still production, just no frontend
 
+    # Note: Session sync is now handled by separate watchdog service
+    # Started by `sdgen webui start` command
+
     yield
 
     # Shutdown

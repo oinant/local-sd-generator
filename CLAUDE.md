@@ -61,6 +61,8 @@ Le projet utilise une **structure monorepo avec packages/** :
 
 ```
 local-sd-generator/
+├── pyproject.toml                 # Root Poetry config (monorepo workspace)
+├── poetry.lock                    # Poetry lock file (dependencies)
 ├── packages/
 │   ├── sd-generator-cli/           # Package CLI (générateur SD)
 │   │   ├── sd_generator_cli/       # Code source Python
@@ -133,24 +135,70 @@ Le système de templates V2.0 est le **seul système actif** du projet.
 
 ## 🐍 Python Environment Setup
 
-### Virtual Environment
-Le projet utilise un venv Linux (`venv/`) à la racine du projet :
+### Package Management avec Poetry
+
+Le projet utilise **Poetry** pour gérer les dépendances en mode monorepo. Poetry gère automatiquement le venv et les dépendances inter-packages.
+
+**Installation initiale :**
 
 ```bash
-# Créer le venv (déjà fait)
-python3 -m venv venv
+# Depuis la racine du projet
+cd /mnt/d/StableDiffusion/local-sd-generator
 
-# Activer le venv
+# Activer le venv (Poetry le détecte automatiquement)
 source venv/bin/activate
 
-# Installer les dépendances
-pip install pyyaml requests pytest pytest-cov
+# Installer toutes les dépendances + packages en mode éditable
+poetry install
 
-# Désactiver
-deactivate
+# Cela installe :
+# - sd-generator-cli (editable mode)
+# - sd-generator-webui (editable mode)
+# - Toutes les dépendances (dev + runtime)
 ```
 
-**Note:** Ne PAS utiliser `.venv/` (venv Windows verrouillé sous WSL).
+**Workflow de développement :**
+
+```bash
+# Ajouter une dépendance à un package
+cd packages/sd-generator-cli
+poetry add requests
+
+# Mettre à jour les dépendances
+cd /mnt/d/StableDiffusion/local-sd-generator
+poetry update
+
+# Réinstaller tout (après pull, changement de dépendances)
+poetry install
+```
+
+**Avantages de Poetry :**
+- ✅ **Pas de downgrade de dépendances** - Gestion propre des contraintes de versions
+- ✅ **Mode éditable automatique** - Les packages sont en mode develop par défaut
+- ✅ **Lock file** - Reproductibilité des installations (`poetry.lock`)
+- ✅ **Monorepo support** - Gère correctement les dépendances entre packages
+
+**Note:**
+- Le venv est à la racine (`venv/`), partagé par tous les packages
+- Ne PAS utiliser `.venv/` (venv Windows verrouillé sous WSL)
+- Ne PAS utiliser `pip install -e .` directement, laisser Poetry gérer
+
+### Alternative pip (non recommandée)
+
+Si vous devez utiliser pip (CI/CD, etc.), **toujours** installer dans cet ordre :
+
+```bash
+# Activer venv
+source venv/bin/activate
+
+# Installer CLI en mode éditable d'abord (pour forcer typer 0.19.2)
+cd packages/sd-generator-cli && pip install -e .
+
+# Puis WebUI
+cd ../sd-generator-webui && pip install -e .
+```
+
+⚠️ **Problème pip** : pip peut downgrader typer si on installe webui avant CLI.
 
 ### Running Tests
 

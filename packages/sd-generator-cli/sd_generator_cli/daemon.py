@@ -26,6 +26,7 @@ PID_FILES = {
     "a1111": PID_DIR / "automatic1111.pid",
     "backend": PID_DIR / "backend.pid",
     "frontend": PID_DIR / "frontend.pid",
+    "watchdog": PID_DIR / "watchdog.pid",
 }
 
 # Log file locations
@@ -34,6 +35,7 @@ LOG_FILES = {
     "a1111": LOG_DIR / "automatic1111.log",
     "backend": LOG_DIR / "backend.log",
     "frontend": LOG_DIR / "frontend.log",
+    "watchdog": LOG_DIR / "watchdog.log",
 }
 
 
@@ -425,6 +427,48 @@ def start_frontend(frontend_port: int, webui_path: Path, dev_mode: bool = False)
 
     console.print(f"[green]✓ Frontend (DEV) started on http://localhost:{frontend_port}[/green]")
     console.print(f"[dim]PID: {proc.pid} | Log: {LOG_FILES['frontend']}[/dim]")
+
+    return proc.pid
+
+
+def start_watchdog(sessions_dir: Path, db_path: Optional[Path] = None) -> Optional[int]:
+    """
+    Start watchdog service in background.
+
+    Args:
+        sessions_dir: Directory containing session folders (e.g., ./apioutput)
+        db_path: Optional database path (defaults to sessions_dir/../.sdgen/sessions.db)
+
+    Returns:
+        PID or None if error
+    """
+    # Verify watchdog package is installed
+    try:
+        import sd_generator_watchdog  # noqa: F401
+    except ImportError:
+        console.print("[red]✗ sd-generator-watchdog package not installed[/red]")
+        console.print("[dim]  Run: poetry install (from project root)[/dim]")
+        return None
+
+    cmd = ["python3", "-m", "sd_generator_watchdog.cli", "run", "--sessions-dir", str(sessions_dir)]
+
+    if db_path:
+        cmd.extend(["--db-path", str(db_path)])
+
+    ensure_dirs()
+    log_file = open(LOG_FILES["watchdog"], "w")
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        start_new_session=True
+    )
+
+    write_pid("watchdog", proc.pid)
+
+    console.print(f"[green]✓ Watchdog service started[/green]")
+    console.print(f"[dim]Watching: {sessions_dir} | PID: {proc.pid} | Log: {LOG_FILES['watchdog']}[/dim]")
 
     return proc.pid
 

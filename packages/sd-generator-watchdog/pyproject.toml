@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "sd-generator-watchdog"
+version = "2.0.0"
+description = "Session filesystem watcher for SD Image Generator"
+authors = ["SD Generator <noreply@example.com>"]
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/oinant/local-sd-generator"
+repository = "https://github.com/oinant/local-sd-generator"
+keywords = ["stable-diffusion", "filesystem-watcher", "watchdog"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+packages = [{include = "sd_generator_watchdog"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+watchdog = "^3.0.0"
+typer = {extras = ["all"], version = "^0.19.2"}
+# Note: sd-generator-cli imported for SessionStatsService
+# Installed via workspace dependency, not declared here
+
+[tool.poetry.scripts]
+sdgen-watchdog = "sd_generator_watchdog.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
