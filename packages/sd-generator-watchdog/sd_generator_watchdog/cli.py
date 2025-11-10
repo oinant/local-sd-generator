@@ -10,11 +10,12 @@ from typing import Optional
 
 import typer
 from sd_generator_watchdog.session_sync import SessionSyncService
+from sd_generator_watchdog.thumbnail_sync import ThumbnailSyncService
 from sd_generator_watchdog.__about__ import __version__
 
 app = typer.Typer(
     name="sdgen-watchdog",
-    help="Session filesystem watcher for SD Image Generator",
+    help="Filesystem watchers for SD Image Generator",
     no_args_is_help=True,
 )
 
@@ -78,6 +79,58 @@ def run(
         sys.exit(1)
 
     logger.info("✓ Watchdog service stopped cleanly")
+
+
+@app.command()
+def thumbnail(
+    source_dir: Path = typer.Option(
+        ...,
+        "--source-dir",
+        "-s",
+        help="Source directory containing sessions (e.g., ./apioutput)",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        resolve_path=True,
+    ),
+    target_dir: Path = typer.Option(
+        ...,
+        "--target-dir",
+        "-t",
+        help="Target directory for thumbnails (e.g., ./api/static/thumbnails)",
+        resolve_path=True,
+    ),
+):
+    """
+    Run thumbnail watchdog service in foreground.
+
+    Watches source_dir for new PNG images and automatically
+    generates WebP thumbnails in target_dir.
+    """
+    logger.info(f"🖼️  Starting SD Generator Thumbnail Watchdog v{__version__}")
+    logger.info(f"📂 Watching source directory: {source_dir}")
+    logger.info(f"🎯 Target directory: {target_dir}")
+
+    # Create target directory if needed
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create service
+    service = ThumbnailSyncService(
+        source_dir=source_dir,
+        target_dir=target_dir
+    )
+
+    # Run service
+    try:
+        asyncio.run(service.run())
+    except KeyboardInterrupt:
+        logger.info("🛑 Received interrupt signal, shutting down...")
+        service.stop()
+    except Exception as e:
+        logger.error(f"❌ Thumbnail watchdog crashed: {e}", exc_info=True)
+        sys.exit(1)
+
+    logger.info("✓ Thumbnail watchdog stopped cleanly")
 
 
 @app.command()

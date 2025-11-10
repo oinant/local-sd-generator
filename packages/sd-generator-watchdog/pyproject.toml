@@ -22,7 +22,8 @@ packages = [{include = "sd_generator_watchdog"}]
 python = "^3.10"
 watchdog = "^3.0.0"
 typer = {extras = ["all"], version = "^0.19.2"}
-# Note: sd-generator-cli imported for SessionStatsService
+Pillow = "^10.0.0"
+# Note: sd-generator-webui imported for Storage interfaces
 # Installed via workspace dependency, not declared here
 
 [tool.poetry.scripts]

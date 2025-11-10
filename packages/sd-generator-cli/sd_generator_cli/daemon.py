@@ -488,23 +488,24 @@ def start_thumbnail_watchdog(sessions_dir: Path, target_dir: Optional[Path] = No
     Returns:
         PID or None if error
     """
-    # Find webui package
-    webui_path = find_webui_package()
-    if not webui_path:
-        console.print("[red]✗ WebUI package not found[/red]")
+    # Verify watchdog package is installed
+    try:
+        import sd_generator_watchdog  # noqa: F401
+    except ImportError:
+        console.print("[red]✗ sd-generator-watchdog package not installed[/red]")
+        console.print("[dim]  Run: poetry install (from project root)[/dim]")
         return None
 
-    # Build command to run thumbnail_generator.py in watch mode
-    thumbnail_script = webui_path / "sd_generator_webui" / "services" / "watchdogs" / "thumbnail_generator.py"
+    # Default target dir if not specified
+    if target_dir is None:
+        target_dir = Path.cwd() / "thumbnails"
 
-    if not thumbnail_script.exists():
-        console.print(f"[red]✗ Thumbnail generator not found at: {thumbnail_script}[/red]")
-        return None
-
-    cmd = [sys.executable, str(thumbnail_script), "watch", "--source", str(sessions_dir)]
-
-    if target_dir:
-        cmd.extend(["--target", str(target_dir)])
+    # Use same Python as current process (from venv)
+    cmd = [
+        sys.executable, "-m", "sd_generator_watchdog.cli", "thumbnail",
+        "--source-dir", str(sessions_dir),
+        "--target-dir", str(target_dir)
+    ]
 
     ensure_dirs()
     log_file = open(LOG_FILES["thumbnail_watchdog"], "w")
@@ -519,7 +520,7 @@ def start_thumbnail_watchdog(sessions_dir: Path, target_dir: Optional[Path] = No
     write_pid("thumbnail_watchdog", proc.pid)
 
     console.print(f"[green]✓ Thumbnail watchdog started[/green]")
-    console.print(f"[dim]Watching: {sessions_dir} | PID: {proc.pid} | Log: {LOG_FILES['thumbnail_watchdog']}[/dim]")
+    console.print(f"[dim]Watching: {sessions_dir} → {target_dir} | PID: {proc.pid} | Log: {LOG_FILES['thumbnail_watchdog']}[/dim]")
 
     return proc.pid
 

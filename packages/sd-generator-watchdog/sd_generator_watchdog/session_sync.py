@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Set, Optional, List, Dict, Any
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent, DirCreatedEvent
+from sd_generator_watchdog.observer_factory import get_observer_class
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Import SessionStatsService from webui package
 # Note: watchdog depends on webui for this service
 try:
-    from sd_generator_webui.services.session_stats import SessionStatsService
+    from sd_generator_webui.services.session_stats import SessionStatsService  # type: ignore[import-untyped]
 except ImportError:
     # Fallback: define minimal interface for standalone use
     logger.warning("Could not import SessionStatsService from webui, using fallback")
@@ -33,7 +34,7 @@ except ImportError:
         images_requested: int = 0
         images_actual: int = 0
 
-    class SessionStatsService:
+    class SessionStatsService:  # type: ignore[no-redef]
         def __init__(self, db_path: Optional[Path] = None, sessions_root: Optional[Path] = None):
             self.db_path = db_path
             self.sessions_root = sessions_root
@@ -68,7 +69,7 @@ class SessionSyncService:
 
         self.db_path = db_path
         self.service = SessionStatsService(sessions_root=sessions_root)
-        self.observer: Observer | None = None
+        self.observer: "Observer" | None = None  # type: ignore[valid-type]
         self._stop_event = asyncio.Event()
         self._sessions_in_db: Set[str] = set()
 
@@ -178,9 +179,10 @@ class SessionSyncService:
         handler = SessionDirectoryHandler(self)
 
         # Create and start observer
-        self.observer = Observer()
+        observer_class = get_observer_class()
+        self.observer = observer_class()  # type: ignore[misc]
         self.observer.schedule(handler, str(self.sessions_root), recursive=False)
-        self.observer.start()
+        self.observer.start()  # type: ignore[attr-defined]
 
         logger.info("✓ Filesystem watcher started")
 
