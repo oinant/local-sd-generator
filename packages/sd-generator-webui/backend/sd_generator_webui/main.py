@@ -10,6 +10,8 @@ import uvicorn
 from sd_generator_webui.config import API_HOST, API_PORT
 from sd_generator_webui.api import images, auth, files, sessions  # generation temporairement désactivé (imports CLI manquants)
 from sd_generator_webui.__about__ import __version__
+from sd_generator_webui.migrations.runner import MigrationRunner
+from sd_generator_webui.migrations.registry import get_all_migrations
 
 
 def get_frontend_path() -> Path | None:
@@ -51,6 +53,21 @@ async def lifespan(app: FastAPI):
     """Gestionnaire de cycle de vie de l'application."""
     # Startup
     print("🚀 Démarrage du backend SD Image Generator")
+
+    # Run database migrations (idempotent)
+    print("📊 Exécution des migrations de base de données...")
+    try:
+        runner = MigrationRunner()
+        migrations = get_all_migrations()
+        applied_count = runner.run_migrations(migrations)
+
+        if applied_count > 0:
+            print(f"✓ {applied_count} migration(s) appliquée(s)")
+        else:
+            print("✓ Base de données à jour (aucune migration à appliquer)")
+    except Exception as e:
+        print(f"✗ Erreur lors des migrations: {e}")
+        raise  # Fail fast if migrations fail
 
     # Check if we're in dev mode (explicit flag from CLI)
     dev_mode_env = os.environ.get("SD_GENERATOR_DEV_MODE")
