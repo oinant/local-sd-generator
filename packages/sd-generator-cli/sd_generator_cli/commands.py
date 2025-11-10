@@ -389,14 +389,18 @@ def webui_start(
         # Get sessions directory from config
         try:
             config = load_global_config()
-            sessions_dir = config.output_dir
+            sessions_dir = Path(config.output_dir)
         except Exception:
             # Fallback to default
             sessions_dir = Path.cwd() / "apioutput"
 
-        # Start watchdog service
-        console.print("[cyan]→ Starting watchdog service...[/cyan]")
+        # Start watchdog services
+        console.print("[cyan]→ Starting session watchdog...[/cyan]")
         daemon.start_watchdog(sessions_dir)
+        time.sleep(1)
+
+        console.print("[cyan]→ Starting thumbnail watchdog...[/cyan]")
+        daemon.start_thumbnail_watchdog(sessions_dir)
         time.sleep(1)
 
         # Start backend
@@ -448,10 +452,11 @@ def webui_stop():
     console.print("[cyan]Stopping WebUI services...[/cyan]\n")
 
     watchdog_stopped = daemon.stop_service("watchdog")
+    thumbnail_watchdog_stopped = daemon.stop_service("thumbnail_watchdog")
     backend_stopped = daemon.stop_service("backend")
     frontend_stopped = daemon.stop_service("frontend")
 
-    if watchdog_stopped and backend_stopped and frontend_stopped:
+    if watchdog_stopped and thumbnail_watchdog_stopped and backend_stopped and frontend_stopped:
         console.print("[bold green]✓ WebUI services stopped[/bold green]")
     else:
         console.print("[yellow]⚠ Some services failed to stop[/yellow]")
@@ -477,6 +482,7 @@ def webui_restart(
 
     # Stop first
     daemon.stop_service("watchdog")
+    daemon.stop_service("thumbnail_watchdog")
     daemon.stop_service("backend")
     daemon.stop_service("frontend")
     time.sleep(1)
@@ -491,12 +497,16 @@ def webui_restart(
         # Get sessions directory from config
         try:
             config = load_global_config()
-            sessions_dir = config.output_dir
+            sessions_dir = Path(config.output_dir)
         except Exception:
             sessions_dir = Path.cwd() / "apioutput"
 
-        console.print("[cyan]→ Starting watchdog service...[/cyan]")
+        console.print("[cyan]→ Starting session watchdog...[/cyan]")
         daemon.start_watchdog(sessions_dir)
+        time.sleep(1)
+
+        console.print("[cyan]→ Starting thumbnail watchdog...[/cyan]")
+        daemon.start_thumbnail_watchdog(sessions_dir)
         time.sleep(1)
 
         console.print("[cyan]→ Starting backend...[/cyan]")
@@ -517,12 +527,13 @@ def webui_restart(
 @webui_app.command(name="status")
 def webui_status():
     """
-    Show WebUI services status (watchdog + backend + frontend).
+    Show WebUI services status (watchdogs + backend + frontend).
 
     Examples:
         sdgen webui status
     """
     watchdog_running, watchdog_pid = daemon.get_service_status("watchdog")
+    thumbnail_watchdog_running, thumbnail_watchdog_pid = daemon.get_service_status("thumbnail_watchdog")
     backend_running, backend_pid = daemon.get_service_status("backend")
     frontend_running, frontend_pid = daemon.get_service_status("frontend")
 
@@ -532,9 +543,14 @@ def webui_status():
     table.add_column("PID", style="blue")
 
     table.add_row(
-        "Watchdog",
+        "Session Watchdog",
         "[green]Running[/green]" if watchdog_running else "[red]Stopped[/red]",
         str(watchdog_pid) if watchdog_pid else "—"
+    )
+    table.add_row(
+        "Thumbnail Watchdog",
+        "[green]Running[/green]" if thumbnail_watchdog_running else "[red]Stopped[/red]",
+        str(thumbnail_watchdog_pid) if thumbnail_watchdog_pid else "—"
     )
     table.add_row(
         "Backend",

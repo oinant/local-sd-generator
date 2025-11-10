@@ -28,6 +28,7 @@ PID_FILES = {
     "backend": PID_DIR / "backend.pid",
     "frontend": PID_DIR / "frontend.pid",
     "watchdog": PID_DIR / "watchdog.pid",
+    "thumbnail_watchdog": PID_DIR / "thumbnail_watchdog.pid",
 }
 
 # Log file locations
@@ -37,6 +38,7 @@ LOG_FILES = {
     "backend": LOG_DIR / "backend.log",
     "frontend": LOG_DIR / "frontend.log",
     "watchdog": LOG_DIR / "watchdog.log",
+    "thumbnail_watchdog": LOG_DIR / "thumbnail_watchdog.log",
 }
 
 
@@ -471,6 +473,53 @@ def start_watchdog(sessions_dir: Path, db_path: Optional[Path] = None) -> Option
 
     console.print(f"[green]✓ Watchdog service started[/green]")
     console.print(f"[dim]Watching: {sessions_dir} | PID: {proc.pid} | Log: {LOG_FILES['watchdog']}[/dim]")
+
+    return proc.pid
+
+
+def start_thumbnail_watchdog(sessions_dir: Path, target_dir: Optional[Path] = None) -> Optional[int]:
+    """
+    Start thumbnail watchdog service in background.
+
+    Args:
+        sessions_dir: Source directory containing session folders (e.g., ./apioutput)
+        target_dir: Target directory for thumbnails (defaults to api/static/thumbnails)
+
+    Returns:
+        PID or None if error
+    """
+    # Find webui package
+    webui_path = find_webui_package()
+    if not webui_path:
+        console.print("[red]✗ WebUI package not found[/red]")
+        return None
+
+    # Build command to run thumbnail_generator.py in watch mode
+    thumbnail_script = webui_path / "sd_generator_webui" / "services" / "watchdogs" / "thumbnail_generator.py"
+
+    if not thumbnail_script.exists():
+        console.print(f"[red]✗ Thumbnail generator not found at: {thumbnail_script}[/red]")
+        return None
+
+    cmd = [sys.executable, str(thumbnail_script), "watch", "--source", str(sessions_dir)]
+
+    if target_dir:
+        cmd.extend(["--target", str(target_dir)])
+
+    ensure_dirs()
+    log_file = open(LOG_FILES["thumbnail_watchdog"], "w")
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        start_new_session=True
+    )
+
+    write_pid("thumbnail_watchdog", proc.pid)
+
+    console.print(f"[green]✓ Thumbnail watchdog started[/green]")
+    console.print(f"[dim]Watching: {sessions_dir} | PID: {proc.pid} | Log: {LOG_FILES['thumbnail_watchdog']}[/dim]")
 
     return proc.pid
 
