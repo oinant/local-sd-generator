@@ -3,17 +3,24 @@
 Thumbnail Generator for SD Image Gallery
 Converts PNG images from CLI/apioutput to WebP thumbnails in api/static/
 Supports three modes: initial (full scan), diff (incremental), and watch (real-time)
+
+REFACTORED: Uses Storage Pattern (Repository Pattern for filesystem)
 """
 
-import os
 import sys
 import argparse
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Set
+from typing import Optional
 from PIL import Image
 import json
+import io
+
+from sd_generator_webui.storage.base import Storage
+from sd_generator_webui.storage.local_storage import LocalStorage
+from sd_generator_webui.storage.session_storage import SessionStorage, LocalSessionStorage
+from sd_generator_webui.storage.image_storage import ImageStorage, LocalImageStorage
 
 # Setup logging
 logging.basicConfig(
@@ -32,18 +39,48 @@ TIMESTAMP_FORMAT = "%Y-%m-%d_%H%M%S"
 
 
 class ThumbnailGenerator:
-    """Handles conversion of PNG images to WebP thumbnails"""
+    """Handles conversion of PNG images to WebP thumbnails (uses Storage Pattern)"""
 
-    def __init__(self, source_dir: Path, target_dir: Path):
+    def __init__(
+        self,
+        source_dir: Path,
+        target_dir: Path,
+        image_storage: Optional[ImageStorage] = None,
+        session_storage: Optional[SessionStorage] = None,
+        base_storage: Optional[Storage] = None
+    ):
+        """
+        Initialize ThumbnailGenerator with storage dependencies.
+
+        Args:
+            source_dir: Source directory for images
+            target_dir: Target directory for thumbnails
+            image_storage: ImageStorage implementation (defaults to LocalImageStorage)
+            session_storage: SessionStorage implementation (defaults to LocalSessionStorage)
+            base_storage: Base storage for generic operations (defaults to LocalStorage)
+        """
         self.source_dir = source_dir
         self.target_dir = target_dir
+
+        # Inject storage dependencies (default to local implementations)
+        if image_storage is None:
+            image_storage = LocalImageStorage()
+        if session_storage is None:
+            session_storage = LocalSessionStorage()
+        if base_storage is None:
+            base_storage = LocalStorage()
+
+        self.image_storage = image_storage
+        self.session_storage = session_storage
+        self.storage = base_storage
+
         self.processed_count = 0
         self.skipped_count = 0
         self.error_count = 0
 
     def create_thumbnail(self, source_path: Path, target_path: Path) -> bool:
         """
-        Create a WebP thumbnail from a PNG image
+        Create a WebP thumbnail from a PNG image (uses Storage Pattern).
 
         Args:
             source_path: Path to source PNG image
@@ -53,11 +90,11 @@ class ThumbnailGenerator:
             True if successful, False otherwise
         """
         try:
-            # Ensure target directory exists
-            target_path.parent.mkdir(parents=True, exist_ok=True)
+            # Read image bytes via ImageStorage
+            image_bytes = self.image_storage.read_image_bytes(source_path)
 
             # Open and process image
-            with Image.open(source_path) as img:
+            with Image.open(io.BytesIO(image_bytes)) as img:
                 # Calculate new dimensions maintaining aspect ratio
                 aspect_ratio = img.width / img.height
                 new_height = THUMBNAIL_HEIGHT
@@ -74,8 +111,13 @@ class ThumbnailGenerator:
                     rgb_img.paste(img_resized, mask=img_resized.split()[-1] if 'A' in img_resized.mode else None)
                     img_resized = rgb_img
 
-                # Save as WebP
-                img_resized.save(target_path, 'WEBP', quality=WEBP_QUALITY, method=6)
+                # Save as WebP to bytes buffer
+                output_buffer = io.BytesIO()
+                img_resized.save(output_buffer, 'WEBP', quality=WEBP_QUALITY, method=6)
+                output_bytes = output_buffer.getvalue()
+
+            # Write WebP bytes via ImageStorage
+            self.image_storage.write_image_bytes(target_path, output_bytes)
 
             logger.info(f"✓ Created thumbnail: {target_path.relative_to(self.target_dir)}")
             self.processed_count += 1
@@ -87,9 +129,9 @@ class ThumbnailGenerator:
             return False
 
     def should_process(self, source_path: Path, target_path: Path) -> bool:
-        """Check if thumbnail needs to be created"""
+        """Check if thumbnail needs to be created (uses Storage Pattern)"""
         # Don't process if target already exists
-        if target_path.exists():
+        if self.image_storage.image_exists(target_path):
             self.skipped_count += 1
             return False
         return True
@@ -105,14 +147,14 @@ class ThumbnailGenerator:
         return False
 
     def process_directory(self, directory: Optional[Path] = None) -> None:
-        """Process all PNG images in directory and subdirectories"""
+        """Process all PNG images in directory and subdirectories (uses Storage Pattern)"""
         if directory is None:
             directory = self.source_dir
 
         logger.info(f"Scanning directory: {directory}")
 
-        # Find all PNG files recursively
-        png_files = list(directory.rglob("*.png"))
+        # List all PNG files via SessionStorage
+        png_files = self.session_storage.list_images(directory, extensions=[".png"])
         logger.info(f"Found {len(png_files)} PNG files")
 
         for png_file in png_files:
@@ -131,27 +173,41 @@ class ThumbnailGenerator:
 
 
 class StateManager:
-    """Manages persistent state for diff mode"""
+    """Manages persistent state for diff mode (uses Storage Pattern)"""
 
-    def __init__(self, state_file: Path):
+    def __init__(self, state_file: Path, storage: Optional[Storage] = None):
+        """
+        Initialize StateManager with storage dependency.
+
+        Args:
+            state_file: Path to state JSON file
+            storage: Storage implementation (defaults to LocalStorage)
+        """
         self.state_file = state_file
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+
+        if storage is None:
+            storage = LocalStorage()
+        self.storage = storage
+
+        # Ensure parent directory exists
+        if not self.storage.exists(state_file.parent):
+            state_file.parent.mkdir(parents=True, exist_ok=True)
 
     def load_state(self) -> dict:
-        """Load state from file"""
-        if self.state_file.exists():
+        """Load state from file (uses Storage Pattern)"""
+        if self.storage.exists(self.state_file):
             try:
-                with open(self.state_file, 'r') as f:
-                    return json.load(f)
+                content = self.storage.read_text(self.state_file)
+                return json.loads(content)
             except Exception as e:
                 logger.warning(f"Failed to load state file: {e}")
         return {}
 
     def save_state(self, state: dict) -> None:
-        """Save state to file"""
+        """Save state to file (uses Storage Pattern)"""
         try:
-            with open(self.state_file, 'w') as f:
-                json.dump(state, f, indent=2)
+            content = json.dumps(state, indent=2)
+            self.storage.write_text(self.state_file, content)
             logger.info(f"State saved to {self.state_file}")
         except Exception as e:
             logger.error(f"Failed to save state: {e}")
@@ -192,31 +248,37 @@ def parse_folder_timestamp(folder_name: str) -> Optional[datetime]:
         return None
 
 
-def get_folders_to_process(source_dir: Path, since: Optional[datetime] = None) -> list[Path]:
+def get_folders_to_process(
+    source_dir: Path,
+    since: Optional[datetime] = None,
+    storage: Optional[SessionStorage] = None
+) -> list[Path]:
     """
-    Get list of folders to process, optionally filtered by timestamp
+    Get list of folders to process, optionally filtered by timestamp (uses Storage Pattern).
 
     Args:
         source_dir: Source directory to scan
         since: Only return folders newer than this datetime
+        storage: SessionStorage implementation (defaults to LocalSessionStorage)
 
     Returns:
         List of folder paths to process
     """
+    if storage is None:
+        storage = LocalSessionStorage()
+
     folders = []
 
-    for item in source_dir.iterdir():
-        if not item.is_dir():
-            continue
-
-        folder_ts = parse_folder_timestamp(item.name)
+    # List sessions via SessionStorage
+    for session_path in storage.list_sessions(source_dir):
+        folder_ts = parse_folder_timestamp(session_path.name)
 
         if folder_ts is None:
-            logger.warning(f"Skipping folder with invalid timestamp format: {item.name}")
+            logger.warning(f"Skipping folder with invalid timestamp format: {session_path.name}")
             continue
 
         if since is None or folder_ts > since:
-            folders.append((item, folder_ts))
+            folders.append((session_path, folder_ts))
 
     # Sort by timestamp
     folders.sort(key=lambda x: x[1])
@@ -358,8 +420,9 @@ Modes:
 
     args = parser.parse_args()
 
-    # Validate directories
-    if not args.source.exists():
+    # Validate directories via storage
+    storage = LocalStorage()
+    if not storage.exists(args.source):
         logger.error(f"Source directory does not exist: {args.source}")
         sys.exit(1)
 
