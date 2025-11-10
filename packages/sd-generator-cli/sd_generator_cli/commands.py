@@ -395,8 +395,10 @@ def webui_start(
             sessions_dir = Path.cwd() / "apioutput"
 
         # Start watchdog services
+        # Use same database path as backend: sessions_dir.parent/metadata/sessions.db
+        db_path = sessions_dir.parent / "metadata" / "sessions.db"
         console.print("[cyan]→ Starting session watchdog...[/cyan]")
-        daemon.start_watchdog(sessions_dir)
+        daemon.start_watchdog(sessions_dir, db_path=db_path)
         time.sleep(1)
 
         console.print("[cyan]→ Starting thumbnail watchdog...[/cyan]")
@@ -501,8 +503,10 @@ def webui_restart(
         except Exception:
             sessions_dir = Path.cwd() / "apioutput"
 
+        # Use same database path as backend: sessions_dir.parent/metadata/sessions.db
+        db_path = sessions_dir.parent / "metadata" / "sessions.db"
         console.print("[cyan]→ Starting session watchdog...[/cyan]")
-        daemon.start_watchdog(sessions_dir)
+        daemon.start_watchdog(sessions_dir, db_path=db_path)
         time.sleep(1)
 
         console.print("[cyan]→ Starting thumbnail watchdog...[/cyan]")

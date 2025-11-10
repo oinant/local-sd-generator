@@ -7,6 +7,7 @@
 - **🎯 Roadmap sur GitHub Issues** - Voir `/docs/roadmap/README.md` pour organisation
 - **🤖 Agent PO disponible** - Utiliser `/po` pour feature/bug analysis
 - **🛠️ Build tool disponible** - `python3 tools/build.py` avant chaque commit important
+- **📝 Fichiers de travail dans `.claude/`** - Préfixer avec timestamp `YYYYMMDD_HHMMSS-nom.md` (exemple: `20251110_213000-session-status-fsm.md`). **NE PAS** appliquer ce préfixe aux subfolders (agents/, commands/, etc.)
 - **IMPORTANT : Sous WSL, utiliser `python3` et non `python`**
 - Les tests sont dans `/packages/sd-generator-cli/tests/` et utilisent pytest
 - url de l'api automatic1111: http://172.29.128.1:7860
@@ -454,7 +455,7 @@ Le projet dispose d'un **agent PO autonome** pour gérer la roadmap et les spéc
 **Architecture :**
 - 🤖 **Agent autonome** : `.claude/agents/po.md` (tourne en background)
 - ⚡ **Slash command** : `.claude/commands/po.md` (invocation explicite)
-- 📋 **Persistence** : `.claude/braindump.md` (survie au compactage)
+- 📋 **Persistence** : `.claude/.braindump.md` (survie au compactage)
 
 L'agent PO peut **tourner en background** et accumuler tes idées pendant que tu travailles, puis les structurer quand tu le demandes.
 
@@ -480,7 +481,7 @@ Quand l'utilisateur dit des choses comme :
 **→ Tu DOIS automatiquement activer le mode Agent PO (braindump)**
 
 **Process :**
-1. **Accumuler** les idées dans `.claude/braindump.md` (section "🆕 Pending Analysis")
+1. **Accumuler** les idées dans `.claude/.braindump.md` (section "🆕 Pending Analysis")
    - **CRITIQUE** : Toujours écrire dans ce fichier pour survie au compactage de contexte
 2. **Si doute** → Demander : "Tu veux que je structure ça avec l'agent PO ?"
 3. Quand il a fini (ou qu'il demande explicitement), proposer :
@@ -489,12 +490,12 @@ Quand l'utilisateur dit des choses comme :
    - Déplacer items de "🆕 Pending" → "🔍 Being Analyzed"
 5. Parser, prioriser, catégoriser
 6. Proposer création GitHub issues
-7. **Mettre à jour** `.claude/braindump.md` avec liens vers issues créées
+7. **Mettre à jour** `.claude/.braindump.md` avec liens vers issues créées
    - Déplacer items de "🔍 Being Analyzed" → "📋 Tracked on GitHub"
 
 **Règle d'or : En cas de doute, demander à l'utilisateur avant d'activer l'agent PO.**
 
-**IMPORTANT : `.claude/braindump.md` est la source de vérité pour les idées en cours.**
+**IMPORTANT : `.claude/.braindump.md` est la source de vérité pour les idées en cours.**
 - Ce fichier survit au compactage de contexte
 - Toujours le lire au début d'une session pour voir les items pending
 - Toujours le mettre à jour quand on braindumpe

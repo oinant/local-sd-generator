@@ -79,6 +79,13 @@ class BuildRunner:
         # Use venv binaries
         self.venv_bin = project_root / "venv/bin"
 
+        # Python packages to check
+        self.python_packages = [
+            "packages/sd-generator-cli/sd_generator_cli",
+            "packages/sd-generator-common/sd_generator_common",
+            "packages/sd-generator-watchdog/sd_generator_watchdog",
+        ]
+
     def run(self) -> int:
         """Run all build steps and return exit code"""
         console.print(Panel(
@@ -203,10 +210,10 @@ class BuildRunner:
     # ==================== Python Checks ====================
 
     def _lint_python(self) -> StepResult:
-        """Run flake8 linting"""
+        """Run flake8 linting on all Python packages"""
         cmd = [
             str(self.venv_bin / "flake8"),
-            "packages/sd-generator-cli/sd_generator_cli",
+            *self.python_packages,
             "--exclude=tests,__pycache__",
             "--max-line-length=120",
             "--count",
@@ -228,7 +235,7 @@ class BuildRunner:
                 name="Python Linting",
                 status="success",
                 duration=0,
-                message=f"{error_count} errors",
+                message=f"{error_count} errors (all packages)",
                 details={"error_count": error_count}
             )
         else:
@@ -236,15 +243,15 @@ class BuildRunner:
                 name="Python Linting",
                 status="error",
                 duration=0,
-                message=f"{error_count} errors found",
+                message=f"{error_count} errors found (all packages)",
                 details={"error_count": error_count, "output": result.stdout}
             )
 
     def _typecheck_python(self) -> StepResult:
-        """Run mypy type checking"""
+        """Run mypy type checking on all Python packages"""
         cmd = [
             str(self.venv_bin / "mypy"),
-            "packages/sd-generator-cli/sd_generator_cli",
+            *self.python_packages,
             "--show-error-codes"
         ]
 
@@ -258,7 +265,7 @@ class BuildRunner:
                 name="Python Type Checking",
                 status="success",
                 duration=0,
-                message=f"{error_count} errors",
+                message=f"{error_count} errors (all packages)",
                 details={"error_count": error_count}
             )
         else:
@@ -266,7 +273,7 @@ class BuildRunner:
                 name="Python Type Checking",
                 status="error",
                 duration=0,
-                message=f"{error_count} errors found",
+                message=f"{error_count} errors found (all packages)",
                 details={"error_count": error_count, "output": result.stdout}
             )
 
@@ -345,11 +352,11 @@ class BuildRunner:
         )
 
     def _analyze_complexity(self) -> StepResult:
-        """Analyze cyclomatic complexity with radon"""
+        """Analyze cyclomatic complexity with radon on all Python packages"""
         cmd = [
             str(self.venv_bin / "radon"),
             "cc",
-            "packages/sd-generator-cli/sd_generator_cli",
+            *self.python_packages,
             "--exclude=tests,__pycache__",
             "-a",
             "-nb",
@@ -415,10 +422,10 @@ class BuildRunner:
             )
 
     def _detect_dead_code(self) -> StepResult:
-        """Detect dead code with vulture"""
+        """Detect dead code with vulture on all Python packages"""
         cmd = [
             str(self.venv_bin / "vulture"),
-            "packages/sd-generator-cli/sd_generator_cli",
+            *self.python_packages,
             "--min-confidence=80",
             "--exclude=tests"
         ]
@@ -444,11 +451,11 @@ class BuildRunner:
         )
 
     def _scan_security(self) -> StepResult:
-        """Run security scan with bandit"""
+        """Run security scan with bandit on all Python packages"""
         cmd = [
             str(self.venv_bin / "bandit"),
             "-r",
-            "packages/sd-generator-cli/sd_generator_cli",
+            *self.python_packages,
             "-ll",
             "-f",
             "json"

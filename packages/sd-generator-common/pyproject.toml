@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "sd-generator-common"
+version = "0.1.0"
+description = "Shared models and utilities for SD Generator"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "sd_generator_common"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+mypy = "^1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
