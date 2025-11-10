@@ -393,6 +393,31 @@ class SessionStatsService:
 
             return [self._row_to_stats(row) for row in rows]
 
+    def get_stats_batch(self, session_names: List[str]) -> Dict[str, SessionStats]:
+        """
+        Get stats for multiple sessions in a single query (batch - PERFORMANCE).
+
+        Args:
+            session_names: List of session names to fetch
+
+        Returns:
+            Dict mapping session_name to SessionStats (missing sessions not included)
+        """
+        if not session_names:
+            return {}
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Build IN clause with placeholders
+            placeholders = ",".join("?" * len(session_names))
+            query = f"SELECT * FROM session_stats WHERE session_name IN ({placeholders})"
+
+            cursor = conn.execute(query, session_names)
+            rows = cursor.fetchall()
+
+            return {row["session_name"]: self._row_to_stats(row) for row in rows}
+
     def _row_to_stats(self, row: sqlite3.Row) -> SessionStats:
         """Convert SQLite row to SessionStats object."""
         placeholders = json.loads(row["placeholders"]) if row["placeholders"] else None

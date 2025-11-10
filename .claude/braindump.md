@@ -15,6 +15,142 @@
 
 _Items braindumped but not yet processed by Agent PO_
 
+### [Architecture] Port & Adapters (Hexagonal Architecture) Migration - 2025-11-10
+
+**Context:** Performance issue detected in WebUI sessions list (8.75s for 50 sessions with 1104 total)
+- **Root cause:** 1104 individual SQL queries (`get_stats()` in loop) instead of batch loading
+- **Quick fix applied:** Added `get_stats_batch()` method (1 query vs 1104)
+- **Deeper issue identified:** No abstraction layer between business logic and data access
+
+**Current Architecture Issues:**
+1. **Tight coupling:** Services contain both business logic AND SQL queries
+2. **No abstraction:** Direct filesystem access scattered across codebase
+3. **Hard to test:** Cannot easily mock DB or filesystem
+4. **Hard to migrate:** Changing DB (SQLite → PostgreSQL) requires touching many files
+5. **Hard to optimize:** Cannot swap implementations (e.g., in-memory cache)
+
+**Proposed Architecture: Port & Adapters (Hexagonal)**
+
+```
+Core (Business Logic - Domain)
+├── services/
+│   ├── session_stats_service.py      # Business logic only
+│   │   └── compute_stats()           # Calculations
+│   │   └── compute_and_save()        # Orchestration
+│   │   └── batch_compute_all()       # Batch orchestration
+│
+Adapters (Infrastructure)
+├── repositories/                      # Data access layer (DB)
+│   ├── session_stats_repository.py   # Interface + SQLite impl
+│   │   └── get(name) → SessionStats
+│   │   └── get_batch(names) → Dict[name, SessionStats]
+│   │   └── list_all() → List[SessionStats]
+│   │   └── save(stats) → None
+│   │   └── delete(name) → bool
+│   │
+│   └── session_metadata_repository.py
+│
+├── storage/                           # Filesystem abstraction
+│   ├── session_storage.py            # Interface + Local impl
+│   │   └── list_sessions() → List[SessionInfo]
+│   │   └── get_session_path(name) → Path
+│   │   └── session_exists(name) → bool
+│   │   └── count_images(name) → int
+│   │   └── list_images(name) → List[Path]
+│   │
+│   └── image_storage.py              # Image-specific operations
+│       └── get_image(session, filename) → bytes
+│       └── get_thumbnail(session, filename) → bytes
+│       └── save_image(session, filename, data) → None
+```
+
+**Benefits:**
+1. ✅ **Separation of concerns:** Business logic isolated from infrastructure
+2. ✅ **Easy testing:** Mock repositories/storage with in-memory implementations
+3. ✅ **Easy migration:** Swap SQLite → PostgreSQL by implementing new repository
+4. ✅ **Easy optimization:** Add caching layer without touching business logic
+5. ✅ **Easy extension:** Add S3/MinIO storage adapter without touching services
+6. ✅ **Performance:** Batch operations natural (already implemented in fix)
+
+**Migration Strategy:**
+
+**Phase 1: Repository Pattern (DB abstraction)**
+- Create `repositories/session_stats_repository.py`
+- Extract all SQL queries from `SessionStatsService`
+- Service depends on Repository interface (dependency injection)
+- **Effort:** ~3-4h
+- **Risk:** Low (no breaking changes, just refactoring)
+
+**Phase 2: Storage Pattern (Filesystem abstraction)**
+- Create `storage/session_storage.py`
+- Extract all filesystem operations from `api/sessions.py`
+- API depends on Storage interface
+- **Effort:** ~2-3h
+- **Risk:** Low
+
+**Phase 3: Dependency Injection**
+- Add DI container or simple factory pattern
+- Services receive dependencies via constructor
+- **Effort:** ~2h
+- **Risk:** Low
+
+**Phase 4: Tests & Documentation**
+- Add unit tests with mocked repositories
+- Document architecture in `/docs/backend/architecture.md`
+- **Effort:** ~3-4h
+
+**Total Effort:** ~10-13h (1-2 days)
+
+**Alternative Approaches Considered:**
+
+1. **ORM (SQLAlchemy):**
+   - Pros: Battle-tested, migrations, relationships
+   - Cons: Heavy dependency, learning curve, overkill for simple SQLite
+   - Decision: Repository pattern is lighter, ORM can come later
+
+2. **Just add batch methods:**
+   - Pros: Quickest fix (already done!)
+   - Cons: Technical debt accumulates, harder to migrate later
+   - Decision: Good short-term fix, but need proper architecture
+
+3. **Full rewrite with FastAPI dependencies:**
+   - Pros: Modern, type-safe, built-in DI
+   - Cons: Massive effort, risky migration
+   - Decision: Too big, incremental is safer
+
+**Impacts to Analyze (Agent Archi task):**
+
+1. **Code changes:**
+   - Which files need refactoring?
+   - Breaking changes in API?
+   - Migration path for existing code?
+
+2. **Testing:**
+   - How to test repositories?
+   - How to test storage?
+   - Integration tests needed?
+
+3. **Performance:**
+   - Performance gains beyond batch loading?
+   - Caching opportunities?
+   - Connection pooling?
+
+4. **Future extensibility:**
+   - PostgreSQL migration path?
+   - S3/MinIO storage migration?
+   - Multi-tenancy support?
+
+**Priority:** P3 (Important technical debt, not urgent)
+**Effort:** Medium (~10-13h)
+**Risk:** Low (incremental refactoring, no breaking changes)
+**Strategic Value:** High (foundation for scaling, testing, future features)
+
+**Next Steps:**
+1. ✅ Quick fix applied (batch loading)
+2. 🔄 Braindump architecture ideas (this)
+3. 📋 Launch Agent Archi for detailed impact analysis
+4. 🛠️ Implement Phase 1 (Repository Pattern) if approved
+
 ### Epic #67 - Session Dashboard - Issues identifiés 2025-11-08
 
 - **[UX]** Sessions list: 1088 sessions without pagination/filtering

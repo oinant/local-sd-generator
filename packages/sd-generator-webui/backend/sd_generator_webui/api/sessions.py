@@ -60,13 +60,22 @@ class SessionInfo(BaseModel):
     name: str
     path: str
     created_at: datetime
-    image_count: Optional[int] = None  # Chargé à la demande
+    image_count: Optional[int] = None  # Deprecated - use images_actual instead
+
+    # Stats from DB (loaded eagerly)
+    images_requested: Optional[int] = None
+    images_actual: Optional[int] = None
+    completion_percent: Optional[float] = None
+    is_finished: Optional[bool] = None  # True if session is completed (has at least one newer session)
 
 
 class SessionListResponse(BaseModel):
     """Réponse pour la liste des sessions."""
     sessions: List[SessionInfo]
     total_count: int
+    page: int
+    page_size: int
+    total_pages: int
 
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -94,17 +103,31 @@ def get_stats_service() -> SessionStatsService:
 
 @router.get("/", response_model=SessionListResponse)
 async def list_sessions(
+    page: int = 1,
+    page_size: int = 50,
     user_guid: str = Depends(AuthService.validate_guid)
 ):
     """
-    Liste tous les dossiers de sessions (rapide).
+    Liste tous les dossiers de sessions avec stats de base depuis la DB (paginé).
 
-    Ne compte PAS les images par session - utilisez l'endpoint /count pour ça.
+    Args:
+        page: Page number (1-indexed)
+        page_size: Number of sessions per page (default: 50)
+        user_guid: Authenticated user GUID
+
+    Stats chargées depuis session_stats (DB) :
+    - images_requested, images_actual, completion_percent
+    - is_finished (calculé : True si au moins une session plus récente existe)
+
     Metadata is loaded separately via /sessions/{name}/metadata endpoints.
     """
     sessions: List[SessionInfo] = []
+    stats_service = get_stats_service()
 
-    # Lister uniquement les dossiers de premier niveau
+    # Step 1: List all session folders (filesystem scan)
+    session_names = []
+    session_info_map = {}  # Map session_name -> (created_at, path)
+
     for item in IMAGES_DIR.iterdir():
         if item.is_dir():
             # Parse date from folder name (format: 2025-10-14_173320_name.prompt)
@@ -113,21 +136,63 @@ async def list_sessions(
             if not created_at:
                 continue  # Skip folders that don't match session format
 
-            # Always return SessionInfo (not SessionWithMetadata to keep types simple)
-            # Frontend will fetch metadata separately if needed
-            sessions.append(SessionInfo(
-                name=item.name,
-                path=str(item.relative_to(IMAGES_DIR)),
-                created_at=created_at,
-                image_count=None  # Pas de comptage ici
-            ))
+            session_names.append(item.name)
+            session_info_map[item.name] = (created_at, str(item.relative_to(IMAGES_DIR)))
+
+    # Step 2: Batch load all stats from DB (single query)
+    stats_map = stats_service.get_stats_batch(session_names)
+
+    # Step 3: Build SessionInfo objects
+    for session_name in session_names:
+        created_at, path = session_info_map[session_name]
+        stats = stats_map.get(session_name)
+
+        # Calculate completion_percent dynamically
+        completion_percent = None
+        if stats and stats.images_requested and stats.images_requested > 0:
+            completion_percent = stats.images_actual / stats.images_requested
+
+        sessions.append(SessionInfo(
+            name=session_name,
+            path=path,
+            created_at=created_at,
+            image_count=stats.images_actual if stats else None,  # Deprecated field
+            images_requested=stats.images_requested if stats else None,
+            images_actual=stats.images_actual if stats else None,
+            completion_percent=completion_percent,
+            is_finished=None  # Will be computed after sorting
+        ))
 
     # Trier par date décroissante (basé sur le nom de dossier)
     sessions.sort(key=lambda x: x.created_at, reverse=True)
 
+    # Compute is_finished for each session (BEFORE pagination)
+    # A session is finished if there's at least one newer session
+    for i, session in enumerate(sessions):
+        # If there's any session before this one in the sorted list (newer), mark as finished
+        session.is_finished = i > 0
+
+    # Pagination
+    total_count = len(sessions)
+    total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
+
+    # Validate page number
+    if page < 1:
+        page = 1
+    if page > total_pages and total_pages > 0:
+        page = total_pages
+
+    # Slice sessions for current page
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_sessions = sessions[start_idx:end_idx]
+
     return SessionListResponse(
-        sessions=sessions,
-        total_count=len(sessions)
+        sessions=paginated_sessions,
+        total_count=total_count,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages
     )
 
 

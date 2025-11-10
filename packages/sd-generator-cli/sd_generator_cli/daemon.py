@@ -12,6 +12,7 @@ Processes are launched in background with PID files for management.
 import os
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Optional, Dict, Tuple
@@ -450,7 +451,8 @@ def start_watchdog(sessions_dir: Path, db_path: Optional[Path] = None) -> Option
         console.print("[dim]  Run: poetry install (from project root)[/dim]")
         return None
 
-    cmd = ["python3", "-m", "sd_generator_watchdog.cli", "run", "--sessions-dir", str(sessions_dir)]
+    # Use same Python as current process (from venv)
+    cmd = [sys.executable, "-m", "sd_generator_watchdog.cli", "run", "--sessions-dir", str(sessions_dir)]
 
     if db_path:
         cmd.extend(["--db-path", str(db_path)])

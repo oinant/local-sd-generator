@@ -60,8 +60,9 @@ class ApiService {
   }
 
   // Sessions endpoints
-  async getSessions() {
-    const response = await this.client.get('/api/sessions/')
+  async getSessions(page = 1, pageSize = 50) {
+    const params = { page, page_size: pageSize }
+    const response = await this.client.get('/api/sessions/', { params })
     return response.data
   }
 
