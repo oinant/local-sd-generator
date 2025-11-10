@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from sd_generator_webui.config import METADATA_DIR
+from sd_generator_webui.models_stats import SessionStats
 from sd_generator_webui.repositories.base import BatchRepository
-from sd_generator_webui.services.session_stats import SessionStats
 
 
 class SessionStatsRepository(BatchRepository[SessionStats]):
