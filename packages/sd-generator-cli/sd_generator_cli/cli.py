@@ -31,8 +31,9 @@ from rich.panel import Panel
 
 from sd_generator_cli.config.global_config import load_global_config, ensure_global_config
 
-# Global reference to annotation worker for signal handlers
+# Global references for signal handlers
 _annotation_worker_instance: Optional[Any] = None
+_current_manifest_path: Optional[Path] = None
 
 
 def _cleanup_annotation_worker() -> None:
@@ -52,10 +53,25 @@ def _cleanup_annotation_worker() -> None:
             _annotation_worker_instance = None
 
 
+def _update_manifest_status_aborted() -> None:
+    """Update manifest status to 'aborted' on interruption."""
+    global _current_manifest_path
+    if _current_manifest_path and _current_manifest_path.exists():
+        try:
+            with open(_current_manifest_path, 'r', encoding='utf-8') as f:
+                manifest = json.load(f)
+            manifest["status"] = "aborted"
+            with open(_current_manifest_path, 'w', encoding='utf-8') as f:
+                json.dump(manifest, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass  # Silently fail if manifest update fails
+
+
 def _signal_handler(signum: int, frame: Any) -> None:
-    """Handle Ctrl+C gracefully."""
+    """Handle Ctrl+C/SIGTERM gracefully."""
     console = Console()
     console.print("\n[yellow]⚠ Interrupted by user (Ctrl+C)[/yellow]")
+    _update_manifest_status_aborted()
     _cleanup_annotation_worker()
     sys.exit(0)
 
@@ -481,11 +497,16 @@ def _generate(
         manifest_path = session_dir / "manifest.json"
         temp_manifest = {
             "snapshot": snapshot,
-            "images": []  # Will be filled after generation
+            "images": [],  # Will be filled after generation
+            "status": "ongoing"  # FSM: ongoing → completed|aborted
         }
 
         with open(manifest_path, 'w', encoding='utf-8') as f:
             json.dump(temp_manifest, f, indent=2, ensure_ascii=False)
+
+        # Set global manifest path for signal handler
+        global _current_manifest_path
+        _current_manifest_path = manifest_path
 
         console.print(f"[green]✓ Manifest initialized:[/green] {manifest_path}\n")
 
@@ -667,6 +688,16 @@ def _generate(
 
         console.print(f"[green]✓ Manifest updated incrementally ({success_count} images)[/green]\n")
 
+        # Update manifest status to "completed"
+        try:
+            with open(manifest_path, 'r', encoding='utf-8') as f:
+                final_manifest = json.load(f)
+            final_manifest["status"] = "completed"
+            with open(manifest_path, 'w', encoding='utf-8') as f:
+                json.dump(final_manifest, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not update manifest status: {e}[/yellow]")
+
         # Stop annotation worker and wait for pending jobs
         if annotation_worker:
             pending = annotation_worker.pending_count
@@ -691,7 +722,24 @@ def _generate(
 
         console.print(Panel(summary, title="✓ Generation Complete (V2.0)", border_style="green"))
 
+        # Clear global manifest path after successful completion
+        _current_manifest_path = None
+
     except Exception as e:
+        # Update manifest status to "aborted" on error
+        global _current_manifest_path
+        try:
+            if 'manifest_path' in locals() and manifest_path.exists():
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    error_manifest = json.load(f)
+                error_manifest["status"] = "aborted"
+                with open(manifest_path, 'w', encoding='utf-8') as f:
+                    json.dump(error_manifest, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass  # Silently fail if manifest update fails
+        finally:
+            _current_manifest_path = None  # Clear global
+
         console.print(f"\n[red]✗ V2 Pipeline error:[/red] {e}")
         import traceback
         console.print(f"[dim]{traceback.format_exc()}[/dim]")

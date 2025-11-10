@@ -116,8 +116,13 @@ pydantic = "^2.0"  # Validation + serialization
   - Ajout de `sd-generator-common` et `sd-generator-watchdog` aux checks
   - Linting, type checking, complexity, dead code, security sur tous les packages
   - Package `common` est 100% clean (0 erreurs)
-- [ ] Ajouter `status` field au manifest dans CLI
-- [ ] Update CLI pour set status (ongoing/completed/aborted)
+- [x] **Ajouter `status` field au manifest dans CLI**
+  - Manifest initialisé avec `status: "ongoing"` (ligne 485 cli.py)
+- [x] **Update CLI pour set status (ongoing/completed/aborted)**
+  - `status: "ongoing"` au start (ligne 485)
+  - `status: "completed"` après succès (ligne 675)
+  - `status: "aborted"` sur exception (ligne 735)
+  - `status: "aborted"` sur SIGTERM/SIGINT (signal handler, ligne 63)
 - [ ] Migrer packages existants vers common models
 - [ ] Tests pour FSM transitions
 
@@ -142,6 +147,34 @@ pydantic = "^2.0"  # Validation + serialization
 - Supports legacy "in_progress" status for backward compatibility
 
 **Location:** `packages/sd-generator-watchdog/sd_generator_watchdog/session_sync.py:223-265`
+
+### CLI Status Management (cli.py)
+
+**Status FSM Implementation:**
+1. **Initial manifest** (ligne 485):
+   - `status: "ongoing"` écrit au start de génération
+   - Global `_current_manifest_path` set pour signal handler
+
+2. **Completion** (ligne 675):
+   - Read manifest, set `status: "completed"`
+   - Écrit après `generator.generate_batch()` réussit
+   - Clear global `_current_manifest_path`
+
+3. **Exception handler** (ligne 735):
+   - Read manifest, set `status: "aborted"`
+   - Clear global `_current_manifest_path`
+
+4. **Signal handler SIGTERM/SIGINT** (ligne 63):
+   - `_update_manifest_status_aborted()` appelée
+   - Utilise global `_current_manifest_path`
+   - Graceful shutdown avec cleanup
+
+**Location:** `packages/sd-generator-cli/sd_generator_cli/cli.py`
+- Global vars: lines 35-36
+- Signal handler: lines 56-76
+- Manifest init: lines 496-510
+- Status completed: lines 671-679
+- Status aborted (exception): lines 728-741
 
 ## Notes
 
