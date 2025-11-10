@@ -17,6 +17,8 @@ from sd_generator_webui.auth import AuthService
 from sd_generator_webui.config import IMAGES_DIR
 from sd_generator_webui.services.session_metadata import SessionMetadataService
 from sd_generator_webui.services.session_stats import SessionStatsService
+from sd_generator_webui.storage.session_storage import SessionStorage, LocalSessionStorage
+from sd_generator_webui.storage.local_storage import LocalStorage
 from sd_generator_webui.models import (
     SessionMetadata,
     SessionMetadataUpdate,
@@ -80,9 +82,18 @@ class SessionListResponse(BaseModel):
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
-# Initialize metadata service (singleton)
+# Initialize services (singletons)
 _metadata_service: Optional[SessionMetadataService] = None
 _stats_service: Optional[SessionStatsService] = None
+_storage: Optional[SessionStorage] = None
+
+
+def get_storage() -> SessionStorage:
+    """Get or create the storage instance."""
+    global _storage
+    if _storage is None:
+        _storage = LocalSessionStorage()
+    return _storage
 
 
 def get_metadata_service() -> SessionMetadataService:
@@ -97,7 +108,8 @@ def get_stats_service() -> SessionStatsService:
     """Get or create the stats service instance."""
     global _stats_service
     if _stats_service is None:
-        _stats_service = SessionStatsService(sessions_root=IMAGES_DIR)
+        storage = get_storage()
+        _stats_service = SessionStatsService(storage=storage, sessions_root=IMAGES_DIR)
     return _stats_service
 
 
@@ -123,21 +135,21 @@ async def list_sessions(
     """
     sessions: List[SessionInfo] = []
     stats_service = get_stats_service()
+    storage = get_storage()
 
-    # Step 1: List all session folders (filesystem scan)
+    # Step 1: List all session folders (via storage)
     session_names = []
     session_info_map = {}  # Map session_name -> (created_at, path)
 
-    for item in IMAGES_DIR.iterdir():
-        if item.is_dir():
-            # Parse date from folder name (format: 2025-10-14_173320_name.prompt)
-            # Ignore folder if parsing fails (not a valid session)
-            created_at = parse_session_datetime(item.name)
-            if not created_at:
-                continue  # Skip folders that don't match session format
+    for session_path in storage.list_sessions(IMAGES_DIR):
+        # Parse date from folder name (format: 2025-10-14_173320_name.prompt)
+        # Ignore folder if parsing fails (not a valid session)
+        created_at = parse_session_datetime(session_path.name)
+        if not created_at:
+            continue  # Skip folders that don't match session format
 
-            session_names.append(item.name)
-            session_info_map[item.name] = (created_at, str(item.relative_to(IMAGES_DIR)))
+        session_names.append(session_path.name)
+        session_info_map[session_path.name] = (created_at, str(session_path.relative_to(IMAGES_DIR)))
 
     # Step 2: Batch load all stats from DB (single query)
     stats_map = stats_service.get_stats_batch(session_names)
@@ -206,15 +218,14 @@ async def get_session_count(
 
     Utilisé pour afficher le badge de count à la demande (lazy).
     """
+    storage = get_storage()
     session_path = IMAGES_DIR / session_name
 
-    if not session_path.exists() or not session_path.is_dir():
+    if not storage.session_exists(session_path):
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
-    # Compter uniquement les fichiers images
-    count = 0
-    for ext in [".png", ".jpg", ".jpeg", ".webp"]:
-        count += len(list(session_path.glob(f"*{ext}")))
+    # Compter uniquement les fichiers images via storage
+    count = storage.count_images(session_path)
 
     return {"session": session_name, "count": count}
 
@@ -240,18 +251,15 @@ async def list_session_images(
 
     Ne charge PAS les thumbnails - ils seront lazy-loadés par le frontend.
     """
+    storage = get_storage()
+    local_storage = LocalStorage()
     session_path = IMAGES_DIR / session_name
 
-    if not session_path.exists() or not session_path.is_dir():
+    if not storage.session_exists(session_path):
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
-    # Collecter les fichiers images de ce dossier uniquement (pas récursif)
-    image_files: list[Path] = []
-    for ext in [".png", ".jpg", ".jpeg", ".webp"]:
-        image_files.extend(session_path.glob(f"*{ext}"))
-
-    # Trier par nom de fichier
-    image_files.sort()
+    # List image files via storage (already sorted)
+    image_files = storage.list_images(session_path)
 
     # Polling mode: skip images before 'since' index
     if since is not None:
@@ -262,11 +270,12 @@ async def list_session_images(
     images = []
     for file_path in image_files:
         relative_path = file_path.relative_to(IMAGES_DIR)
+        metadata = local_storage.get_metadata(file_path)
         images.append({
             "filename": file_path.name,
             "path": str(relative_path),
-            "created_at": datetime.fromtimestamp(file_path.stat().st_mtime),
-            "file_size": file_path.stat().st_size,
+            "created_at": metadata.modified_at,
+            "file_size": metadata.size,
         })
 
     return {
@@ -286,9 +295,10 @@ async def get_session_metadata(
 
     Returns 404 if session doesn't exist or has no metadata.
     """
+    storage = get_storage()
     session_path = IMAGES_DIR / session_name
 
-    if not session_path.exists() or not session_path.is_dir():
+    if not storage.session_exists(session_path):
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
     metadata_service = get_metadata_service()
@@ -310,26 +320,19 @@ async def get_session_manifest(
 
     Returns 404 if session doesn't exist or has no manifest.
     """
+    storage = get_storage()
     session_path = IMAGES_DIR / session_name
 
-    if not session_path.exists() or not session_path.is_dir():
+    if not storage.session_exists(session_path):
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
-    manifest_path = session_path / "manifest.json"
+    # Read manifest via storage
+    manifest_data = storage.read_manifest(session_path)
 
-    if not manifest_path.exists():
+    if manifest_data is None:
         raise HTTPException(status_code=404, detail="Manifest non trouvé")
 
-    # Read and return manifest as JSON
-    import json
-    try:
-        with open(manifest_path, 'r', encoding='utf-8') as f:
-            manifest_data = json.load(f)
-        return manifest_data
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Manifest JSON invalide")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lecture manifest: {str(e)}")
+    return manifest_data
 
 
 @router.patch("/{session_name}/metadata", response_model=SessionMetadata)
@@ -344,9 +347,10 @@ async def update_session_metadata(
     If metadata doesn't exist, it will be created.
     Only provided fields will be updated.
     """
+    storage = get_storage()
     session_path = IMAGES_DIR / session_name
 
-    if not session_path.exists() or not session_path.is_dir():
+    if not storage.session_exists(session_path):
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
     metadata_service = get_metadata_service()
@@ -428,6 +432,7 @@ async def get_session_stats(
         404: Session not found
     """
     stats_service = get_stats_service()
+    storage = get_storage()
 
     # Try to get cached stats
     stats = stats_service.get_stats(session_name)
@@ -436,7 +441,7 @@ async def get_session_stats(
         # Stats not cached - compute on-demand
         session_path = IMAGES_DIR / session_name
 
-        if not session_path.exists():
+        if not storage.session_exists(session_path):
             raise HTTPException(status_code=404, detail=f"Session not found: {session_name}")
 
         # Compute and save
@@ -464,9 +469,10 @@ async def refresh_session_stats(
         404: Session not found
     """
     stats_service = get_stats_service()
+    storage = get_storage()
     session_path = IMAGES_DIR / session_name
 
-    if not session_path.exists():
+    if not storage.session_exists(session_path):
         raise HTTPException(status_code=404, detail=f"Session not found: {session_name}")
 
     # Force recompute

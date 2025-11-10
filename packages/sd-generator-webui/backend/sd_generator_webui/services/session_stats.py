@@ -21,6 +21,10 @@ from sd_generator_webui.repositories.session_stats_repository import (
     SessionStatsRepository,
     SQLiteSessionStatsRepository
 )
+from sd_generator_webui.storage.session_storage import (
+    SessionStorage,
+    LocalSessionStorage
+)
 
 
 class SessionStatsService:
@@ -39,6 +43,7 @@ class SessionStatsService:
     def __init__(
         self,
         repository: Optional[SessionStatsRepository] = None,
+        storage: Optional[SessionStorage] = None,
         sessions_root: Optional[Path] = None
     ):
         """
@@ -46,12 +51,17 @@ class SessionStatsService:
 
         Args:
             repository: SessionStatsRepository implementation. Defaults to SQLiteSessionStatsRepository
+            storage: SessionStorage implementation. Defaults to LocalSessionStorage
             sessions_root: Root directory containing session folders
         """
         if repository is None:
             repository = SQLiteSessionStatsRepository()
 
+        if storage is None:
+            storage = LocalSessionStorage()
+
         self.repository = repository
+        self.storage = storage
         self.sessions_root = sessions_root
 
     def compute_stats(self, session_path: Path) -> SessionStats:
@@ -70,16 +80,27 @@ class SessionStatsService:
         # Initialize stats
         stats = SessionStats(session_name=session_name)
 
-        # Load manifest
-        if not manifest_path.exists():
-            # No manifest - count images only
-            stats.images_actual = len(list(session_path.glob("*.png")))
-            stats.session_created_at = datetime.fromtimestamp(session_path.stat().st_ctime)
+        # Load manifest via storage
+        manifest = self.storage.read_manifest(session_path)
+
+        if manifest is None:
+            # No manifest - count images only via storage
+            stats.images_actual = self.storage.count_images(session_path)
+            # Get session created_at from first image or directory
+            images = self.storage.list_images(session_path)
+            if images:
+                from sd_generator_webui.storage.local_storage import LocalStorage
+                local_storage = LocalStorage()
+                metadata = local_storage.get_metadata(images[0])
+                stats.session_created_at = metadata.created_at
+            else:
+                # Fallback to directory creation time
+                from sd_generator_webui.storage.local_storage import LocalStorage
+                local_storage = LocalStorage()
+                metadata = local_storage.get_metadata(session_path)
+                stats.session_created_at = metadata.created_at
             stats.stats_computed_at = datetime.now()
             return stats
-
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
 
         # Extract generation info from nested structure
         snapshot = manifest.get("snapshot", {})
@@ -103,7 +124,7 @@ class SessionStatsService:
 
         # Requested images from generation_params (more reliable than len(images))
         stats.images_requested = generation_params.get("num_images", len(images))
-        stats.images_actual = len(list(session_path.glob("*.png")))
+        stats.images_actual = self.storage.count_images(session_path)
 
         # Completion percentage
         if stats.images_requested > 0:
@@ -145,8 +166,11 @@ class SessionStatsService:
                 stats.seed_max = max(seeds)
                 stats.seed_mode = self._detect_seed_mode(seeds)
 
-        # Timestamps
-        stats.session_created_at = datetime.fromtimestamp(session_path.stat().st_ctime)
+        # Timestamps - get from directory metadata via storage
+        from sd_generator_webui.storage.local_storage import LocalStorage
+        local_storage = LocalStorage()
+        dir_metadata = local_storage.get_metadata(session_path)
+        stats.session_created_at = dir_metadata.created_at
         stats.stats_computed_at = datetime.now()
 
         return stats
@@ -287,10 +311,10 @@ class SessionStatsService:
         """
         count = 0
 
-        for session_path in sessions_root.iterdir():
-            if not session_path.is_dir():
-                continue
+        # List sessions via storage
+        session_paths = self.storage.list_sessions(sessions_root)
 
+        for session_path in session_paths:
             session_name = session_path.name
 
             # Skip if stats exist (unless force_recompute)
