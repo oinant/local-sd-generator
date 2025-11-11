@@ -219,6 +219,8 @@ def _generate(
         style: Art style (default, cartoon, realistic, etc.)
         use_fixed: Fix placeholder values (format: "placeholder:key|placeholder2:key2")
     """
+    global _current_manifest_path  # Declare at start of function
+
     from sd_generator_cli.templating.orchestrator import V2Pipeline
     from sd_generator_cli.api import SDAPIClient, BatchGenerator, SessionManager, ImageWriter, ProgressReporter
     from sd_generator_cli.api import PromptConfig
@@ -505,7 +507,6 @@ def _generate(
             json.dump(temp_manifest, f, indent=2, ensure_ascii=False)
 
         # Set global manifest path for signal handler
-        global _current_manifest_path
         _current_manifest_path = manifest_path
 
         console.print(f"[green]✓ Manifest initialized:[/green] {manifest_path}\n")
@@ -727,7 +728,6 @@ def _generate(
 
     except Exception as e:
         # Update manifest status to "aborted" on error
-        global _current_manifest_path
         try:
             if 'manifest_path' in locals() and manifest_path.exists():
                 with open(manifest_path, 'r', encoding='utf-8') as f:
