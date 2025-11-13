@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+import os
 import re
 import sys
 import signal
@@ -219,6 +220,54 @@ def _generate(
         style: Art style (default, cartoon, realistic, etc.)
         use_fixed: Fix placeholder values (format: "placeholder:key|placeholder2:key2")
     """
+    # ========================================================================
+    # Feature Flag: New Orchestrator Architecture (Strangler Fig Pattern)
+    # ========================================================================
+    # Set SDGEN_USE_NEW_ARCH=true to use the new modular orchestrator.
+    # Default: false (use legacy monolithic code for backward compatibility)
+    USE_NEW_ORCHESTRATOR = os.getenv("SDGEN_USE_NEW_ARCH", "false").lower() == "true"
+
+    if USE_NEW_ORCHESTRATOR:
+        # NEW ARCHITECTURE: Use GenerationOrchestrator (Phases 1-5)
+        from sd_generator_cli.orchestrator import GenerationOrchestrator
+
+        console.print("[yellow]⚡ Using new orchestrator architecture (SDGEN_USE_NEW_ARCH=true)[/yellow]\n")
+
+        orchestrator = GenerationOrchestrator(
+            global_config=global_config,
+            console=console,
+            verbose=False  # TODO: Add verbose flag to CLI
+        )
+
+        try:
+            orchestrator.orchestrate(
+                template_path=template_path,
+                count=count,
+                api_url=api_url,
+                dry_run=dry_run,
+                session_name_override=session_name_override,
+                theme_name=theme_name,
+                theme_file=theme_file,
+                style=style,
+                skip_validation=skip_validation,
+                use_fixed=use_fixed,
+                seeds=seeds
+            )
+        except SystemExit:
+            # orchestrator already handled cleanup
+            raise
+        except Exception as e:
+            console.print(f"[red]✗ Generation failed: {e}[/red]")
+            raise
+
+        return  # Early return - new orchestrator handled everything
+
+    # ========================================================================
+    # LEGACY ARCHITECTURE: Monolithic _generate() (562 lines)
+    # ========================================================================
+    # This code will be removed after new orchestrator is validated in production.
+    console.print("[dim]Using legacy generation code (default)[/dim]\n")
+
     global _current_manifest_path  # Declare at start of function
 
     from sd_generator_cli.templating.orchestrator import V2Pipeline
