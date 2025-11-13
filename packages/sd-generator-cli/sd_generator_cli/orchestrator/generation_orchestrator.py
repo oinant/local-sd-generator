@@ -1,15 +1,22 @@
 """GenerationOrchestrator - high-level orchestration of generation workflow."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 from rich.console import Console
 
 from ..config.global_config import GlobalConfig
+from ..templating.orchestrator import V2Pipeline
+from ..api.sdapi_client import SDAPIClient
 from .cli_config import CLIConfig
 from .session_config import SessionConfig
 from .session_config_builder import SessionConfigBuilder
 from .session_event_collector import SessionEventCollector
+from .manifest_builder import ManifestBuilder
+from .manifest_manager import ManifestManager
+from .prompt_generator import PromptGenerator
+from .prompt_config_converter import PromptConfigConverter
+from .image_generator import ImageGenerator
 from .event_types import EventType
 
 
@@ -64,6 +71,14 @@ class GenerationOrchestrator:
 
         # Initialize config builder
         self.config_builder = SessionConfigBuilder(global_config)
+
+        # Initialize V2Pipeline for template loading
+        self.pipeline = V2Pipeline()
+
+        # Instance variables for components (created per orchestrate() call)
+        self.session_config: Optional[SessionConfig] = None
+        self.api_client: Optional[SDAPIClient] = None
+        self.manifest_manager: Optional[ManifestManager] = None
 
     def orchestrate(
         self,
@@ -125,16 +140,16 @@ class GenerationOrchestrator:
                 self._test_api_connection(session_config)
 
             # Phase 4: Load and resolve template
-            prompt_config = self._load_and_resolve(session_config, theme_file)
+            context, resolved_config = self._load_and_resolve(session_config, theme_file)
 
             # Phase 5: Generate prompts
-            prompts, stats = self._generate_prompts(session_config, prompt_config)
+            prompts, stats = self._generate_prompts(session_config, context, resolved_config)
 
             # Phase 6: Prepare manifest
-            self._prepare_manifest(session_config, prompt_config, prompts, stats)
+            self._prepare_manifest(session_config, context, resolved_config, prompts, stats)
 
             # Phase 7: Run generation
-            self._run_generation(session_config, prompts)
+            self._run_generation(session_config, prompts, context)
 
             # Phase 8: Finalize manifest
             self._finalize_manifest(session_config, status="completed")
@@ -190,22 +205,19 @@ class GenerationOrchestrator:
             seeds=seeds
         )
 
-        # Step 2: Load PromptConfig from template (TODO: needs V2Pipeline integration)
-        # For now, this will be implemented when we integrate with template loading
-        # prompt_config = self._load_prompt_config(template_path)
+        # Step 2: Load PromptConfig from template
+        prompt_config = self.pipeline.load_prompt(template_path)
 
         # Step 3: Build unified SessionConfig
-        # session_config = self.config_builder.build(cli_config, prompt_config)
+        session_config = self.config_builder.build(cli_config, prompt_config)
 
         # Step 4: Emit event
-        # self.events.emit(EventType.SESSION_CONFIG_BUILT)
+        self.events.emit(EventType.SESSION_CONFIG_BUILT)
 
-        # return session_config
+        # Store for later use
+        self.session_config = session_config
 
-        # Temporary placeholder until we implement template loading
-        raise NotImplementedError(
-            "Phase 1: Configuration building requires V2Pipeline integration"
-        )
+        return session_config
 
     # ========================================================================
     # Phase 2: Validation
@@ -222,10 +234,10 @@ class GenerationOrchestrator:
         Args:
             session_config: Session configuration
         """
-        # TODO: Implement in next step
-        # 1. Use TemplateValidator to validate
-        # 2. Emit appropriate events
-        raise NotImplementedError("Phase 2: Template validation")
+        # Template validation is handled by V2Pipeline.load_prompt()
+        # which raises exceptions on validation errors.
+        # If we reach here, validation already passed.
+        self.events.emit(EventType.VALIDATION_SUCCESS)
 
     # ========================================================================
     # Phase 3: API Connection (Early Fail-Fast)
@@ -245,11 +257,20 @@ class GenerationOrchestrator:
         Args:
             session_config: Session configuration
         """
-        # TODO: Implement in next step
-        # 1. Create SDAPIClient
-        # 2. Test connection
-        # 3. Emit API_CONNECTION_* events
-        raise NotImplementedError("Phase 3: API connection test")
+        self.events.emit(EventType.API_CONNECTION_TEST_START)
+
+        # Create API client
+        self.api_client = SDAPIClient(api_url=session_config.api_url)
+
+        # Test connection
+        if not self.api_client.test_connection():
+            self.events.emit(
+                EventType.API_CONNECTION_ERROR,
+                {"api_url": session_config.api_url}
+            )
+            raise SystemExit(1)
+
+        self.events.emit(EventType.API_CONNECTION_SUCCESS)
 
     # ========================================================================
     # Phase 4: Loading & Resolution
@@ -259,32 +280,47 @@ class GenerationOrchestrator:
         self,
         session_config: SessionConfig,
         theme_file: Optional[Path]
-    ):
+    ) -> tuple[Any, Any]:  # Returns (context, resolved_config)
         """Load and resolve template with theme/style.
 
         This phase:
         - Loads template from path
         - Applies theme and style
         - Resolves inheritance and imports
-        - Returns PromptConfig
+        - Returns resolved context and config
 
         Args:
             session_config: Session configuration
             theme_file: Optional theme file path
 
         Returns:
-            PromptConfig: Resolved prompt configuration
+            Tuple of (context, resolved_config)
         """
-        # TODO: Implement in next step
-        # 1. Use V2Pipeline to load and resolve
-        # 2. Emit TEMPLATE_LOADED events
-        raise NotImplementedError("Phase 3: Template loading")
+        self.events.emit(EventType.TEMPLATE_LOADING)
+
+        # Resolve template with V2Pipeline
+        context, resolved_config = self.pipeline.resolve(
+            config=session_config.prompt_config,
+            theme_name=session_config.theme_name,
+            style=session_config.style,
+            fixed_placeholders=session_config.fixed_placeholders,
+            seed_list=session_config.seed_list
+        )
+
+        self.events.emit(EventType.TEMPLATE_LOADED)
+
+        return context, resolved_config
 
     # ========================================================================
     # Phase 5: Prompt Generation
     # ========================================================================
 
-    def _generate_prompts(self, session_config: SessionConfig, prompt_config):
+    def _generate_prompts(
+        self,
+        session_config: SessionConfig,
+        context: Any,
+        resolved_config: Any
+    ) -> tuple[list[dict], dict]:
         """Generate prompts from resolved template.
 
         This phase:
@@ -294,15 +330,26 @@ class GenerationOrchestrator:
 
         Args:
             session_config: Session configuration
-            prompt_config: Resolved prompt configuration
+            context: Resolved context
+            resolved_config: Resolved config
 
         Returns:
             Tuple of (prompts, stats)
         """
-        # TODO: Implement in next step
-        # 1. Use PromptGenerator to generate prompts
-        # 2. Emit PROMPT_GENERATION_START, PROMPT_STATS events
-        raise NotImplementedError("Phase 5: Prompt generation")
+        # Create PromptGenerator
+        prompt_generator = PromptGenerator(
+            pipeline=self.pipeline,
+            events=self.events
+        )
+
+        # Generate prompts with stats
+        prompts, stats = prompt_generator.generate_with_stats(
+            session_config=session_config,
+            context=context,
+            resolved_config=resolved_config
+        )
+
+        return prompts, stats
 
     # ========================================================================
     # Phase 6: Manifest Preparation
@@ -311,7 +358,8 @@ class GenerationOrchestrator:
     def _prepare_manifest(
         self,
         session_config: SessionConfig,
-        prompt_config,
+        context: Any,
+        resolved_config: Any,
         prompts: list,
         stats: dict
     ) -> None:
@@ -324,15 +372,37 @@ class GenerationOrchestrator:
 
         Args:
             session_config: Session configuration
-            prompt_config: Resolved prompt configuration
+            context: Resolved context
+            resolved_config: Resolved config
             prompts: Generated prompts
             stats: Prompt generation statistics
         """
-        # TODO: Implement in next step
-        # 1. Use ManifestBuilder to build snapshot
-        # 2. Use ManifestManager to initialize manifest
-        # 3. Emit MANIFEST_CREATED events
-        raise NotImplementedError("Phase 6: Manifest preparation")
+        # Create session directory
+        session_config.session_path.mkdir(parents=True, exist_ok=True)
+
+        # Create ManifestBuilder
+        manifest_builder = ManifestBuilder(
+            api_client=self.api_client,
+            events=self.events
+        )
+
+        # Build snapshot
+        snapshot = manifest_builder.build_snapshot(
+            session_config=session_config,
+            context=context,
+            resolved_config=resolved_config,
+            prompts=prompts,
+            stats=stats
+        )
+
+        # Create ManifestManager
+        self.manifest_manager = ManifestManager(
+            manifest_path=session_config.manifest_path,
+            events=self.events
+        )
+
+        # Initialize manifest
+        self.manifest_manager.initialize(snapshot)
 
     # ========================================================================
     # Phase 7: Generation
@@ -341,27 +411,52 @@ class GenerationOrchestrator:
     def _run_generation(
         self,
         session_config: SessionConfig,
-        prompts: list
+        prompts: list,
+        context: Any
     ) -> None:
         """Run image generation.
 
         This phase:
-        - Creates API components (client, session manager, etc.)
-        - Starts annotation worker if enabled
-        - Executes batch generation
+        - Converts prompts to PromptConfig objects
+        - Executes batch generation via ImageGenerator
         - Updates manifest incrementally
-        - Emits GENERATION_START, IMAGE_SUCCESS/ERROR events
+        - Emits GENERATION_* events
 
         Args:
             session_config: Session configuration
             prompts: List of prompts to generate
+            context: Resolved context (for ControlNet resolution)
         """
-        # TODO: Implement in next step
-        # 1. Create API components
-        # 2. Start annotation worker
-        # 3. Run batch generation with progress
-        # 4. Emit GENERATION_* events
-        raise NotImplementedError("Phase 7: Image generation")
+        # Create PromptConfigConverter
+        converter = PromptConfigConverter(
+            session_config=session_config,
+            context=context
+        )
+
+        # Convert prompts to PromptConfig list
+        prompt_configs = converter.convert_prompts(prompts)
+
+        # Create ImageGenerator
+        image_generator = ImageGenerator(
+            api_client=self.api_client,
+            manifest_manager=self.manifest_manager,
+            events=self.events,
+            session_config=session_config
+        )
+
+        # Generate images
+        success_count, total_count = image_generator.generate_images(
+            prompt_configs=prompt_configs,
+            prompts=prompts
+        )
+
+        # Display summary (via events)
+        self.events.emit(
+            EventType.INFO,
+            {
+                "message": f"Generation complete: {success_count}/{total_count} images successful"
+            }
+        )
 
     # ========================================================================
     # Phase 8: Finalization
@@ -369,7 +464,7 @@ class GenerationOrchestrator:
 
     def _finalize_manifest(
         self,
-        session_config: SessionConfig,
+        session_config: Optional[SessionConfig],
         status: str
     ) -> None:
         """Finalize manifest with status.
@@ -379,10 +474,8 @@ class GenerationOrchestrator:
         - Emits MANIFEST_FINALIZED event
 
         Args:
-            session_config: Session configuration
+            session_config: Session configuration (may be None if error early)
             status: Final status ("completed" or "aborted")
         """
-        # TODO: Implement in next step
-        # 1. Use ManifestManager to finalize
-        # 2. Emit MANIFEST_FINALIZED event
-        raise NotImplementedError("Phase 8: Manifest finalization")
+        if session_config and self.manifest_manager:
+            self.manifest_manager.finalize(status=status)
