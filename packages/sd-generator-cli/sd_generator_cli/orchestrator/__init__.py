@@ -26,6 +26,7 @@ from .manifest_builder import ManifestBuilder
 from .manifest_manager import ManifestManager
 from .prompt_generator import PromptGenerator
 from .prompt_config_converter import PromptConfigConverter
+from .image_generator import ImageGenerator
 
 __all__ = [
     "EventType",
@@ -38,4 +39,5 @@ __all__ = [
     "ManifestManager",
     "PromptGenerator",
     "PromptConfigConverter",
+    "ImageGenerator",
 ]

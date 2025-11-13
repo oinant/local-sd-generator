@@ -114,6 +114,12 @@ class EventType(Enum):
     # ========================================================================
     # Image Generation Events
     # ========================================================================
+    IMAGE_GENERATION_START = "image_generation_start"
+    """Image generation batch started (data: total_images)."""
+
+    IMAGE_GENERATION_COMPLETE = "image_generation_complete"
+    """Image generation batch completed (data: success_count, total_count, failed_count)."""
+
     GENERATION_START = "generation_start"
     """Batch generation started (data: total_images)."""
 
