@@ -22,6 +22,8 @@ from .session_config import SessionConfig
 from .session_config_builder import SessionConfigBuilder
 from .session_event_collector import SessionEventCollector
 from .generation_orchestrator import GenerationOrchestrator
+from .manifest_builder import ManifestBuilder
+from .manifest_manager import ManifestManager
 
 __all__ = [
     "EventType",
@@ -30,4 +32,6 @@ __all__ = [
     "SessionConfigBuilder",
     "SessionEventCollector",
     "GenerationOrchestrator",
+    "ManifestBuilder",
+    "ManifestManager",
 ]
