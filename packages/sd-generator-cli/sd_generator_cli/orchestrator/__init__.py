@@ -24,6 +24,8 @@ from .session_event_collector import SessionEventCollector
 from .generation_orchestrator import GenerationOrchestrator
 from .manifest_builder import ManifestBuilder
 from .manifest_manager import ManifestManager
+from .prompt_generator import PromptGenerator
+from .prompt_config_converter import PromptConfigConverter
 
 __all__ = [
     "EventType",
@@ -34,4 +36,6 @@ __all__ = [
     "GenerationOrchestrator",
     "ManifestBuilder",
     "ManifestManager",
+    "PromptGenerator",
+    "PromptConfigConverter",
 ]
