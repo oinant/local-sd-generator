@@ -21,6 +21,7 @@ from .cli_config import CLIConfig
 from .session_config import SessionConfig
 from .session_config_builder import SessionConfigBuilder
 from .session_event_collector import SessionEventCollector
+from .generation_orchestrator import GenerationOrchestrator
 
 __all__ = [
     "EventType",
@@ -28,4 +29,5 @@ __all__ = [
     "SessionConfig",
     "SessionConfigBuilder",
     "SessionEventCollector",
+    "GenerationOrchestrator",
 ]
