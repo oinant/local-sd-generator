@@ -156,11 +156,11 @@ class GenerationOrchestrator:
 
         except KeyboardInterrupt:
             self.events.emit(EventType.GENERATION_ABORTED, {"error": "User interrupted"})
-            self._finalize_manifest(session_config, status="aborted")
+            self._finalize_manifest(self.session_config, status="aborted")
             raise SystemExit(1)
         except Exception as e:
             self.events.emit(EventType.GENERATION_ABORTED, {"error": str(e)})
-            self._finalize_manifest(session_config, status="aborted")
+            self._finalize_manifest(self.session_config, status="aborted")
             raise
 
     # ========================================================================
@@ -206,7 +206,7 @@ class GenerationOrchestrator:
         )
 
         # Step 2: Load PromptConfig from template
-        prompt_config = self.pipeline.load_prompt(template_path)
+        prompt_config = self.pipeline.load(template_path)
 
         # Step 3: Build unified SessionConfig
         session_config = self.config_builder.build(cli_config, prompt_config)
