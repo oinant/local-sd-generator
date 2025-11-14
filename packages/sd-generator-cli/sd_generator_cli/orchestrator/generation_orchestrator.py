@@ -389,6 +389,7 @@ class GenerationOrchestrator:
         # Build snapshot
         snapshot = manifest_builder.build_snapshot(
             session_config=session_config,
+            prompt_config=session_config.prompt_config,
             context=context,
             resolved_config=resolved_config,
             prompts=prompts,
