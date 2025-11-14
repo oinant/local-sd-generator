@@ -131,11 +131,21 @@ class TestOrchestrateWorkflow:
         """Orchestrate calls all workflow phases in correct order."""
         # Setup mocks
         template_path = tmp_path / "test.yaml"
-        template_path.write_text("version: 2.0\nprompt: test")
+        template_path.write_text("""
+type: prompt
+version: "2.0"
+name: test_template
+prompt: test
+generation:
+  mode: combinatorial
+  seed_mode: fixed
+  seed: 42
+  max_images: 10
+""")
 
         # Mock V2Pipeline
         mock_pipeline = mock_pipeline_class.return_value
-        mock_pipeline.load_prompt.return_value = sample_prompt_config
+        mock_pipeline.load.return_value = sample_prompt_config
         mock_pipeline.resolve.return_value = (MagicMock(), MagicMock())
         mock_pipeline.generate.return_value = [{"prompt": "test", "seed": 42, "variations": {}}]
         mock_pipeline.get_variation_statistics.return_value = {
@@ -143,6 +153,9 @@ class TestOrchestrateWorkflow:
             "total_combinations": 3,
             "placeholders": {}
         }
+
+        # Replace orchestrator's real pipeline with mocked one
+        orchestrator.pipeline = mock_pipeline
 
         # Mock API client
         mock_api_client = mock_api_client_class.return_value
@@ -181,7 +194,7 @@ class TestOrchestrateWorkflow:
         # Phase 3: API connection
         mock_api_client.test_connection.assert_called_once()
         # Phase 4: Template loading
-        mock_pipeline.load_prompt.assert_called_once()
+        mock_pipeline.load.assert_called_once()
         # Phase 5: Prompt generation
         mock_prompt_generator.generate_with_stats.assert_called_once()
         # Phase 6: Manifest preparation
@@ -203,8 +216,8 @@ class TestOrchestrateWorkflow:
         with patch.object(orchestrator, '_validate_template') as mock_validate:
             with patch.object(orchestrator, '_build_session_config'):
                 with patch.object(orchestrator, '_test_api_connection'):
-                    with patch.object(orchestrator, '_load_and_resolve'):
-                        with patch.object(orchestrator, '_generate_prompts'):
+                    with patch.object(orchestrator, '_load_and_resolve', return_value=(MagicMock(), MagicMock())):
+                        with patch.object(orchestrator, '_generate_prompts', return_value=([], {})):
                             with patch.object(orchestrator, '_prepare_manifest'):
                                 with patch.object(orchestrator, '_run_generation'):
                                     with patch.object(orchestrator, '_finalize_manifest'):
@@ -231,8 +244,8 @@ class TestOrchestrateWorkflow:
         with patch.object(orchestrator, '_test_api_connection') as mock_api_test:
             with patch.object(orchestrator, '_build_session_config'):
                 with patch.object(orchestrator, '_validate_template'):
-                    with patch.object(orchestrator, '_load_and_resolve'):
-                        with patch.object(orchestrator, '_generate_prompts'):
+                    with patch.object(orchestrator, '_load_and_resolve', return_value=(MagicMock(), MagicMock())):
+                        with patch.object(orchestrator, '_generate_prompts', return_value=([], {})):
                             with patch.object(orchestrator, '_prepare_manifest'):
                                 with patch.object(orchestrator, '_run_generation'):
                                     with patch.object(orchestrator, '_finalize_manifest'):
@@ -318,11 +331,21 @@ class TestBuildSessionConfig:
     ):
         """Builds SessionConfig from CLI args and template config."""
         template_path = tmp_path / "test.yaml"
-        template_path.write_text("version: 2.0\nprompt: test")
+        template_path.write_text("""
+type: prompt
+version: "2.0"
+name: test_template
+prompt: test
+generation:
+  mode: combinatorial
+  seed_mode: fixed
+  seed: 42
+  max_images: 10
+""")
 
         # Mock V2Pipeline to return PromptConfig
         mock_pipeline = mock_pipeline_class.return_value
-        mock_pipeline.load_prompt.return_value = sample_prompt_config
+        mock_pipeline.load.return_value = sample_prompt_config
 
         session_config = orchestrator._build_session_config(
             template_path=template_path,

@@ -136,7 +136,9 @@ class V2Pipeline:
         config: PromptConfig,
         theme_name: Optional[str] = None,
         theme_file: Optional[Path] = None,
-        style: str = "default"
+        style: str = "default",
+        fixed_placeholders: Optional[dict[str, str]] = None,
+        seed_list: Optional[list[int]] = None
     ) -> tuple[PromptConfig, ResolvedContext]:
         """
         Resolve inheritance, imports, and templates.
@@ -147,11 +149,16 @@ class V2Pipeline:
         3. Import resolution (imports: declarations)
         4. Parameter merging from inheritance chain
         5. Phase 1 chunk injection (structural only, preserving placeholders)
+        6. [NEW] Apply fixed placeholder values (if provided)
+        7. [NEW] Apply seed list (if provided)
 
         Args:
             config: Parsed PromptConfig
             theme_name: Optional theme name (for themable templates)
             style: Art style (default, cartoon, realistic, etc.)
+            fixed_placeholders: Optional dict mapping placeholder names to fixed keys
+                               (e.g., {"Hair": "blonde", "Eyes": "blue"})
+            seed_list: Optional list of seeds for seed-sweep mode
 
         Returns:
             Tuple of (resolved_config, context)
@@ -159,7 +166,7 @@ class V2Pipeline:
             - context: ResolvedContext with all imports, chunks, and theme metadata
 
         Raises:
-            ValueError: If resolution fails
+            ValueError: If resolution fails or fixed key not found
         """
         # Phase 3: Resolve inheritance chain
         resolved_config = self.inheritance_resolver.resolve_implements(config)
@@ -319,7 +326,58 @@ class V2Pipeline:
 
         resolved_config_with_chunks.template = template_with_chunks
 
+        # Phase 6 [NEW]: Apply fixed placeholder values (if provided)
+        # This filters context.imports to only include the specified keys
+        if fixed_placeholders:
+            context = self._apply_fixed_placeholders(context, fixed_placeholders)
+
+        # Phase 7 [NEW]: Apply seed list (if provided)
+        # This modifies resolved_config.generation.seed_list for seed-sweep mode
+        if seed_list:
+            resolved_config_with_chunks.generation.seed_list = seed_list
+
         return resolved_config_with_chunks, context
+
+    def _apply_fixed_placeholders(
+        self,
+        context: ResolvedContext,
+        fixed_placeholders: dict[str, str]
+    ) -> ResolvedContext:
+        """
+        Apply fixed placeholder values to context imports.
+
+        Filters each fixed placeholder's variations to only include the specified key.
+
+        Args:
+            context: ResolvedContext with imports dict
+            fixed_placeholders: Dict mapping placeholder names to their fixed keys
+
+        Returns:
+            Modified context with filtered imports
+
+        Raises:
+            ValueError: If a fixed key is not found in the placeholder's variations
+        """
+        if not hasattr(context, 'imports') or not context.imports:
+            return context
+
+        for placeholder, fixed_key in fixed_placeholders.items():
+            if placeholder not in context.imports:
+                continue
+
+            variations_dict = context.imports[placeholder]
+
+            if fixed_key not in variations_dict:
+                available_keys = list(variations_dict.keys())
+                raise ValueError(
+                    f"Key '{fixed_key}' not found for placeholder '{placeholder}'. "
+                    f"Available keys: {', '.join(available_keys) if available_keys else 'none'}"
+                )
+
+            # Filter to only include the fixed key
+            context.imports[placeholder] = {fixed_key: variations_dict[fixed_key]}
+
+        return context
 
     def generate(
         self,

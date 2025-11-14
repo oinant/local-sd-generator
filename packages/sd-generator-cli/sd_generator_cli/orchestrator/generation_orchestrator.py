@@ -194,7 +194,7 @@ class GenerationOrchestrator:
         cli_config = CLIConfig(
             template_path=template_path,
             api_url=api_url,
-            output_base_dir=self.global_config.output_dir,
+            output_base_dir=Path(self.global_config.output_dir),
             count=count,
             dry_run=dry_run,
             session_name_override=session_name_override,
@@ -299,7 +299,7 @@ class GenerationOrchestrator:
         self.events.emit(EventType.TEMPLATE_LOADING)
 
         # Resolve template with V2Pipeline
-        context, resolved_config = self.pipeline.resolve(
+        resolved_config, context = self.pipeline.resolve(
             config=session_config.prompt_config,
             theme_name=session_config.theme_name,
             style=session_config.style,
