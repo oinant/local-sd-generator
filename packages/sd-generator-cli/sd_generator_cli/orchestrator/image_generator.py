@@ -1,8 +1,10 @@
 """ImageGenerator - orchestrates image generation via API."""
 
+import time
 from typing import Any
 
-from ..api.sdapi_client import SDAPIClient, PromptConfig
+from ..api.sdapi_client import SDAPIClient, PromptConfig, GenerationConfig
+from ..api.image_writer import ImageWriter
 from .session_config import SessionConfig
 from .session_event_collector import SessionEventCollector
 from .manifest_manager import ManifestManager
@@ -42,6 +44,8 @@ class ImageGenerator:
         self.manifest_manager = manifest_manager
         self.events = events
         self.session_config = session_config
+        # Create ImageWriter for saving images to disk
+        self.image_writer = ImageWriter(output_dir=str(session_config.session_path))
 
     def generate_images(
         self,
@@ -70,31 +74,61 @@ class ImageGenerator:
             {"total_images": len(prompt_configs)}
         )
 
-        # Define callback to update manifest after each image
-        def update_manifest_callback(
-            idx: int,
-            prompt_cfg: PromptConfig,
-            success: bool,
-            api_response: Any
-        ) -> None:
-            """Update manifest after each image generation."""
-            if not success:
-                return  # Skip failed images
+        # Generate images one by one with incremental manifest updates
+        success_count = 0
+        total_count = len(prompt_configs)
+        delay_between_images = 2.0
 
-            # Update manifest with image entry
-            self.manifest_manager.update_incremental(
-                idx=idx,
-                filename=prompt_cfg.filename,
-                prompt_dict=prompts[idx],
-                api_response=api_response
-            )
+        for idx, prompt_cfg in enumerate(prompt_configs):
+            try:
+                # Apply parameters to API client before generation (like legacy V2Executor)
+                if prompt_cfg.parameters:
+                    self._apply_parameters(prompt_cfg.parameters)
 
-        # Generate images with incremental manifest updates
-        success_count, total_count = self.api_client.generate_batch(
-            prompt_configs=prompt_configs,
-            delay_between_images=2.0,
-            on_image_generated=update_manifest_callback
-        )
+                # Generate image via API
+                api_response = self.api_client.generate_image(prompt_cfg)
+
+                # Save image to disk
+                self.image_writer.save_images_from_response(
+                    api_response=api_response,
+                    filename=prompt_cfg.filename
+                )
+
+                success = True
+                success_count += 1
+
+                # Update manifest incrementally on success
+                self.manifest_manager.update_incremental(
+                    idx=idx,
+                    filename=prompt_cfg.filename,
+                    prompt_dict=prompts[idx],
+                    api_response=api_response
+                )
+
+                # Emit success event to update progress bar
+                self.events.emit(
+                    EventType.IMAGE_SUCCESS,
+                    {
+                        "index": idx,
+                        "path": prompt_cfg.filename,
+                        "seed": prompt_cfg.seed
+                    }
+                )
+
+            except Exception as e:
+                # Generation failed - log but continue
+                success = False
+                self.events.emit(
+                    EventType.IMAGE_ERROR,
+                    {
+                        "index": idx,
+                        "error": str(e)
+                    }
+                )
+
+            # Delay before next image (except for last one)
+            if idx < total_count - 1 and delay_between_images > 0:
+                time.sleep(delay_between_images)
 
         # Emit complete event
         self.events.emit(
@@ -107,3 +141,40 @@ class ImageGenerator:
         )
 
         return success_count, total_count
+
+    def _apply_parameters(self, parameters: dict[str, Any]) -> None:
+        """Apply generation parameters to API client.
+
+        This method replicates the legacy V2Executor._apply_parameters() behavior:
+        - Creates a GenerationConfig with defaults
+        - Overrides with template parameters
+        - Configures the API client via set_generation_config()
+
+        Args:
+            parameters: Parameters dict from prompt config
+        """
+        config = GenerationConfig()
+
+        # Map parameters to GenerationConfig fields
+        # Note: 'sampler' in template becomes 'sampler_name' in GenerationConfig
+        param_mapping = {
+            'steps': 'steps',
+            'cfg_scale': 'cfg_scale',
+            'width': 'width',
+            'height': 'height',
+            'sampler': 'sampler_name',
+            'scheduler': 'scheduler',
+            'batch_size': 'batch_size',
+            'batch_count': 'n_iter',
+            'enable_hr': 'enable_hr',
+            'hr_scale': 'hr_scale',
+            'hr_upscaler': 'hr_upscaler',
+            'denoising_strength': 'denoising_strength',
+            'hr_second_pass_steps': 'hr_second_pass_steps'
+        }
+
+        for param_key, config_key in param_mapping.items():
+            if param_key in parameters:
+                setattr(config, config_key, parameters[param_key])
+
+        self.api_client.set_generation_config(config)

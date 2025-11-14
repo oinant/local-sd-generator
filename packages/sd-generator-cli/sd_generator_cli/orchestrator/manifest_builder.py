@@ -52,7 +52,6 @@ class ManifestBuilder:
     def build_snapshot(
         self,
         session_config: SessionConfig,
-        prompt_config: PromptConfig,
         context: Any,  # ResolvedContext from V2Pipeline
         resolved_config: Any,  # ResolvedConfig from V2Pipeline
         prompts: list[dict],
@@ -63,8 +62,7 @@ class ManifestBuilder:
         This is the main entry point that orchestrates all snapshot building.
 
         Args:
-            session_config: Session configuration
-            prompt_config: Resolved prompt configuration
+            session_config: Session configuration (contains prompt_config)
             context: Resolved context (from V2Pipeline.resolve())
             resolved_config: Resolved config (from V2Pipeline.resolve())
             prompts: Generated prompts list
@@ -73,6 +71,8 @@ class ManifestBuilder:
         Returns:
             Complete manifest snapshot dict
         """
+        # Extract prompt_config from session_config
+        prompt_config = session_config.prompt_config
         # Step 1: Fetch runtime info from API
         runtime_info = self.fetch_runtime_info()
 

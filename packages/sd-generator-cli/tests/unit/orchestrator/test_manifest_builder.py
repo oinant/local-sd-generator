@@ -387,7 +387,6 @@ class TestBuildSnapshot:
         """Builds complete snapshot with all required sections."""
         snapshot = builder.build_snapshot(
             session_config=minimal_session_config,
-            prompt_config=minimal_prompt_config,
             context=mock_context,
             resolved_config=mock_resolved_config,
             prompts=sample_prompts,
@@ -428,7 +427,6 @@ class TestBuildSnapshot:
         """Timestamp is in ISO format."""
         snapshot = builder.build_snapshot(
             session_config=minimal_session_config,
-            prompt_config=minimal_prompt_config,
             context=mock_context,
             resolved_config=mock_resolved_config,
             prompts=sample_prompts,

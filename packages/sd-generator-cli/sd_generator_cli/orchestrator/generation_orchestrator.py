@@ -389,7 +389,6 @@ class GenerationOrchestrator:
         # Build snapshot
         snapshot = manifest_builder.build_snapshot(
             session_config=session_config,
-            prompt_config=session_config.prompt_config,
             context=context,
             resolved_config=resolved_config,
             prompts=prompts,
@@ -449,14 +448,6 @@ class GenerationOrchestrator:
         success_count, total_count = image_generator.generate_images(
             prompt_configs=prompt_configs,
             prompts=prompts
-        )
-
-        # Display summary (via events)
-        self.events.emit(
-            EventType.INFO,
-            {
-                "message": f"Generation complete: {success_count}/{total_count} images successful"
-            }
         )
 
     # ========================================================================

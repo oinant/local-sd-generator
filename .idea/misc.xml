@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (local-sd-generator)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (local-sd-generator)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.10.12 WSL (Ubuntu): (/home/oinant/.virtualenvs/local-sd-generator/bin/python)" project-jdk-type="Python SDK" />
 </project>

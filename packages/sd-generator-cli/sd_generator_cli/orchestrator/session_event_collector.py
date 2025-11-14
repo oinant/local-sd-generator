@@ -87,6 +87,8 @@ class SessionEventCollector:
             EventType.ANNOTATION_WORKER_START: self._handle_annotation_worker_start,
             EventType.ANNOTATION_WORKER_STOPPED: self._handle_annotation_worker_stopped,
             # Image Generation
+            EventType.IMAGE_GENERATION_START: self._handle_image_generation_start,
+            EventType.IMAGE_GENERATION_COMPLETE: self._handle_image_generation_complete,
             EventType.GENERATION_START: self._handle_generation_start,
             EventType.IMAGE_SUCCESS: self._handle_image_success,
             EventType.IMAGE_ERROR: self._handle_image_error,
@@ -215,6 +217,44 @@ class SessionEventCollector:
     # Image Generation Handlers
     # ========================================================================
 
+    def _handle_image_generation_start(self, data: dict[str, Any]) -> None:
+        """Handle IMAGE_GENERATION_START event from ImageGenerator."""
+        total = data.get("total_images", 0)
+        self.console.print(f"\n[bold]Generating {total} images...[/bold]\n")
+
+        # Initialize counters
+        self._generation_success_count = 0
+        self._generation_failed_count = 0
+        self._generation_total_count = total
+
+        # Start progress bar
+        self._progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            console=self.console
+        )
+        self._progress.start()
+        self._progress_task_id = self._progress.add_task(
+            f"Success: 0 | Failed: 0 | Total: 0/{total}",
+            total=total
+        )
+
+    def _handle_image_generation_complete(self, data: dict[str, Any]) -> None:
+        """Handle IMAGE_GENERATION_COMPLETE event from ImageGenerator."""
+        # Stop progress bar
+        if self._progress:
+            self._progress.stop()
+            self._progress = None
+            self._progress_task_id = None
+
+        success = data.get("success_count", 0)
+        total = data.get("total_count", 0)
+        failed = data.get("failed_count", 0)
+        self.console.print(f"\n[bold green]✓ Image generation complete![/bold green]")
+        self.console.print(f"  Total: {total} | Success: {success} | Failed: {failed}")
+
     def _handle_generation_start(self, data: dict[str, Any]) -> None:
         total = data.get("total_images", 0)
         self.console.print(f"\n[bold]Generating {total} images...[/bold]\n")
@@ -232,14 +272,35 @@ class SessionEventCollector:
 
     def _handle_image_success(self, data: dict[str, Any]) -> None:
         if self._progress and self._progress_task_id is not None:
-            self._progress.update(self._progress_task_id, advance=1)
+            # Increment success counter
+            self._generation_success_count += 1
+            completed = self._generation_success_count + self._generation_failed_count
+
+            # Update progress bar with new description
+            self._progress.update(
+                self._progress_task_id,
+                advance=1,
+                description=f"Success: {self._generation_success_count} | Failed: {self._generation_failed_count} | Total: {completed}/{self._generation_total_count}"
+            )
 
     def _handle_image_error(self, data: dict[str, Any]) -> None:
         idx = data.get("index", "?")
         error = data.get("error", "Unknown error")
-        self.console.print(f"[red]✗ Image {idx} failed: {error}[/red]")
+
         if self._progress and self._progress_task_id is not None:
-            self._progress.update(self._progress_task_id, advance=1)
+            # Increment failed counter
+            self._generation_failed_count += 1
+            completed = self._generation_success_count + self._generation_failed_count
+
+            # Update progress bar with new description
+            self._progress.update(
+                self._progress_task_id,
+                advance=1,
+                description=f"Success: {self._generation_success_count} | Failed: {self._generation_failed_count} | Total: {completed}/{self._generation_total_count}"
+            )
+
+        # Print error message above progress bar
+        self.console.print(f"[red]✗ Image {idx + 1} failed: {error}[/red]")
 
     def _handle_generation_progress(self, data: dict[str, Any]) -> None:
         # Progress is handled by IMAGE_SUCCESS, but this could be used for checkpoints

@@ -104,7 +104,7 @@ class SessionConfigBuilder:
         cli: CLIConfig,
         prompt: PromptConfig
     ) -> str:
-        """Resolve session name with priority logic.
+        """Resolve session name with priority logic and add timestamp.
 
         Priority:
         1. CLI --session-name override (highest)
@@ -112,27 +112,36 @@ class SessionConfigBuilder:
         3. prompt.name
         4. prompt filename (lowest)
 
+        The resolved name is then prefixed with a timestamp in format:
+        YYYYMMDD_HHMMSS-{name}
+
         Args:
             cli: CLI configuration
             prompt: Prompt configuration
 
         Returns:
-            Resolved session name
+            Resolved session name with timestamp prefix
         """
+        # Resolve base name with priority
+        base_name = None
+
         # Priority 1: CLI override
         if cli.session_name_override:
-            return cli.session_name_override
-
+            base_name = cli.session_name_override
         # Priority 2: prompt.output.session_name
-        if prompt.output and prompt.output.session_name:
-            return prompt.output.session_name
-
+        elif prompt.output and prompt.output.session_name:
+            base_name = prompt.output.session_name
         # Priority 3: prompt.name
-        if prompt.name:
-            return prompt.name
-
+        elif prompt.name:
+            base_name = prompt.name
         # Priority 4: prompt filename (fallback)
-        return cli.template_path.stem
+        else:
+            base_name = cli.template_path.stem
+
+        # Add timestamp prefix
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"{timestamp}-{base_name}"
 
     def _resolve_total_images(
         self,
