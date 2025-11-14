@@ -199,7 +199,7 @@ class SessionConfigBuilder:
         """
         # Priority 1: CLI --seeds flag overrides everything
         if cli.seeds:
-            seed_list = [int(s.strip()) for s in cli.seeds.split(",")]
+            seed_list = self._parse_seed_list(cli.seeds)
             return "sweep", None, seed_list
 
         # Priority 2: Use prompt configuration
@@ -207,6 +207,30 @@ class SessionConfigBuilder:
         base_seed = prompt.generation.seed if prompt.generation.seed != -1 else None
 
         return seed_mode, base_seed, None
+
+    @staticmethod
+    def _parse_seed_list(seeds_str: str) -> list[int]:
+        """Parse seed list from CLI --seeds parameter.
+
+        Supports two formats:
+        - Comma-separated: "42,43,44" → [42, 43, 44]
+        - Range: "100-110" → [100, 101, 102, ..., 110]
+
+        Args:
+            seeds_str: Seeds string from CLI (already validated)
+
+        Returns:
+            List of seed integers
+        """
+        # Check if it's a range format (START-END)
+        if "-" in seeds_str and seeds_str.count("-") == 1:
+            parts = seeds_str.split("-")
+            start = int(parts[0].strip())
+            end = int(parts[1].strip())
+            return list(range(start, end + 1))
+
+        # Comma-separated format
+        return [int(s.strip()) for s in seeds_str.split(",")]
 
     def _parse_fixed_placeholders(self, fixed_str: Optional[str]) -> dict[str, str]:
         """Parse --use-fixed CLI parameter into dictionary.

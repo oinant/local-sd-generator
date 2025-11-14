@@ -78,8 +78,24 @@ class CLIConfig:
 
     @staticmethod
     def _validate_seeds(seeds_str: str) -> None:
-        """Validate seeds format: '42,43,44' (comma-separated integers)."""
+        """Validate seeds format: '42,43,44' or range '100-110'."""
         try:
+            # Check if it's a range format (START-END)
+            if "-" in seeds_str and seeds_str.count("-") == 1:
+                # Range format: "9485300-9485305"
+                parts = seeds_str.split("-")
+                start = int(parts[0].strip())
+                end = int(parts[1].strip())
+
+                if start < -1 or end < -1:
+                    raise ValueError("Seed values must be >= -1")
+                if start > end:
+                    raise ValueError("Range start must be <= end")
+
+                # Valid range
+                return
+
+            # Comma-separated format: "42,43,44"
             seeds = [int(s.strip()) for s in seeds_str.split(",")]
             if not seeds:
                 raise ValueError("Seeds list cannot be empty")
@@ -89,6 +105,6 @@ class CLIConfig:
             if "invalid literal" in str(e):
                 raise ValueError(
                     f"Invalid seeds format: '{seeds_str}'. "
-                    f"Expected comma-separated integers (e.g., '42,43,44')"
+                    f"Expected comma-separated integers (e.g., '42,43,44') or range (e.g., '100-110')"
                 ) from e
             raise
