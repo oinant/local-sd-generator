@@ -57,7 +57,11 @@
 
           <v-divider />
 
-          <v-card-text class="flex-grow-1 pa-0 d-flex flex-column">
+          <v-card-text
+            class="flex-grow-1 pa-0 d-flex flex-column"
+            style="overflow-y: auto"
+            @scroll="onSessionListScroll"
+          >
             <v-progress-linear v-if="loadingSessions" indeterminate />
 
             <!-- Virtual scroll pour performance avec grandes listes -->
@@ -75,6 +79,17 @@
                 />
               </template>
             </v-virtual-scroll>
+
+            <!-- Loading more indicator -->
+            <div v-if="loadingMoreSessions" class="text-center pa-2">
+              <v-progress-circular indeterminate size="24" width="2" />
+              <span class="ml-2 text-caption">Chargement...</span>
+            </div>
+
+            <!-- Sessions count indicator -->
+            <div v-if="!loadingSessions" class="text-center pa-2 text-caption text-medium-emphasis">
+              {{ sessions.length }} / {{ totalSessions }} sessions chargées
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -90,6 +105,7 @@
                   selectedSession ? formatSessionName(selectedSession) : 'Sélectionnez une session'
                 }}
               </span>
+
 
               <!-- Tags inline entre le titre et les chips -->
               <v-combobox
@@ -515,6 +531,11 @@ export default {
       loadingSessions: false,
       sessions: [], // Liste des sessions depuis l'API
       sessionMetadata: {}, // Metadata indexé par session.name
+      // Pagination
+      currentPage: 1,
+      totalPages: 1,
+      totalSessions: 0,
+      loadingMoreSessions: false,
       allImages: [],
       selectedSession: null,
       imageDialog: false,
@@ -760,7 +781,18 @@ export default {
   async mounted() {
     await this.loadSessions()
     this.setupLazyLoading()
-    this.setupSessionObserver()
+    // Session counts are now loaded directly from API, no need for observer
+    // this.setupSessionObserver()
+
+    // Restore session from route parameter if present
+    const sessionFromRoute = this.$route.params.sessionName
+    if (sessionFromRoute) {
+      // Vérifier que la session existe dans la liste
+      const sessionExists = this.sessions.some(s => s.name === sessionFromRoute)
+      if (sessionExists) {
+        await this.selectSession(sessionFromRoute)
+      }
+    }
   },
 
   beforeUnmount() {
@@ -781,25 +813,39 @@ export default {
   },
 
   methods: {
-    async loadSessions() {
+    async loadSessions(page = 1) {
       try {
-        this.loadingSessions = true
-        // Charger les sessions (sans metadata pour l'instant)
-        const response = await ApiService.getSessions()
+        this.loadingSessions = page === 1
+        this.loadingMoreSessions = page > 1
+
+        // Charger les sessions (page spécifique)
+        const response = await ApiService.getSessions(page)
 
         // Transformer les sessions pour l'affichage
-        this.sessions = response.sessions.map(session => ({
+        const newSessions = response.sessions.map(session => ({
           name: session.name,
           displayName: this.formatSessionName(session.name),
           date: new Date(session.created_at),
-          count: null, // Sera chargé à la demande
-          countLoading: false
+          count: session.images_actual ?? null, // Use count from API
+          countLoading: false,
+          // Session status info (from API)
+          images_requested: session.images_requested,
+          images_actual: session.images_actual,
+          completion_percent: session.completion_percent,
+          is_finished: session.is_finished
         }))
 
-        // Metadata will be lazy-loaded per session when visible
-        // (handled by sessionObserver or on-demand)
+        // Append ou replace selon la page
+        if (page === 1) {
+          this.sessions = newSessions
+        } else {
+          this.sessions.push(...newSessions)
+        }
 
-        // Les counts seront chargés par le sessionObserver au scroll
+        // Stocker les infos de pagination
+        this.currentPage = response.page
+        this.totalPages = response.total_pages
+        this.totalSessions = response.total_count
       } catch (error) {
         console.error('Erreur lors du chargement des sessions:', error)
         this.notificationStore.show({
@@ -808,6 +854,26 @@ export default {
         })
       } finally {
         this.loadingSessions = false
+        this.loadingMoreSessions = false
+      }
+    },
+
+    async loadMoreSessions() {
+      // Ne charger que si on n'est pas déjà en train de charger et qu'il reste des pages
+      if (this.loadingMoreSessions || this.currentPage >= this.totalPages) {
+        return
+      }
+
+      await this.loadSessions(this.currentPage + 1)
+    },
+
+    onSessionListScroll(event) {
+      const { scrollTop, scrollHeight, clientHeight } = event.target
+      const scrollPercentage = (scrollTop + clientHeight) / scrollHeight
+
+      // Charger la page suivante quand on atteint 80% du scroll
+      if (scrollPercentage > 0.8) {
+        this.loadMoreSessions()
       }
     },
 
@@ -990,6 +1056,13 @@ export default {
 
       // Clear filters when changing session
       this.filtersStore.loadImages([])
+
+      // Navigate using Vue Router
+      if (sessionName) {
+        this.$router.push({ name: 'GallerySession', params: { sessionName } })
+      } else {
+        this.$router.push({ name: 'Gallery' })
+      }
 
       if (sessionName) {
         // Charger les images de cette session

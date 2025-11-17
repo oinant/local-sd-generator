@@ -156,8 +156,23 @@ export default {
     },
 
     getCountColor() {
+      // Color based on session status
+      // Blue: ongoing (not finished and incomplete)
+      // Green: completed (finished OR 100% complete)
+      // Orange/Red: incomplete but finished (aborted)
+
       if (this.session.count === 0) return 'error'
-      if (this.session.count < 10) return 'warning'
+
+      const isComplete = this.session.completion_percent >= 1.0
+      const isFinished = this.session.is_finished
+
+      // Completed session (100% done)
+      if (isComplete) return 'success'
+
+      // Finished but incomplete (aborted)
+      if (isFinished && !isComplete) return 'warning'
+
+      // Ongoing (not finished yet)
       return 'info'
     },
 

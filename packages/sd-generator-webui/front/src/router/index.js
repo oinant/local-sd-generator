@@ -55,6 +55,12 @@ const routes = [
     meta: { requiresAuth: true, title: 'Gallery' }
   },
   {
+    path: '/gallery/:sessionName',
+    name: 'GallerySession',
+    component: () => import('@/views/Images.vue'),
+    meta: { requiresAuth: true, title: 'Gallery' }
+  },
+  {
     path: '/images',
     redirect: '/gallery'
   },
