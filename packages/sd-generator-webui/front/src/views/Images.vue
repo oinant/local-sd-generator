@@ -277,7 +277,7 @@
                   formatDate(selectedImage.created)
                 }}</v-chip>
                 <v-chip size="small" color="grey" variant="outlined">
-                  {{ currentImageIndex + 1 }} / {{ allImages.length }}
+                  {{ currentImageIndex + 1 }} / {{ filteredImages.length }}
                 </v-chip>
               </div>
             </v-col>
@@ -465,7 +465,7 @@
         <!-- Indicateur de position -->
         <div class="fullscreen-indicator">
           <v-chip color="white" variant="elevated">
-            <strong>{{ currentImageIndex + 1 }}</strong> / {{ allImages.length }}
+            <strong>{{ currentImageIndex + 1 }}</strong> / {{ filteredImages.length }}
           </v-chip>
         </div>
       </div>
@@ -674,10 +674,10 @@ export default {
       return this.allImages.filter(img => filteredFilenames.has(img.name))
     },
 
-    // Index de l'image courante dans la liste
+    // Index de l'image courante dans la liste (utilise filteredImages pour respecter les filtres)
     currentImageIndex() {
       if (!this.selectedImage) return -1
-      return this.allImages.findIndex(img => img.id === this.selectedImage.id)
+      return this.filteredImages.findIndex(img => img.id === this.selectedImage.id)
     },
 
     // Y a-t-il une image précédente ?
@@ -687,7 +687,7 @@ export default {
 
     // Y a-t-il une image suivante ?
     hasNextImage() {
-      return this.currentImageIndex >= 0 && this.currentImageIndex < this.allImages.length - 1
+      return this.currentImageIndex >= 0 && this.currentImageIndex < this.filteredImages.length - 1
     },
 
     // Extraire les infos du manifest pour l'image courante
@@ -1086,14 +1086,14 @@ export default {
 
     showPreviousImage() {
       if (this.hasPreviousImage) {
-        const prevImage = this.allImages[this.currentImageIndex - 1]
+        const prevImage = this.filteredImages[this.currentImageIndex - 1]
         this.openImageDialog(prevImage)
       }
     },
 
     showNextImage() {
       if (this.hasNextImage) {
-        const nextImage = this.allImages[this.currentImageIndex + 1]
+        const nextImage = this.filteredImages[this.currentImageIndex + 1]
         this.openImageDialog(nextImage)
       }
     },
