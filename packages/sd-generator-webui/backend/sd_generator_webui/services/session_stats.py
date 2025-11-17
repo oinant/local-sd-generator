@@ -329,3 +329,13 @@ class SessionStatsService:
                 continue
 
         return count
+
+    def get_global_stats(self) -> Dict[str, Any]:
+        """
+        Get global statistics across all sessions.
+
+        Returns:
+            Dict with global stats (total_sessions, sessions_ongoing, sessions_completed,
+            sessions_aborted, total_images, max_images, min_images, avg_images)
+        """
+        return self.repository.get_global_stats()

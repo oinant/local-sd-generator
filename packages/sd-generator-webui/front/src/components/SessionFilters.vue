@@ -59,10 +59,35 @@
 
       <v-divider class="my-3" />
 
+      <!-- Generation status filter -->
+      <div class="mb-3">
+        <div class="text-caption font-weight-bold mb-2">Statut de génération</div>
+        <v-chip-group v-model="localFilters.generationStatus" selected-class="text-primary" column>
+          <v-chip value="all" size="small" variant="outlined">
+            <v-icon start>mdi-all-inclusive</v-icon>
+            Tous
+          </v-chip>
+          <v-chip value="ongoing" size="small" variant="outlined" color="info">
+            <v-icon start>mdi-progress-clock</v-icon>
+            En cours
+          </v-chip>
+          <v-chip value="completed" size="small" variant="outlined" color="success">
+            <v-icon start>mdi-check-circle</v-icon>
+            Terminées
+          </v-chip>
+          <v-chip value="aborted" size="small" variant="outlined" color="warning">
+            <v-icon start>mdi-alert-circle</v-icon>
+            Interrompues
+          </v-chip>
+        </v-chip-group>
+      </div>
+
+      <v-divider class="my-3" />
+
       <!-- Image count filter -->
       <div class="mb-3">
         <div class="text-caption font-weight-bold mb-2">
-          Nombre d'images ({{ localFilters.minImages }} - {{ localFilters.maxImages }})
+          Nombre d'images ({{ localFilters.minImages }} - {{ maxImageCount }})
         </div>
         <v-range-slider
           v-model="imageCountRange"
@@ -168,6 +193,7 @@ export default {
       default: () => ({
         rating: 'all',
         flags: [],
+        generationStatus: 'all',
         minImages: 0,
         maxImages: 1000,
         dateRange: 'all',
@@ -205,6 +231,7 @@ export default {
       return (
         this.localFilters.rating !== 'all' ||
         this.localFilters.flags.length > 0 ||
+        this.localFilters.generationStatus !== 'all' ||
         this.localFilters.minImages > 0 ||
         this.localFilters.maxImages < this.maxImageCount ||
         this.localFilters.dateRange !== 'all' ||
@@ -233,6 +260,7 @@ export default {
       this.localFilters = {
         rating: 'all',
         flags: [],
+        generationStatus: 'all',
         minImages: 0,
         maxImages: this.maxImageCount,
         dateRange: 'all',

@@ -207,3 +207,22 @@ class SessionListResponse(BaseModel):
     total_count: int
     page: int = 0
     page_size: int = 50
+
+
+class GlobalStatsResponse(BaseModel):
+    """Response model for global session statistics (GET /api/sessions/stats)."""
+
+    # Session counts
+    total_sessions: int = Field(..., description="Total number of sessions")
+    sessions_ongoing: int = Field(..., description="Number of ongoing sessions (not yet completed)")
+    sessions_completed: int = Field(..., description="Number of completed sessions")
+    sessions_aborted: int = Field(..., description="Number of aborted sessions")
+
+    # Image counts
+    total_images: int = Field(..., description="Total number of images across all sessions")
+    max_images: int = Field(..., description="Maximum images in a single session")
+    min_images: int = Field(..., description="Minimum images in a session (non-zero)")
+    avg_images: float = Field(..., description="Average images per session")
+
+    # Stats metadata
+    computed_at: datetime = Field(default_factory=datetime.now, description="When these stats were computed")

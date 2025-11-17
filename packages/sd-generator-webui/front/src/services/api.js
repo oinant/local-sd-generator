@@ -98,6 +98,11 @@ class ApiService {
     return response.data
   }
 
+  async getGlobalStats() {
+    const response = await this.client.get('/api/sessions/stats')
+    return response.data
+  }
+
   async getSessionStats(sessionName) {
     const response = await this.client.get(`/api/sessions/${sessionName}/stats`)
     return response.data

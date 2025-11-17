@@ -13,7 +13,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sd_generator_webui.config import METADATA_DIR
 from sd_generator_webui.models_stats import SessionStats
@@ -28,7 +28,15 @@ class SessionStatsRepository(BatchRepository[SessionStats]):
     Implementations can use different storage backends (SQLite, PostgreSQL, etc.).
     """
 
-    pass  # Interface inherits all methods from BatchRepository
+    def get_global_stats(self) -> Dict[str, Any]:
+        """
+        Compute global statistics across all sessions.
+
+        Returns:
+            Dict with global stats (total_sessions, sessions_ongoing, sessions_completed,
+            sessions_aborted, total_images, max_images, min_images, avg_images)
+        """
+        raise NotImplementedError("Subclass must implement get_global_stats()")
 
 
 class SQLiteSessionStatsRepository(SessionStatsRepository):
@@ -180,6 +188,47 @@ class SQLiteSessionStatsRepository(SessionStatsRepository):
             rows = cursor.fetchall()
 
             return [self._row_to_stats(row) for row in rows]
+
+    def get_global_stats(self) -> Dict[str, Any]:
+        """
+        Compute global statistics across all sessions.
+
+        Returns:
+            Dict with global stats:
+            - total_sessions: Total number of sessions
+            - sessions_ongoing: Sessions not yet completed (completion_percent < completion_threshold)
+            - sessions_completed: Sessions completed (completion_percent >= completion_threshold)
+            - sessions_aborted: Sessions with 0 images
+            - total_images: Total images across all sessions
+            - max_images: Maximum images in a single session
+            - min_images: Minimum images in a session (non-zero)
+            - avg_images: Average images per session (including zero-image sessions)
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT
+                    COUNT(*) as total_sessions,
+                    SUM(CASE WHEN images_actual = 0 THEN 1 ELSE 0 END) as sessions_aborted,
+                    SUM(CASE WHEN completion_percent >= completion_threshold THEN 1 ELSE 0 END) as sessions_completed,
+                    SUM(CASE WHEN completion_percent < completion_threshold AND images_actual > 0 THEN 1 ELSE 0 END) as sessions_ongoing,
+                    SUM(images_actual) as total_images,
+                    MAX(images_actual) as max_images,
+                    MIN(CASE WHEN images_actual > 0 THEN images_actual END) as min_images,
+                    AVG(images_actual) as avg_images
+                FROM session_stats
+            """)
+            row = cursor.fetchone()
+
+            return {
+                "total_sessions": row[0] or 0,
+                "sessions_aborted": row[1] or 0,
+                "sessions_completed": row[2] or 0,
+                "sessions_ongoing": row[3] or 0,
+                "total_images": row[4] or 0,
+                "max_images": row[5] or 0,
+                "min_images": row[6] or 0,
+                "avg_images": row[7] or 0.0,
+            }
 
     def _row_to_stats(self, row: sqlite3.Row) -> SessionStats:
         """

@@ -23,6 +23,7 @@ from sd_generator_webui.models import (
     SessionMetadata,
     SessionMetadataUpdate,
     SessionStatsResponse,
+    GlobalStatsResponse,
 )
 
 
@@ -509,3 +510,33 @@ async def batch_compute_stats(
     )
 
     return {"success": True, "sessions_processed": count}
+
+
+@router.get("/stats", response_model=GlobalStatsResponse)
+async def get_global_stats(
+    user_guid: str = Depends(AuthService.validate_guid),
+):
+    """
+    Get global statistics across all sessions.
+
+    Args:
+        user_guid: Authenticated user GUID
+
+    Returns:
+        GlobalStatsResponse with aggregated stats:
+        - total_sessions: Total number of sessions
+        - sessions_ongoing: Sessions not yet completed
+        - sessions_completed: Sessions completed
+        - sessions_aborted: Sessions with 0 images
+        - total_images: Total images across all sessions
+        - max_images: Maximum images in a single session
+        - min_images: Minimum images in a session (non-zero)
+        - avg_images: Average images per session
+
+    Note: This endpoint reads from cached stats in the database.
+    Run /batch-compute first to ensure stats are up-to-date.
+    """
+    stats_service = get_stats_service()
+    stats = stats_service.get_global_stats()
+
+    return GlobalStatsResponse(**stats)

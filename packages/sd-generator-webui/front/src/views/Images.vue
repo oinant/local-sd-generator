@@ -5,12 +5,15 @@
       <v-col cols="3" class="border-r">
         <v-card flat height="100vh" class="d-flex flex-column">
           <v-card-title class="pb-2 d-flex justify-space-between align-center">
-            <span>
+            <span class="d-flex align-center gap-2">
               <v-icon class="mr-2">mdi-folder-multiple</v-icon>
               Sessions
-              <v-chip size="x-small" variant="text" class="ml-2">
+              <v-chip size="x-small" variant="text">
                 <v-icon size="x-small">mdi-sort-clock-descending</v-icon>
                 Par date {{ sortDescending ? '↓' : '↑' }}
+              </v-chip>
+              <v-chip v-if="totalSessions > 0" size="x-small" variant="tonal" color="primary">
+                {{ sessions.length }} / {{ totalSessions }}
               </v-chip>
             </span>
             <div class="d-flex gap-1">
@@ -57,15 +60,16 @@
 
           <v-divider />
 
-          <v-card-text
-            class="flex-grow-1 pa-0 d-flex flex-column"
-            style="overflow-y: auto"
-            @scroll="onSessionListScroll"
-          >
+          <v-card-text class="flex-grow-1 pa-0 d-flex flex-column" style="overflow-y: auto">
             <v-progress-linear v-if="loadingSessions" indeterminate />
 
             <!-- Virtual scroll pour performance avec grandes listes -->
-            <v-virtual-scroll :items="filteredSessions" :item-height="96" class="flex-grow-1">
+            <v-virtual-scroll
+              ref="sessionVirtualScroll"
+              :items="filteredSessions"
+              :item-height="96"
+              class="flex-grow-1"
+            >
               <template #default="{ item: session }">
                 <session-card
                   :key="session.name"
@@ -84,11 +88,6 @@
             <div v-if="loadingMoreSessions" class="text-center pa-2">
               <v-progress-circular indeterminate size="24" width="2" />
               <span class="ml-2 text-caption">Chargement...</span>
-            </div>
-
-            <!-- Sessions count indicator -->
-            <div v-if="!loadingSessions" class="text-center pa-2 text-caption text-medium-emphasis">
-              {{ sessions.length }} / {{ totalSessions }} sessions chargées
             </div>
           </v-card-text>
         </v-card>
@@ -491,7 +490,7 @@
     <v-navigation-drawer v-model="filtersDrawer" location="left" temporary width="350">
       <session-filters
         :filters="filters"
-        :max-image-count="1000"
+        :max-image-count="maxImageCountInSessions"
         @update:filters="filters = $event"
       />
     </v-navigation-drawer>
@@ -563,13 +562,16 @@ export default {
       filters: {
         rating: 'all',
         flags: [],
+        generationStatus: 'all',
         minImages: 0,
         maxImages: 1000,
         dateRange: 'all',
         dateStart: null,
         dateEnd: null,
         search: ''
-      }
+      },
+      // Global stats (loaded once on mount)
+      maxImageCountInSessions: 1000 // Will be loaded from /api/sessions/stats
     }
   },
 
@@ -612,6 +614,26 @@ export default {
             if (flag === 'complete') return metadata.is_complete
             return false
           })
+        })
+      }
+
+      // Filter by generation status
+      if (this.filters.generationStatus !== 'all') {
+        filtered = filtered.filter(session => {
+          const isComplete = session.completion_percent >= 1.0
+          const isFinished = session.is_finished
+
+          if (this.filters.generationStatus === 'ongoing') {
+            // Ongoing: not finished yet
+            return !isFinished
+          } else if (this.filters.generationStatus === 'completed') {
+            // Completed: 100% done
+            return isComplete
+          } else if (this.filters.generationStatus === 'aborted') {
+            // Aborted: finished but not complete
+            return isFinished && !isComplete
+          }
+          return true
         })
       }
 
@@ -779,10 +801,16 @@ export default {
   },
 
   async mounted() {
+    // Load global stats first (to get max_images for filter)
+    await this.loadGlobalStats()
+
     await this.loadSessions()
     this.setupLazyLoading()
     // Session counts are now loaded directly from API, no need for observer
     // this.setupSessionObserver()
+
+    // Setup infinite scroll for session list
+    this.setupSessionListScroll()
 
     // Restore session from route parameter if present
     const sessionFromRoute = this.$route.params.sessionName
@@ -813,6 +841,17 @@ export default {
   },
 
   methods: {
+    async loadGlobalStats() {
+      try {
+        const stats = await ApiService.getGlobalStats()
+        // Update max_images for the filter
+        this.maxImageCountInSessions = stats.max_images || 1000
+      } catch (error) {
+        console.error('Failed to load global stats:', error)
+        // Keep default value (1000) on error
+      }
+    },
+
     async loadSessions(page = 1) {
       try {
         this.loadingSessions = page === 1
@@ -867,12 +906,30 @@ export default {
       await this.loadSessions(this.currentPage + 1)
     },
 
+    setupSessionListScroll() {
+      // Attacher un listener sur le conteneur scrollable de v-virtual-scroll
+      this.$nextTick(() => {
+        const virtualScroll = this.$refs.sessionVirtualScroll
+        if (!virtualScroll) return
+
+        // Le v-virtual-scroll lui-même est l'élément scrollable (pas le __container)
+        const scrollContainer = virtualScroll.$el
+        if (!scrollContainer) return
+
+        // Attacher le listener de scroll
+        scrollContainer.addEventListener('scroll', this.onSessionListScroll)
+      })
+    },
+
     onSessionListScroll(event) {
-      const { scrollTop, scrollHeight, clientHeight } = event.target
+      const target = event.target
+      if (!target) return
+
+      const { scrollTop, scrollHeight, clientHeight } = target
       const scrollPercentage = (scrollTop + clientHeight) / scrollHeight
 
       // Charger la page suivante quand on atteint 80% du scroll
-      if (scrollPercentage > 0.8) {
+      if (scrollPercentage > 0.8 && !this.loadingMoreSessions) {
         this.loadMoreSessions()
       }
     },
