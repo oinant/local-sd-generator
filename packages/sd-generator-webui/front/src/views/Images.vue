@@ -124,6 +124,28 @@
                   <v-icon size="x-small" class="mr-1">mdi-update</v-icon>
                   Auto (5s)
                 </v-chip>
+
+                <!-- Filter stats (when filters active) -->
+                <v-chip
+                  v-if="filtersStore.hasActiveFilters"
+                  color="primary"
+                  variant="tonal"
+                  size="small"
+                >
+                  {{ filtersStore.filterStats }}
+                </v-chip>
+
+                <!-- Filter toggle button -->
+                <v-btn
+                  icon
+                  size="small"
+                  :color="filtersStore.hasActiveFilters ? 'primary' : undefined"
+                  :variant="filtersStore.hasActiveFilters ? 'tonal' : 'text'"
+                  title="Filter by placeholder values"
+                  @click="filtersStore.toggleDrawer"
+                >
+                  <v-icon>mdi-filter-variant</v-icon>
+                </v-btn>
               </div>
             </div>
           </v-card-title>
@@ -457,6 +479,9 @@
         @update:filters="filters = $event"
       />
     </v-navigation-drawer>
+
+    <!-- Filter drawer for placeholder filters -->
+    <FilterDrawer />
   </v-container>
 </template>
 
@@ -466,18 +491,22 @@ import SessionCard from '@/components/SessionCard.vue'
 import SessionFilters from '@/components/SessionFilters.vue'
 import { formatSessionName, formatDate } from '@/utils/formatters'
 import { useNotificationStore } from '@/stores/notification'
+import { useFiltersStore } from '@/stores/filters'
+import FilterDrawer from '@/components/FilterDrawer.vue'
 
 export default {
   name: 'ImagesView',
 
   components: {
     SessionCard,
-    SessionFilters
+    SessionFilters,
+    FilterDrawer
   },
 
   setup() {
     const notificationStore = useNotificationStore()
-    return { notificationStore }
+    const filtersStore = useFiltersStore()
+    return { notificationStore, filtersStore }
   },
 
   data() {
@@ -629,8 +658,13 @@ export default {
       return filtered
     },
 
-    // Images filtrées (toutes si pas de session sélectionnée)
+    // Images filtrées par placeholders (via filters store)
     filteredImages() {
+      // Si le store a des images chargées, utiliser les images filtrées du store
+      if (this.filtersStore.allImages.length > 0) {
+        return this.filtersStore.filteredImages
+      }
+      // Sinon, retourner toutes les images (fallback)
       return this.allImages
     },
 
@@ -853,6 +887,24 @@ export default {
       }
     },
 
+    async loadManifestForFilters(sessionName) {
+      try {
+        // Load manifest from API
+        const manifest = await ApiService.getSessionManifest(sessionName)
+
+        if (!manifest || !manifest.images) {
+          console.warn(`No manifest found for session ${sessionName}`)
+          return
+        }
+
+        // Load images with applied_variations and seed into filters store
+        this.filtersStore.loadImages(manifest.images)
+      } catch (error) {
+        console.error(`Error loading manifest for filters: ${sessionName}`, error)
+        // Don't show error notification - filters just won't be available
+      }
+    },
+
     async loadSessionMetadata(sessionName) {
       try {
         const metadata = await ApiService.getSessionMetadata(sessionName)
@@ -930,9 +982,15 @@ export default {
       this.allImages = [] // Clear images
       this.lastImageIndex = -1 // Reset polling index
 
+      // Clear filters when changing session
+      this.filtersStore.loadImages([])
+
       if (sessionName) {
         // Charger les images de cette session
         await this.loadSessionImages(sessionName)
+
+        // Charger le manifest pour les filtres (placeholder values)
+        await this.loadManifestForFilters(sessionName)
 
         // Charger les métadonnées de la session si pas déjà chargées
         if (!this.sessionMetadata[sessionName]) {
@@ -941,6 +999,9 @@ export default {
 
         // Charger tous les tags disponibles pour l'autocomplete
         await this.loadAllTags()
+
+        // Sync filters from URL (if present)
+        this.filtersStore.syncFromURL()
 
         // Start polling for new images every 5 seconds
         this.startImagePolling()
