@@ -11,6 +11,7 @@ config.global.stubs = {
   VCardTitle: true,
   VCardSubtitle: true,
   VCardText: true,
+  VCardActions: true,
   VBtn: true,
   VIcon: true,
   VChip: true,
@@ -18,6 +19,7 @@ config.global.stubs = {
   VListItem: true,
   VListItemTitle: true,
   VListItemSubtitle: true,
+  VListSubheader: true,
   VProgressCircular: true,
   VProgressLinear: true,
   VDialog: true,
@@ -29,5 +31,7 @@ config.global.stubs = {
   VDivider: true,
   VCombobox: true,
   VImg: true,
-  VSnackbar: true
+  VSnackbar: true,
+  VSpacer: true,
+  VTooltip: true
 }
