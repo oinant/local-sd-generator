@@ -660,12 +660,18 @@ export default {
 
     // Images filtrées par placeholders (via filters store)
     filteredImages() {
-      // Si le store a des images chargées, utiliser les images filtrées du store
-      if (this.filtersStore.allImages.length > 0) {
-        return this.filtersStore.filteredImages
+      // Si pas de filtres actifs, retourner toutes les images
+      if (!this.filtersStore.hasActiveFilters) {
+        return this.allImages
       }
-      // Sinon, retourner toutes les images (fallback)
-      return this.allImages
+
+      // Si des filtres sont actifs, filtrer allImages en se basant sur filteredImages du store
+      // On utilise les filenames du store pour savoir quelles images afficher
+      const filteredFilenames = new Set(
+        this.filtersStore.filteredImages.map(img => img.filename)
+      )
+
+      return this.allImages.filter(img => filteredFilenames.has(img.name))
     },
 
     // Index de l'image courante dans la liste
